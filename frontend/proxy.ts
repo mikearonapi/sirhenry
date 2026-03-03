@@ -2,11 +2,11 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 /**
- * Pre-launch middleware.
+ * Pre-launch proxy (Next.js 16 replacement for middleware.ts).
  * - On Vercel (production): only the landing page is accessible, everything else 404s.
  * - Locally: all routes are accessible for development.
  */
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   if (!process.env.VERCEL) {
     return NextResponse.next();
   }
