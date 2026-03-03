@@ -1,0 +1,27 @@
+import {
+  HeroSection,
+  HenryParadoxSection,
+  ProblemsSection,
+  CapabilitiesSection,
+  SirHenryAISection,
+  ComparisonTable,
+  VoicesSection,
+  WaitlistSection,
+  Footer,
+} from "@/components/landing";
+
+export default function LandingPage() {
+  return (
+    <div className="min-h-screen font-sans bg-white">
+      <HeroSection />
+      <HenryParadoxSection />
+      <ProblemsSection />
+      <CapabilitiesSection />
+      <SirHenryAISection />
+      <ComparisonTable />
+      <VoicesSection />
+      <WaitlistSection />
+      <Footer />
+    </div>
+  );
+}

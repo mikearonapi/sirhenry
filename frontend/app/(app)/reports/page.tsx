@@ -1,0 +1,371 @@
+"use client";
+import { useState } from "react";
+import { FileText, Download, Loader2, CheckCircle, AlertCircle, Printer, Users, User, Briefcase, TrendingUp } from "lucide-react";
+import { formatCurrency, monthName, safeJsonParse } from "@/lib/utils";
+import { getTaxSummary, getTaxEstimate, getPeriods, getMonthlyReport, getManualAssets } from "@/lib/api";
+
+const now = new Date();
+
+type ReportType = "tax_accountant" | "monthly_summary" | "annual_financial" | "net_worth";
+
+interface ReportConfig {
+  type: ReportType;
+  year: number;
+  month?: number;
+}
+
+export default function ReportsPage() {
+  const [config, setConfig] = useState<ReportConfig>({ type: "tax_accountant", year: now.getFullYear() - 1 });
+  const [generating, setGenerating] = useState(false);
+  const [reportContent, setReportContent] = useState<string | null>(null);
+  const [reportName, setReportName] = useState<string>("");
+  const [error, setError] = useState<string | null>(null);
+
+  async function generateReport() {
+    setGenerating(true);
+    setReportContent(null);
+
+    try {
+      if (config.type === "tax_accountant") {
+        const [summary, estimate, periods] = await Promise.all([
+          getTaxSummary(config.year).catch((e: any) => { setError(e.message); return null; }),
+          getTaxEstimate(config.year).catch((e: any) => { setError(e.message); return null; }),
+          getPeriods(config.year).catch((e: any) => { setError(e.message); return []; }),
+        ]);
+
+        const annual = periods.find((p) => p.month === null);
+
+        let md = `# Tax Preparation Report — ${config.year}\n`;
+        md += `*Generated: ${new Date().toLocaleDateString()}*\n\n`;
+        md += `---\n\n`;
+
+        md += `## Income Summary\n\n`;
+        if (summary) {
+          md += `| Source | Amount |\n|--------|--------|\n`;
+          md += `| W-2 Wages (Accenture) | ${formatCurrency(summary.w2_total_wages)} |\n`;
+          md += `| Board / Director Income (1099-NEC) | ${formatCurrency(summary.nec_total)} |\n`;
+          md += `| Ordinary Dividends | ${formatCurrency(summary.div_ordinary)} |\n`;
+          md += `| Qualified Dividends | ${formatCurrency(summary.div_qualified)} |\n`;
+          md += `| Capital Gains (Long-term) | ${formatCurrency(summary.capital_gains_long)} |\n`;
+          md += `| Capital Gains (Short-term) | ${formatCurrency(summary.capital_gains_short)} |\n`;
+          md += `| Interest Income | ${formatCurrency(summary.interest_income)} |\n\n`;
+
+          if (summary.w2_state_allocations.length > 0) {
+            md += `## Multi-State W-2 Allocation\n\n`;
+            md += `| State | Wages | Tax Withheld |\n|-------|-------|-------------|\n`;
+            summary.w2_state_allocations.forEach((a) => {
+              md += `| ${a.state} | ${formatCurrency(a.wages)} | ${formatCurrency(a.tax)} |\n`;
+            });
+            md += `\n`;
+          }
+        }
+
+        if (estimate) {
+          md += `## Tax Estimates\n\n`;
+          md += `| Item | Amount |\n|------|--------|\n`;
+          md += `| Estimated AGI | ${formatCurrency(estimate.estimated_agi)} |\n`;
+          md += `| Federal Income Tax | ${formatCurrency(estimate.federal_income_tax)} |\n`;
+          md += `| Self-Employment Tax | ${formatCurrency(estimate.self_employment_tax)} |\n`;
+          md += `| Net Investment Income Tax (NIIT) | ${formatCurrency(estimate.niit)} |\n`;
+          md += `| Additional Medicare Tax | ${formatCurrency(estimate.additional_medicare_tax)} |\n`;
+          md += `| **Total Estimated Tax** | **${formatCurrency(estimate.total_estimated_tax)}** |\n`;
+          md += `| W-2 Federal Withheld | ${formatCurrency(estimate.w2_federal_already_withheld)} |\n`;
+          md += `| **Estimated Balance Due** | **${formatCurrency(estimate.estimated_balance_due)}** |\n\n`;
+          md += `*Effective Rate: ${estimate.effective_rate}%*\n\n`;
+          md += `> ${estimate.disclaimer}\n\n`;
+        }
+
+        if (annual) {
+          md += `## Annual Expense Summary\n\n`;
+          md += `| Category | Amount |\n|----------|--------|\n`;
+          md += `| Total Personal Expenses | ${formatCurrency(annual.personal_expenses)} |\n`;
+          md += `| Total Business Expenses | ${formatCurrency(annual.business_expenses)} |\n`;
+
+          if (annual.expense_breakdown) {
+            const breakdown = safeJsonParse<Record<string, number>>(annual.expense_breakdown, {});
+            const businessExpenses = Object.entries(breakdown).filter(([k]) => k.startsWith("Business —"));
+            if (businessExpenses.length > 0) {
+              md += `\n### Business Expense Detail (Schedule C)\n\n`;
+              md += `| Category | Amount |\n|----------|--------|\n`;
+              businessExpenses.forEach(([cat, amt]) => {
+                md += `| ${cat.replace("Business — ", "")} | ${formatCurrency(amt)} |\n`;
+              });
+            }
+          }
+        }
+
+        md += `\n---\n*This report was generated by SirHENRY. Verify all figures with source documents.*\n`;
+        setReportContent(md);
+        setReportName(`Tax_Report_${config.year}.md`);
+
+      } else if (config.type === "monthly_summary") {
+        const m = config.month ?? now.getMonth() + 1;
+        const report = await getMonthlyReport(config.year, m).catch((e: any) => { setError(e.message); return null; });
+
+        let md = `# Monthly Summary — ${monthName(m)} ${config.year}\n`;
+        md += `*Generated: ${new Date().toLocaleDateString()}*\n\n---\n\n`;
+
+        if (report?.period) {
+          const p = report.period;
+          md += `## Overview\n\n`;
+          md += `| | Amount |\n|--|--------|\n`;
+          md += `| Total Income | ${formatCurrency(p.total_income)} |\n`;
+          md += `| Total Expenses | ${formatCurrency(p.total_expenses)} |\n`;
+          md += `| **Net Cash Flow** | **${formatCurrency(p.net_cash_flow)}** |\n`;
+          md += `| Savings Rate | ${p.total_income > 0 ? ((p.net_cash_flow / p.total_income) * 100).toFixed(1) : "0"}% |\n\n`;
+
+          md += `## Income Sources\n\n`;
+          md += `| Source | Amount |\n|--------|--------|\n`;
+          md += `| W-2 Income | ${formatCurrency(p.w2_income)} |\n`;
+          md += `| Investment Income | ${formatCurrency(p.investment_income)} |\n`;
+          md += `| Board / Director Income | ${formatCurrency(p.board_income)} |\n\n`;
+
+          if (p.expense_breakdown) {
+            const breakdown = safeJsonParse<Record<string, number>>(p.expense_breakdown, {});
+            const sorted = Object.entries(breakdown).sort(([, a], [, b]) => b - a);
+            if (sorted.length > 0) {
+              md += `## Expense Breakdown\n\n`;
+              md += `| Category | Amount | % of Total |\n|----------|--------|------------|\n`;
+              sorted.forEach(([cat, amt]) => {
+                const pct = p.total_expenses > 0 ? ((amt / p.total_expenses) * 100).toFixed(1) : "0";
+                md += `| ${cat} | ${formatCurrency(amt)} | ${pct}% |\n`;
+              });
+              md += `\n`;
+            }
+          }
+        } else {
+          md += `No financial data found for ${monthName(m)} ${config.year}.\n`;
+        }
+
+        md += `\n---\n*Generated by SirHENRY.*\n`;
+        setReportContent(md);
+        setReportName(`Monthly_Summary_${config.year}_${String(m).padStart(2, "0")}.md`);
+
+      } else if (config.type === "annual_financial") {
+        const periods = await getPeriods(config.year).catch((e: any) => { setError(e.message); return []; });
+        const annual = periods.find((p) => p.month === null);
+
+        let md = `# Annual Financial Summary — ${config.year}\n`;
+        md += `*Generated: ${new Date().toLocaleDateString()}*\n\n---\n\n`;
+
+        if (annual) {
+          md += `## Income Statement\n\n`;
+          md += `| | Amount |\n|--|--------|\n`;
+          md += `| Total Income | ${formatCurrency(annual.total_income)} |\n`;
+          md += `| W-2 Income | ${formatCurrency(annual.w2_income)} |\n`;
+          md += `| Investment Income | ${formatCurrency(annual.investment_income)} |\n`;
+          md += `| Board/Director Income | ${formatCurrency(annual.board_income)} |\n`;
+          md += `| **Total Expenses** | **${formatCurrency(annual.total_expenses)}** |\n`;
+          md += `| Personal Expenses | ${formatCurrency(annual.personal_expenses)} |\n`;
+          md += `| Business Expenses | ${formatCurrency(annual.business_expenses)} |\n`;
+          md += `| **Net Cash Flow** | **${formatCurrency(annual.net_cash_flow)}** |\n\n`;
+        }
+
+        // Monthly breakdown
+        const monthly = periods.filter((p) => p.month !== null).sort((a, b) => (a.month ?? 0) - (b.month ?? 0));
+        if (monthly.length > 0) {
+          md += `## Monthly Breakdown\n\n`;
+          md += `| Month | Income | Expenses | Net |\n|-------|--------|----------|-----|\n`;
+          monthly.forEach((p) => {
+            md += `| ${monthName(p.month ?? 1)} | ${formatCurrency(p.total_income)} | ${formatCurrency(p.total_expenses)} | ${formatCurrency(p.net_cash_flow)} |\n`;
+          });
+        }
+
+        setReportContent(md);
+        setReportName(`Annual_Financial_${config.year}.md`);
+
+      } else if (config.type === "net_worth") {
+        const assets = await getManualAssets().catch((e: any) => { setError(e.message); return []; });
+
+        let md = `# Net Worth Statement\n`;
+        md += `*As of ${new Date().toLocaleDateString()}*\n\n---\n\n`;
+
+        const assetItems = assets.filter((a) => !a.is_liability);
+        const liabilityItems = assets.filter((a) => a.is_liability);
+        const totalAssets = assetItems.reduce((s, a) => s + (a.current_value ?? a.purchase_price ?? 0), 0);
+        const totalLiabilities = liabilityItems.reduce((s, a) => s + (a.current_value ?? a.purchase_price ?? 0), 0);
+
+        md += `## Assets\n\n`;
+        md += `| Asset | Value |\n|-------|-------|\n`;
+        assetItems.forEach((a) => {
+          md += `| ${a.name} (${a.asset_type}) | ${formatCurrency(a.current_value ?? a.purchase_price ?? 0)} |\n`;
+        });
+        md += `| **Total Assets** | **${formatCurrency(totalAssets)}** |\n\n`;
+
+        md += `## Liabilities\n\n`;
+        md += `| Liability | Balance |\n|-----------|--------|\n`;
+        liabilityItems.forEach((a) => {
+          md += `| ${a.name} (${a.asset_type}) | ${formatCurrency(a.current_value ?? a.purchase_price ?? 0)} |\n`;
+        });
+        md += `| **Total Liabilities** | **${formatCurrency(totalLiabilities)}** |\n\n`;
+
+        md += `## Net Worth\n\n`;
+        md += `| | Amount |\n|--|--------|\n`;
+        md += `| Total Assets | ${formatCurrency(totalAssets)} |\n`;
+        md += `| Total Liabilities | (${formatCurrency(totalLiabilities)}) |\n`;
+        md += `| **Net Worth** | **${formatCurrency(totalAssets - totalLiabilities)}** |\n\n`;
+        md += `*Note: This statement reflects manually entered assets and liabilities. Connected bank/investment balances are in the Accounts section.*\n`;
+        md += `\n---\n*Generated by SirHENRY.*\n`;
+
+        setReportContent(md);
+        setReportName(`Net_Worth_Statement_${new Date().toISOString().split("T")[0]}.md`);
+      }
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  function handleDownload() {
+    if (!reportContent) return;
+    const blob = new Blob([reportContent], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = reportName;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function handlePrint() {
+    if (!reportContent) return;
+    const win = window.open("", "_blank");
+    if (!win) return;
+    win.document.write(`<html><head><title>${reportName}</title><style>body{font-family:monospace;padding:40px;white-space:pre-wrap;font-size:13px;line-height:1.6;}</style></head><body>${reportContent.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}</body></html>`);
+    win.document.close();
+    win.print();
+  }
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-2xl font-bold text-stone-900">Reports</h1>
+        <p className="text-stone-500 text-sm mt-0.5">Generate financial reports for your tax accountant and personal records</p>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 text-red-700 rounded-xl p-5 mb-6 flex items-center gap-3">
+          <AlertCircle size={20} />
+          <div>
+            <p className="font-semibold">Failed to load data</p>
+            <p className="text-sm mt-0.5">{error}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Report selector */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4">
+        {[
+          {
+            type: "tax_accountant" as const,
+            title: "Tax Accountant Report",
+            desc: "Complete income, expense, and tax estimate summary",
+            icon: "📋",
+            audience: "Share with your CPA",
+            audienceIcon: Briefcase,
+            audienceColor: "text-blue-600 bg-blue-50",
+          },
+          {
+            type: "annual_financial" as const,
+            title: "Annual Financial Report",
+            desc: "Full year income statement, monthly breakdown, and cash flow",
+            icon: "📊",
+            audience: "Personal archive",
+            audienceIcon: User,
+            audienceColor: "text-stone-600 bg-stone-100",
+          },
+          {
+            type: "monthly_summary" as const,
+            title: "Monthly Summary",
+            desc: "Single-month income, expenses, and spending breakdown",
+            icon: "📅",
+            audience: "Quick review",
+            audienceIcon: User,
+            audienceColor: "text-stone-600 bg-stone-100",
+          },
+          {
+            type: "net_worth" as const,
+            title: "Net Worth Statement",
+            desc: "Assets vs. liabilities snapshot suitable for lenders or advisors",
+            icon: "📈",
+            audience: "Mortgage lender / advisor",
+            audienceIcon: Users,
+            audienceColor: "text-green-700 bg-green-50",
+          },
+        ].map((r) => {
+          const AudienceIcon = r.audienceIcon;
+          return (
+            <button
+              key={r.type}
+              onClick={() => setConfig((c) => ({ ...c, type: r.type }))}
+              className={`text-left p-5 rounded-xl border transition-colors ${config.type === r.type ? "border-[#16A34A] bg-[#DCFCE7]" : "border-stone-100 bg-white hover:border-stone-200"}`}
+            >
+              <div className="text-2xl mb-2">{r.icon}</div>
+              <p className="font-semibold text-stone-800 text-sm">{r.title}</p>
+              <p className="text-xs text-stone-500 mt-1 mb-3">{r.desc}</p>
+              <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${r.audienceColor}`}>
+                <AudienceIcon size={10} /> {r.audience}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Config */}
+      <div className="bg-white rounded-xl border border-stone-100 shadow-sm p-5 flex items-end gap-4">
+        <div>
+          <label className="block text-xs text-stone-500 mb-1">Tax / Financial Year</label>
+          <select value={config.year} onChange={(e) => setConfig((c) => ({ ...c, year: Number(e.target.value) }))}
+            className="text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A]">
+            {[now.getFullYear(), now.getFullYear() - 1, now.getFullYear() - 2].map((y) => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+        </div>
+        {config.type === "monthly_summary" && (
+          <div>
+            <label className="block text-xs text-stone-500 mb-1">Month</label>
+            <select value={config.month ?? now.getMonth() + 1} onChange={(e) => setConfig((c) => ({ ...c, month: Number(e.target.value) }))}
+              className="text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A]">
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                <option key={m} value={m}>{monthName(m)}</option>
+              ))}
+            </select>
+          </div>
+        )}
+        <button
+          onClick={generateReport}
+          disabled={generating}
+          className="flex items-center gap-2 bg-[#16A34A] text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-[#15803D] disabled:opacity-60"
+        >
+          {generating ? <Loader2 size={15} className="animate-spin" /> : <FileText size={15} />}
+          {generating ? "Generating…" : "Generate Report"}
+        </button>
+      </div>
+
+      {/* Report output */}
+      {reportContent && (
+        <div className="bg-white rounded-xl border border-stone-100 shadow-sm">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100">
+            <div className="flex items-center gap-2">
+              <CheckCircle size={16} className="text-green-500" />
+              <span className="text-sm font-medium text-stone-700">{reportName}</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <button onClick={handlePrint} className="flex items-center gap-2 text-sm text-stone-600 hover:text-stone-800 border border-stone-200 rounded-lg px-3 py-1.5 hover:bg-stone-50">
+                <Printer size={13} /> Print / PDF
+              </button>
+              <button onClick={handleDownload} className="flex items-center gap-2 text-sm text-[#16A34A] hover:underline">
+                <Download size={14} /> Download (.md)
+              </button>
+            </div>
+          </div>
+          <div className="p-5">
+            <pre className="text-xs text-stone-700 whitespace-pre-wrap font-mono leading-relaxed max-h-[600px] overflow-y-auto">
+              {reportContent}
+            </pre>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

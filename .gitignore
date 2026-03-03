@@ -1,0 +1,61 @@
+# ─── Secrets & Environment ────────────────────────────────────────────────────
+# NEVER commit actual keys or credentials
+.env
+.env.local
+.env.*.local
+
+# ─── Personal Financial Data ──────────────────────────────────────────────────
+# The entire data/ tree is personal: bank imports, tax documents, CSVs,
+# investment statements, Amazon orders, etc.  Nothing here should ever
+# reach a public or private remote repository.
+data/
+
+# ─── Database Files ───────────────────────────────────────────────────────────
+# SQLite files that may be written by the pipeline or API during development
+*.db
+*.sqlite
+*.sqlite3
+
+# ─── Script Artifacts (derived from personal transactions) ────────────────────
+# These JSON files are Claude AI analysis outputs generated from personal data.
+# The .txt file contains raw transaction IDs from the database.
+scripts/*.json
+scripts/*.txt
+
+# ─── Python ──────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+*.log
+
+# ─── Node / Next.js ──────────────────────────────────────────────────────────
+node_modules/
+.next/
+.nuxt/
+npm-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# ─── OS ──────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── Docker ──────────────────────────────────────────────────────────────────
+*.override.yml
+
+# ─── IDE ─────────────────────────────────────────────────────────────────────
+.idea/
+*.swp
+*.swo
+
+# ─── Claude Code ────────────────────────────────────────────────────────────
+.claude/

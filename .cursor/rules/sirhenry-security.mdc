@@ -1,0 +1,37 @@
+---
+description: Security rules for SirHENRY — encryption, data isolation, zero-knowledge principles
+alwaysApply: true
+---
+
+# SirHENRY Security Rules
+
+## Zero-Knowledge Principles
+- The service processes user data but does NOT retain it centrally
+- Each user's SQLite database is their data — isolated, local, encrypted at rest
+- Plaid access tokens MUST be encrypted with Fernet before storage (see `pipeline/db/encryption.py`)
+- `PLAID_ENCRYPTION_KEY` is REQUIRED in production — fail fast if missing
+- API keys (Anthropic, Plaid) live ONLY in `.env` — never hardcoded, never in DB
+
+## Data Protection
+- `data/` directory, all `*.db` files, `.env`, and `scripts/*.json` are gitignored
+- NEVER log PII (names, account numbers, SSNs, balances, transaction descriptions)
+- NEVER include financial data in error messages returned to the client
+- NEVER store plaintext Plaid access tokens
+- NEVER send user financial data to external services except Plaid (for sync) and Claude (for AI features)
+
+## AI Data Handling
+- Claude API calls include user financial context for the current request only
+- Do NOT persist AI conversation history containing financial details outside the user's local DB
+- System prompts must not instruct Claude to remember data across sessions
+
+## CORS & Network
+- Default CORS: localhost only (`127.0.0.1:3000`, `127.0.0.1:3001`, `localhost:3000`, `localhost:3001`)
+- Production CORS must be restricted to the deployed frontend domain
+- All API routes must use `Depends(get_session)` for DB access — no raw engine calls in routes
+
+## Secrets Checklist
+Before any commit, verify:
+- No API keys in source files
+- No `.env` values in committed code
+- No hardcoded database paths with user data
+- No Plaid tokens in logs or error responses

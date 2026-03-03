@@ -1,0 +1,43 @@
+---
+description: SirHENRY platform architecture — local-first SaaS, data flow, stack decisions
+alwaysApply: true
+---
+
+# SirHENRY Architecture
+
+## Stack
+- **Frontend:** Next.js 16 + React 19 + Tailwind v4 (`frontend/`)
+- **API:** FastAPI Python 3.12 (`api/main.py`)
+- **Database:** SQLite per-user via SQLAlchemy async + aiosqlite
+- **AI:** Anthropic Claude (chat, categorization, tax analysis)
+- **Bank Connections:** Plaid (primary data source)
+- **Market Data:** yfinance
+
+## Local-First SaaS Model
+SirHENRY is a **SaaS service where user data stays local**. The server provides the application logic, AI processing, and Plaid connectivity — but never persists user financial data centrally.
+
+- Each user gets their own SQLite database file (`data/db/`)
+- The server processes requests against the user's local DB, then discards context
+- Plaid access tokens are encrypted per-user with Fernet (AES-128-CBC + HMAC-SHA256)
+- AI calls (Claude) do not retain user data after the request completes
+- No centralized data warehouse of user transactions or balances
+
+## Data Flow Hierarchy
+1. **Plaid** = primary source for all connected accounts (real-time sync)
+2. **CSV imports** = historical data + accounts not supported by Plaid
+3. **Amazon imports** = item-level detail enrichment for credit card transactions
+4. **Manual entry** = assets, goals, profile data not available from any feed
+
+## Key Design Rules
+- `pipeline/db/schema.py` is the SINGLE SOURCE OF TRUTH for all ORM models
+- Pydantic schemas live in their respective route files (no centralized schema file)
+- Frontend types live in `frontend/types/` (19 domain files + barrel)
+- Frontend API functions live in `frontend/lib/` (25 domain files + barrel)
+- Migrations tracked in `pipeline/db/migrations.py`, run on startup
+
+## Authoritative Docs (in priority order)
+1. `docs/ARCHITECTURE.md` — project structure
+2. `docs/FEATURES.md` — feature requirements and data models
+3. `docs/DESIGN.md` — UX flows and layout
+4. `docs/BRAND.md` — brand guidelines
+5. `docs/Henry.md` — product vision

@@ -1,0 +1,42 @@
+---
+description: Data strategy — Plaid as primary source, import merging, Amazon reconciliation
+alwaysApply: true
+---
+
+# SirHENRY Data Strategy
+
+## Plaid = Primary Data Source
+Plaid is the authoritative source for all connected accounts. When Plaid data exists:
+- Plaid transaction data takes precedence over imported CSV data for the same account
+- Account balances from Plaid overwrite manual/imported balances on sync
+- New transactions from Plaid sync are auto-categorized via Claude
+
+## CSV Import Merge Rules
+When importing historical CSV data for a Plaid-connected account:
+1. Match imports to existing Plaid accounts by `plaid_account_id` or account name
+2. Deduplicate by date + amount + description (fuzzy match, not exact)
+3. Historical data (before Plaid connection date) is INSERTED as new records
+4. Overlapping data (after Plaid connection date) is SKIPPED if a matching Plaid transaction exists
+5. File-level dedup: SHA-256 hash of file contents prevents re-import of the same file
+6. Always preserve the `source` field: "plaid", "csv_import", "amazon", "manual"
+
+## Amazon Order Reconciliation
+Amazon transactions on credit cards appear as single charges but contain multiple items.
+The reconciliation flow:
+1. Import Amazon Order History CSV → `AmazonOrder` table
+2. Match Amazon orders to credit card transactions by date + amount (within tolerance)
+3. Break out matched credit card transactions into item-level detail
+4. AI categorizes individual Amazon items (not the aggregate charge)
+5. Reconciliation status tracked per order: matched / unmatched / partial
+
+## Data Source Priority (for conflicts)
+1. Manual override by user (always wins)
+2. Plaid (real-time, authoritative for connected accounts)
+3. CSV import (historical, supplemental)
+4. AI categorization (can be overridden)
+
+## Transaction Categorization
+- `effective_category`, `effective_tax_category`, `effective_segment` are AI-assigned
+- `category_override`, `tax_category_override`, `segment_override` are user overrides
+- User overrides ALWAYS win over AI categorization
+- Categories defined in `pipeline/ai/categories.py`

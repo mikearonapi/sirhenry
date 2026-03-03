@@ -1,0 +1,34 @@
+---
+description: SirHENRY brand naming conventions — enforced across all code, copy, and config
+alwaysApply: true
+---
+
+# SirHENRY Branding
+
+## Naming Rules
+- **Platform name:** SirHENRY (one word, HENRY in caps)
+- **AI advisor:** Sir Henry (two words, title case)
+- **In code identifiers:** `sirhenry` (lowercase), `SirHenry` (PascalCase), `sir_henry` (snake_case)
+- **In user-facing copy:** "SirHENRY" for the platform, "Sir Henry" for the AI persona
+
+## Prohibited Names
+- "Family Finance Platform" — NEVER use this anywhere
+- "Family Finance & Tax Platform" — NEVER use this
+- "family finance" in any form in user-facing strings
+- "Henry Financial" as a standalone product name (reserved for legal entity only)
+
+## Where to Check
+When creating or modifying any file, ensure these contexts use correct branding:
+- Plaid `client_name` configuration
+- AI system prompts (chat, categorization, reports)
+- Email/notification templates
+- Report footers and headers
+- README and documentation
+- HTML `<title>` tags and meta descriptions
+- API response messages that surface to users
+
+## Brand Voice (see docs/BRAND.md for full guide)
+- Confident, clear, warm — like a smart friend who's great with money
+- Use "you" and "your" — never "the user"
+- Use specific numbers — "$1.2M by 55" not "a comfortable retirement"
+- Never guilt or preach about spending

@@ -1,0 +1,41 @@
+---
+description: Frontend React/Next.js conventions for SirHENRY
+globs: "frontend/**/*.{tsx,ts}"
+alwaysApply: false
+---
+
+# Frontend Rules
+
+## Component Architecture
+- Page files (`app/*/page.tsx`) should be thin orchestrators: fetch data, compose components
+- Extract reusable UI into `components/ui/` (Card, Badge, StatCard, etc.)
+- Extract domain components into `components/{domain}/` (e.g., `components/household/`)
+- Each component file: target <300 lines. If exceeding 400, split immediately.
+
+## Page Size Limits (ENFORCED)
+- **Maximum 400 lines per page.tsx** — no exceptions for new pages
+- Existing large pages (accounts: 540, landing page: 722) are tracked tech debt — split on touch
+- When modifying a large page, extract the section you're changing into a component FIRST
+
+## TypeScript Strictness
+- Define explicit interfaces for ALL data structures in `types/{domain}.ts`
+- NO `any` type — use `unknown` if type is genuinely unknown, then narrow
+- API response types must match the Pydantic models in the corresponding route file
+- Export all types through the barrel at `types/api.ts`
+
+## API Client Pattern
+- Domain API functions live in `lib/api-{domain}.ts`
+- All use `request()` from `lib/api-client.ts` (centralized fetch wrapper)
+- Export through barrel at `lib/api.ts`
+- Handle errors at the call site — show user-friendly messages, log details
+
+## Styling (Tailwind v4)
+- Use design tokens from `globals.css` (brand colors, spacing, radii)
+- Financial numbers: always use `font-mono` (JetBrains Mono)
+- Headings: use Plus Jakarta Sans via `font-display` class
+- Follow BRAND.md color system: Henry Green for CTAs, Warm Gold for milestones only
+
+## State Management
+- Server state: fetch in page/layout, pass as props
+- Client state: React hooks (`useState`, `useReducer`) — no external state library needed
+- Custom hooks in `hooks/` for reusable stateful logic

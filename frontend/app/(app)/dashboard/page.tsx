@@ -1,0 +1,344 @@
+"use client";
+import { useEffect, useState } from "react";
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  CartesianGrid, Legend,
+} from "recharts";
+import {
+  TrendingUp, DollarSign, Receipt, AlertCircle,
+  Loader2, Wallet, Target, RotateCcw, PieChart,
+  ChevronRight, Calendar,
+} from "lucide-react";
+import { getDashboard, getBudgetSummary, getRecurringSummary, getGoals, getBenchmarkSnapshot, getOrderOfOperations } from "@/lib/api";
+import { getFamilyMembers } from "@/lib/api-household";
+import { getLifeEvents } from "@/lib/api-life-events";
+import { formatCurrency, formatDate, monthName, segmentColor } from "@/lib/utils";
+import type { Dashboard, BudgetSummary, RecurringSummary, Goal, BenchmarkData, FOOStep } from "@/types/api";
+import type { FamilyMember } from "@/types/household";
+import type { LifeEvent } from "@/types/life-events";
+import Badge from "@/components/ui/Badge";
+import Card from "@/components/ui/Card";
+import ProgressBar from "@/components/ui/ProgressBar";
+import TrajectoryChart from "@/components/TrajectoryChart";
+import Link from "next/link";
+import { StatusCard, CashFlowWidget, ActionPlanWidget } from "@/components/dashboard";
+
+const now = new Date();
+const CURRENT_YEAR = now.getFullYear();
+const AVAILABLE_YEARS = Array.from({ length: 4 }, (_, i) => CURRENT_YEAR - i);
+
+export default function DashboardPage() {
+  const [data, setData] = useState<Dashboard | null>(null);
+  const [budget, setBudget] = useState<BudgetSummary | null>(null);
+  const [recurring, setRecurring] = useState<RecurringSummary | null>(null);
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [benchmarks, setBenchmarks] = useState<BenchmarkData | null>(null);
+  const [fooSteps, setFooSteps] = useState<FOOStep[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR);
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
+  const [primaryName, setPrimaryName] = useState<string | null>(null);
+  const [upcomingEvents, setUpcomingEvents] = useState<LifeEvent[]>([]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true);
+    setError(null);
+    const budgetMonth = selectedMonth ?? (selectedYear === CURRENT_YEAR ? now.getMonth() + 1 : 12);
+    Promise.all([
+      getDashboard(selectedYear, selectedMonth ?? undefined),
+      getBudgetSummary(selectedYear, budgetMonth).catch(() => null),
+      getRecurringSummary().catch(() => null),
+      getGoals().catch(() => []),
+      getBenchmarkSnapshot().catch(() => null),
+      getOrderOfOperations().catch(() => []),
+    ])
+      .then(([d, b, r, g, bench, foo]) => {
+        if (controller.signal.aborted) return;
+        setData(d);
+        setBudget(b);
+        setRecurring(r);
+        setGoals(Array.isArray(g) ? g.filter((x: Goal) => x.status === "active").slice(0, 4) : []);
+        setBenchmarks(bench ?? null);
+        setFooSteps(Array.isArray(foo) ? foo : []);
+      })
+      .catch((e) => {
+        if (!controller.signal.aborted) setError(e.message);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [selectedYear, selectedMonth]);
+
+  useEffect(() => {
+    getFamilyMembers().then((members) => {
+      const self = members.find((m) => m.relationship === "self") ?? members[0] ?? null;
+      if (self?.name) setPrimaryName(self.name.split(" ")[0]);
+    }).catch(() => {});
+
+    getLifeEvents().then((events) => {
+      const upcoming = events
+        .filter((e) => e.status === "upcoming")
+        .sort((a, b) => {
+          if (!a.event_date) return 1;
+          if (!b.event_date) return -1;
+          return new Date(a.event_date).getTime() - new Date(b.event_date).getTime();
+        })
+        .slice(0, 3);
+      setUpcomingEvents(upcoming);
+    }).catch(() => {});
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64 gap-3 text-stone-400">
+        <Loader2 className="animate-spin" size={22} />
+        <span>Loading dashboard...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="border-red-200 bg-red-50">
+        <div className="flex items-center gap-3 text-red-700">
+          <AlertCircle size={20} />
+          <div>
+            <p className="font-semibold">Cannot connect to API</p>
+            <p className="text-sm mt-0.5">{error}</p>
+            <p className="text-sm mt-1 text-red-500">
+              Make sure the FastAPI server is running: <code className="bg-red-100 px-1 rounded">uvicorn api.main:app --reload</code>
+            </p>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
+  if (!data) return null;
+
+  const currentMonthName = monthName(data.current_month);
+  const savingsRate = data.current_month_income > 0
+    ? ((data.current_month_income - data.current_month_expenses) / data.current_month_income * 100)
+    : 0;
+
+  const chartData = data.monthly_trend.map((p) => ({
+    name: monthName(p.month ?? 1).slice(0, 3),
+    Income: Math.round(p.total_income),
+    Expenses: Math.round(p.total_expenses),
+    Net: Math.round(p.net_cash_flow),
+  }));
+
+  const effectiveSavingsRate = benchmarks && benchmarks.savings_rate > 0
+    ? benchmarks.savings_rate
+    : data.ytd_income > 0 ? (data.ytd_net / data.ytd_income) * 100 : 0;
+  const effectiveNetWorth = benchmarks?.net_worth ?? 0;
+  const targetSavingsRate = benchmarks?.required_savings_rate ?? 20;
+
+  const statusLabel = effectiveSavingsRate >= targetSavingsRate ? "On Track" : effectiveSavingsRate >= targetSavingsRate * 0.5 ? "At Risk" : "Behind";
+  const statusClass = effectiveSavingsRate >= targetSavingsRate ? "status-on-track" : effectiveSavingsRate >= targetSavingsRate * 0.5 ? "status-at-risk" : "status-behind";
+
+  return (
+    <div className="space-y-6">
+      {/* HEADER */}
+      <div className="flex items-end justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-stone-900 tracking-tight font-display">
+            Good {new Date().getHours() < 12 ? "morning" : new Date().getHours() < 17 ? "afternoon" : "evening"}{primaryName ? `, ${primaryName}` : ""}
+          </h1>
+          <p className="text-stone-500 text-sm mt-0.5">{currentMonthName} {data.current_year}</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className={`text-xs font-semibold px-3 py-1.5 rounded-full ${statusClass}`}>{statusLabel}</span>
+          <div className="flex items-center gap-2">
+            <select value={selectedYear} onChange={(e) => { setSelectedYear(Number(e.target.value)); setSelectedMonth(null); }} className="text-sm border border-stone-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A]">
+              {AVAILABLE_YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
+            </select>
+            <select value={selectedMonth ?? ""} onChange={(e) => setSelectedMonth(e.target.value ? Number(e.target.value) : null)} className="text-sm border border-stone-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A]">
+              <option value="">{selectedYear === CURRENT_YEAR ? "Current Month" : "Full Year"}</option>
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => <option key={m} value={m}>{monthName(m)}</option>)}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* STATUS */}
+      <StatusCard effectiveSavingsRate={effectiveSavingsRate} effectiveNetWorth={effectiveNetWorth} targetSavingsRate={targetSavingsRate} />
+
+      {/* TRAJECTORY */}
+      <Card padding="lg">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h2 className="text-sm font-semibold text-stone-700 font-display">Trajectory</h2>
+            <p className="text-xs text-stone-400 mt-0.5">Retirement projection — pessimistic · base · optimistic</p>
+          </div>
+        </div>
+        <TrajectoryChart />
+      </Card>
+
+      {/* MONEY FLOW */}
+      <div>
+        <h2 className="text-[11px] font-semibold uppercase tracking-wider text-stone-400 mb-3">Money Flow · {currentMonthName}</h2>
+        <CashFlowWidget data={data} budget={budget} currentMonthName={currentMonthName} savingsRate={savingsRate} targetSavingsRate={targetSavingsRate} />
+      </div>
+
+      {/* ACTION PLAN */}
+      <ActionPlanWidget fooSteps={fooSteps} />
+
+      {/* UPCOMING LIFE EVENTS */}
+      {upcomingEvents.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-[11px] font-semibold uppercase tracking-wider text-stone-400">Upcoming Life Events</h2>
+            <Link href="/life-events" className="text-xs text-[#16A34A] hover:underline font-medium">View all →</Link>
+          </div>
+          <Card padding="none">
+            <div className="divide-y divide-stone-50">
+              {upcomingEvents.map((event) => (
+                <div key={event.id} className="flex items-center gap-4 px-5 py-3.5">
+                  <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center shrink-0"><Calendar size={16} className="text-indigo-500" /></div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-stone-800 text-sm">{event.title}</p>
+                    {event.event_date && <p className="text-xs text-stone-400 mt-0.5">{formatDate(event.event_date)}</p>}
+                  </div>
+                  <Link href="/life-events" className="text-xs text-stone-400 hover:text-[#16A34A] shrink-0">Review →</Link>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* MONTHLY TREND CHART */}
+      {chartData.length > 0 && (
+        <Card padding="lg">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-sm font-semibold text-stone-700">Monthly Cash Flow</h2>
+            <Link href="/cashflow" className="text-xs text-[#16A34A] hover:underline font-medium">View Details →</Link>
+          </div>
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={chartData} margin={{ top: 5, right: 5, left: 5, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
+              <XAxis dataKey="name" tick={{ fontSize: 12, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
+              <YAxis tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 12, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid #E5E7EB", boxShadow: "0 4px 12px rgba(0,0,0,0.08)", fontFamily: "var(--font-mono)" }} formatter={(v) => typeof v === "number" ? formatCurrency(v) : String(v ?? "")} />
+              <Legend wrapperStyle={{ fontSize: 12, color: "#9CA3AF" }} />
+              <Bar dataKey="Income" fill="#86EFAC" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="Expenses" fill="#D1D5DB" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+      )}
+
+      {/* TRANSACTIONS + DETAIL CARDS */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <Card padding="none">
+          <div className="flex items-center justify-between px-5 pt-5 pb-3">
+            <h2 className="text-sm font-semibold text-stone-700">Recent Transactions</h2>
+            <Link href="/transactions" className="text-xs text-[#16A34A] hover:underline font-medium flex items-center gap-1">All <ChevronRight size={12} /></Link>
+          </div>
+          {data.recent_transactions.length === 0 ? (
+            <p className="text-stone-400 text-sm text-center py-8 px-5">No transactions yet. Import a statement to get started.</p>
+          ) : (
+            <div className="divide-y divide-stone-50">
+              {data.recent_transactions.map((tx) => (
+                <div key={tx.id} className="flex items-center justify-between px-5 py-3 hover:bg-stone-50/50">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${tx.amount >= 0 ? "bg-green-50 text-green-600" : "bg-stone-100 text-stone-500"}`}>{tx.description.charAt(0).toUpperCase()}</div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-stone-800 truncate">{tx.description}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[11px] text-stone-400">{formatDate(tx.date)}</span>
+                        <Badge className={segmentColor(tx.effective_segment)}>{tx.effective_segment ?? tx.segment}</Badge>
+                      </div>
+                    </div>
+                  </div>
+                  <span className={`text-sm font-semibold tabular-nums ml-3 money ${tx.amount >= 0 ? "text-green-600" : "text-stone-800"}`}>{tx.amount >= 0 ? "+" : ""}{formatCurrency(tx.amount)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+
+        <div className="space-y-5">
+          <Card padding="lg">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold text-stone-700">Recurring</h2>
+              <Link href="/recurring" className="text-xs text-[#16A34A] hover:underline font-medium">View All →</Link>
+            </div>
+            {recurring ? (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-stone-50 rounded-lg p-3 text-center"><p className="text-lg font-bold text-stone-900 money">{formatCurrency(recurring.total_monthly_cost, true)}</p><p className="text-[11px] text-stone-400 uppercase">Monthly</p></div>
+                  <div className="bg-stone-50 rounded-lg p-3 text-center"><p className="text-lg font-bold text-stone-900 money">{formatCurrency(recurring.total_annual_cost, true)}</p><p className="text-[11px] text-stone-400 uppercase">Annual</p></div>
+                </div>
+                <p className="text-xs text-stone-500">{recurring.subscription_count} active subscriptions</p>
+              </div>
+            ) : <p className="text-sm text-stone-400">No recurring items detected yet.</p>}
+          </Card>
+
+          <Card padding="lg">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold text-stone-700">Goals</h2>
+              <Link href="/goals" className="text-xs text-[#16A34A] hover:underline font-medium">View All →</Link>
+            </div>
+            {goals.length === 0 ? <p className="text-sm text-stone-400">No goals set yet.</p> : (
+              <div className="space-y-3">
+                {goals.map((goal) => (
+                  <div key={goal.id} className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ backgroundColor: goal.color }}>{goal.name.charAt(0)}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1"><span className="text-sm font-medium text-stone-800 truncate">{goal.name}</span><span className="text-xs text-stone-500 money ml-2">{formatCurrency(goal.current_amount, true)}</span></div>
+                      <ProgressBar value={goal.progress_pct} color={goal.color} size="xs" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+
+          <Card padding="lg">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold text-stone-700">Tax Strategies</h2>
+              <Link href="/tax" className="text-xs text-[#16A34A] hover:underline font-medium">View All →</Link>
+            </div>
+            {data.top_strategies_count === 0 ? (
+              <div className="text-center py-4">
+                <Receipt className="mx-auto text-stone-200 mb-2" size={24} />
+                <p className="text-stone-400 text-sm">No strategies yet.</p>
+                <Link href="/tax" className="text-xs text-[#16A34A] hover:underline mt-1 block">Run tax analysis →</Link>
+              </div>
+            ) : (
+              <div className="flex items-center gap-4">
+                <div className="text-3xl font-bold text-[#16A34A] money">{data.top_strategies_count}</div>
+                <div><p className="font-medium text-stone-800 text-sm">Active strategies</p><p className="text-stone-400 text-xs">identified for {data.current_year}</p></div>
+              </div>
+            )}
+          </Card>
+        </div>
+      </div>
+
+      {/* QUICK ACCESS */}
+      <div>
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-stone-400 mb-3">Quick Access</h2>
+        <div className="grid grid-cols-3 lg:grid-cols-6 gap-3">
+          {[
+            { href: "/accounts", label: "Accounts", icon: DollarSign, color: "text-green-500" },
+            { href: "/budget", label: "Budget", icon: Wallet, color: "text-blue-500" },
+            { href: "/recurring", label: "Recurring", icon: RotateCcw, color: "text-purple-500" },
+            { href: "/goals", label: "Goals", icon: Target, color: "text-amber-500" },
+            { href: "/investments", label: "Investments", icon: PieChart, color: "text-cyan-500" },
+            { href: "/import", label: "Import", icon: TrendingUp, color: "text-[#16A34A]" },
+          ].map((link) => (
+            <Link key={link.href} href={link.href} className="bg-white rounded-xl border border-stone-100 shadow-sm p-4 text-center hover:border-stone-200 hover:shadow-md transition-all group">
+              <link.icon className={`mx-auto mb-2 ${link.color} group-hover:scale-110 transition-transform`} size={22} />
+              <p className="text-xs font-medium text-stone-600">{link.label}</p>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}

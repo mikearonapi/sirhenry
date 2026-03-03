@@ -1,0 +1,38 @@
+---
+description: Python/FastAPI backend conventions for SirHENRY
+globs: "**/*.py"
+alwaysApply: false
+---
+
+# Python Backend Rules
+
+## Route Files (`api/routes/`)
+- One router file per domain (accounts, budget, chat, etc.)
+- Pydantic request/response models defined INLINE in the route file
+- All routes use `session: AsyncSession = Depends(get_session)` for DB access
+- Return proper HTTP status codes (201 for creates, 404 for not found, etc.)
+- Validate inputs with Pydantic — never trust raw request data
+
+## Pipeline Modules (`pipeline/`)
+- Business logic lives in `pipeline/`, NOT in route files
+- Routes are thin orchestrators: validate → call pipeline → return response
+- AI calls go through `pipeline/ai/` (categorizer, chat, report_gen, tax_analyzer)
+- Import logic lives in `pipeline/importers/`
+- Planning engines live in `pipeline/planning/`
+
+## Database Access
+- ORM models: `pipeline/db/schema.py` (single source of truth)
+- DAL functions: `pipeline/db/models.py`
+- Use `AsyncSession` with `select()`, `insert()`, `update()` — avoid raw SQL except in migrations
+- Always handle `IntegrityError` for unique constraints
+- Commit happens in `get_session()` context manager — don't call `session.commit()` manually in routes
+
+## Error Handling
+- Raise `HTTPException` with descriptive messages in routes
+- Use `logger.error()` for unexpected failures (never log PII)
+- Catch specific exceptions, not bare `except:`
+
+## File Size
+- Route files: target <400 lines; split into sub-routers if exceeding 500
+- Pipeline modules: target <300 lines; extract helpers into focused files
+- Schema: `schema.py` is intentionally large (single source of truth) — this is acceptable

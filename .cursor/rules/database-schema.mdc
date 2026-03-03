@@ -1,0 +1,38 @@
+---
+description: Database schema and migration rules for SirHENRY
+globs: "pipeline/db/**"
+alwaysApply: false
+---
+
+# Database Rules
+
+## Schema (`pipeline/db/schema.py`)
+- This is the SINGLE SOURCE OF TRUTH for all ORM models
+- NEVER create model classes outside this file
+- The shim files (`schema_extended.py`, `schema_henry.py`, `schema_household.py`) are re-exports only — never add new models there
+- Every table must have a primary key (`id`), `created_at`, and `updated_at`
+
+## Adding New Tables
+1. Add the model class to `schema.py`
+2. Add a migration in `migrations.py` using `CREATE TABLE IF NOT EXISTS`
+3. Re-export from `pipeline/db/__init__.py`
+4. Add corresponding Pydantic models in the route file that uses it
+
+## Migrations (`pipeline/db/migrations.py`)
+- Migrations run at startup via `run_migrations()`
+- Each migration runs at most once (tracked in `_schema_migrations` table)
+- Use `CREATE TABLE IF NOT EXISTS` and `ALTER TABLE ... ADD COLUMN` patterns
+- NEVER use destructive migrations (DROP TABLE, DROP COLUMN) without explicit approval
+- Append new migrations to the `MIGRATIONS` list — never reorder or modify existing ones
+
+## Transaction Data Integrity
+- `Transaction.file_hash` + `Document.file_hash` prevent duplicate imports
+- `Transaction.source` must always be set: "plaid", "csv_import", "amazon", "manual"
+- `Transaction.plaid_transaction_id` links to Plaid's canonical ID when source is "plaid"
+- User overrides (`category_override`, `tax_category_override`) always take precedence
+
+## Performance
+- Add indexes for frequently queried columns (date ranges, account_id, category)
+- Use `select()` with explicit columns when you don't need the full row
+- Batch inserts for bulk operations (imports, sync)
+- SQLite: keep `check_same_thread=False` in async config

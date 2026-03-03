@@ -1,0 +1,44 @@
+---
+description: Code quality, file size limits, and tech debt prevention for SirHENRY
+alwaysApply: true
+---
+
+# Code Quality Rules
+
+## File Size Limits
+| File Type | Target | Hard Limit | Action at Limit |
+|-----------|--------|------------|-----------------|
+| Page component (page.tsx) | <300 lines | 400 lines | Extract into sub-components |
+| React component | <250 lines | 350 lines | Split by responsibility |
+| API route file | <400 lines | 500 lines | Split into sub-routers |
+| Pipeline module | <300 lines | 400 lines | Extract focused helpers |
+| Test file | <500 lines | No limit | Split by feature area |
+
+## Before Writing Any Code
+1. Check for existing patterns in the codebase that solve the same problem
+2. Check if a utility/helper already exists in `pipeline/utils.py` or `frontend/lib/utils.ts`
+3. Check `pipeline/db/schema.py` for existing tables that might cover the need
+4. NEVER duplicate logic — extract shared code into a common module
+
+## Module Organization
+- One concern per file. If a file does two unrelated things, split it.
+- Import from barrels (`pipeline/db/__init__.py`, `frontend/lib/api.ts`, `frontend/types/api.ts`)
+- Keep the dependency graph acyclic — pipeline modules should NOT import from api/routes
+
+## Error Handling (Every Module)
+- Validate inputs at boundaries (route handlers, import parsers)
+- Handle errors explicitly — no silent failures
+- Log at appropriate levels: `info` for success, `warning` for recoverable, `error` for failures
+- Never expose stack traces or internal details to the API consumer
+
+## Performance Awareness
+- Avoid N+1 queries — use eager loading or batch queries
+- Don't load entire tables into memory — use pagination and limits
+- Batch AI categorization calls (already done in `categorizer.py`)
+- Cache expensive computations (market data, tax calculations) with appropriate TTLs
+
+## Tech Debt Prevention
+- If you touch a file with known tech debt (see ARCHITECTURE.md), fix or reduce it
+- Every new feature must follow existing patterns — don't introduce new patterns without justification
+- Prefer the smallest change that achieves the goal
+- Leave the codebase better than you found it
