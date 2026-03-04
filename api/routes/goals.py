@@ -81,6 +81,8 @@ async def update_goal(
     updates = {k: v for k, v in body.model_dump().items() if v is not None}
     if updates.get("status") == "completed":
         updates["completed_at"] = datetime.now(timezone.utc)
+    if updates.get("target_date"):
+        updates["target_date"] = datetime.fromisoformat(updates["target_date"])
     for k, v in updates.items():
         setattr(g, k, v)
     g.updated_at = datetime.now(timezone.utc)

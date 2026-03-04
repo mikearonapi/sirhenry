@@ -5,12 +5,13 @@ from datetime import datetime, timezone, date
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.database import get_session
+from api.models.schemas import GapAnalysisIn, InsurancePolicyIn, InsurancePolicyOut
 from pipeline.db import InsurancePolicy
+from pipeline.db.schema import BenefitPackage
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/insurance", tags=["insurance"])
@@ -40,57 +41,6 @@ def _calc_life_insurance_need(
     return income * years_to_replace + debt + education_estimate
 
 
-# ---------------------------------------------------------------------------
-# Pydantic models
-# ---------------------------------------------------------------------------
-
-class InsurancePolicyIn(BaseModel):
-    household_id: Optional[int] = None
-    owner_spouse: Optional[str] = None
-    policy_type: str
-    provider: Optional[str] = None
-    policy_number: Optional[str] = None
-    coverage_amount: Optional[float] = None
-    deductible: Optional[float] = None
-    oop_max: Optional[float] = None
-    annual_premium: Optional[float] = None
-    monthly_premium: Optional[float] = None
-    renewal_date: Optional[str] = None
-    beneficiaries_json: Optional[str] = None
-    employer_provided: bool = False
-    is_active: bool = True
-    notes: Optional[str] = None
-
-
-class InsurancePolicyOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    id: int
-    household_id: Optional[int]
-    owner_spouse: Optional[str]
-    policy_type: str
-    provider: Optional[str]
-    policy_number: Optional[str]
-    coverage_amount: Optional[float]
-    deductible: Optional[float]
-    oop_max: Optional[float]
-    annual_premium: Optional[float]
-    monthly_premium: Optional[float]
-    renewal_date: Optional[str] = None
-    beneficiaries_json: Optional[str]
-    employer_provided: bool
-    is_active: bool
-    notes: Optional[str]
-    created_at: datetime
-    updated_at: datetime
-
-
-class GapAnalysisIn(BaseModel):
-    household_id: Optional[int] = None
-    spouse_a_income: float = 0
-    spouse_b_income: float = 0
-    total_debt: float = 0
-    dependents: int = 0
-    net_worth: float = 0
 
 
 # ---------------------------------------------------------------------------
@@ -183,6 +133,28 @@ async def gap_analysis(body: GapAnalysisIn, session: AsyncSession = Depends(get_
     result = await session.execute(q)
     policies = result.scalars().all()
 
+    # Query employer benefit packages for cross-reference
+    employer_life_total = 0.0
+    employer_std_monthly = 0.0
+    employer_ltd_monthly = 0.0
+    if body.household_id:
+        bp_result = await session.execute(
+            select(BenefitPackage).where(BenefitPackage.household_id == body.household_id)
+        )
+        benefit_packages = bp_result.scalars().all()
+    else:
+        benefit_packages = []
+
+    combined_income = body.spouse_a_income + body.spouse_b_income
+    for bp in benefit_packages:
+        employer_life_total += bp.life_insurance_coverage or 0
+        # STD/LTD coverage expressed as % of income → convert to monthly dollar amount
+        spouse_income = body.spouse_a_income if bp.spouse == "A" else body.spouse_b_income
+        if bp.std_coverage_pct:
+            employer_std_monthly += spouse_income * (bp.std_coverage_pct / 100) / 12
+        if bp.ltd_coverage_pct:
+            employer_ltd_monthly += spouse_income * (bp.ltd_coverage_pct / 100) / 12
+
     by_type: dict[str, list] = {}
     for p in policies:
         by_type.setdefault(p.policy_type, []).append(p)
@@ -194,12 +166,19 @@ async def gap_analysis(body: GapAnalysisIn, session: AsyncSession = Depends(get_
 
     # --- Life insurance gap ---
     life_policies = by_type.get("life", [])
-    total_life_coverage = sum(p.coverage_amount or 0 for p in life_policies)
-    combined_income = body.spouse_a_income + body.spouse_b_income
+    personal_life_coverage = sum(p.coverage_amount or 0 for p in life_policies)
+    total_life_coverage = personal_life_coverage + employer_life_total
     recommended_life_a = _calc_life_insurance_need(body.spouse_a_income, 10, body.total_debt / 2, body.dependents)
     recommended_life_b = _calc_life_insurance_need(body.spouse_b_income, 10, body.total_debt / 2, body.dependents)
     recommended_life = recommended_life_a + recommended_life_b
     life_gap = max(0, recommended_life - total_life_coverage)
+    life_note = (
+        f"Recommended: 10× combined income + debt. "
+        f"Current total: ${total_life_coverage:,.0f}"
+    )
+    if employer_life_total > 0:
+        life_note += f" (includes ${employer_life_total:,.0f} employer-provided)"
+    life_note += f". Recommended: ${recommended_life:,.0f}."
     gaps.append({
         "type": "life",
         "label": "Life Insurance",
@@ -207,9 +186,8 @@ async def gap_analysis(body: GapAnalysisIn, session: AsyncSession = Depends(get_
         "recommended_coverage": round(recommended_life),
         "gap": round(life_gap),
         "severity": "high" if life_gap > 500_000 else "medium" if life_gap > 100_000 else "low",
-        "note": f"Recommended: 10× combined income + debt. "
-                f"Current total: ${total_life_coverage:,.0f}. "
-                f"Recommended: ${recommended_life:,.0f}.",
+        "employer_provided": employer_life_total,
+        "note": life_note,
     })
 
     # --- Disability insurance gap ---
@@ -217,20 +195,31 @@ async def gap_analysis(body: GapAnalysisIn, session: AsyncSession = Depends(get_
     has_ltd = any("ltd" in (p.notes or "").lower() or "long" in (p.notes or "").lower() for p in dis_policies) or len(dis_policies) > 0
     # Rough recommendation: 60-70% of gross income covered
     recommended_disability_monthly = combined_income * 0.65 / 12
-    covered_disability_monthly = sum(
+    personal_disability_monthly = sum(
         (p.coverage_amount or 0) / 12 if (p.coverage_amount or 0) > 5000 else (p.coverage_amount or 0)
         for p in dis_policies
     )
+    covered_disability_monthly = personal_disability_monthly + employer_std_monthly + employer_ltd_monthly
     dis_gap = max(0, recommended_disability_monthly - covered_disability_monthly)
+    employer_dis_monthly = employer_std_monthly + employer_ltd_monthly
+    has_any_disability = dis_policies or employer_dis_monthly > 0
+    dis_note = f"Recommended: 65% of combined income = ${recommended_disability_monthly:,.0f}/mo. "
+    if not has_any_disability:
+        dis_note += "No disability coverage found."
+    else:
+        dis_note += f"Current: ${covered_disability_monthly:,.0f}/mo"
+        if employer_dis_monthly > 0:
+            dis_note += f" (includes ${employer_dis_monthly:,.0f}/mo employer STD/LTD)"
+        dis_note += "."
     gaps.append({
         "type": "disability",
         "label": "Disability Insurance",
         "current_coverage": round(covered_disability_monthly),
         "recommended_coverage": round(recommended_disability_monthly),
         "gap": round(dis_gap),
-        "severity": "high" if not dis_policies else ("medium" if dis_gap > 3000 else "low"),
-        "note": f"Recommended: 65% of combined income = ${recommended_disability_monthly:,.0f}/mo. "
-                f"{'No disability coverage found.' if not dis_policies else f'Current: ${covered_disability_monthly:,.0f}/mo.'}",
+        "severity": "high" if not has_any_disability else ("medium" if dis_gap > 3000 else "low"),
+        "employer_provided": round(employer_dis_monthly),
+        "note": dis_note,
     })
 
     # --- Umbrella policy ---

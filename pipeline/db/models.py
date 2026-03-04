@@ -57,6 +57,9 @@ async def upsert_account(session: AsyncSession, data: dict[str, Any]) -> Account
         for key in ("institution", "last_four", "currency", "notes"):
             if key in data and data[key] is not None:
                 setattr(existing, key, data[key])
+        # Plaid upgrade: if connecting Plaid to an existing manual/csv account, upgrade source
+        if data.get("data_source") == "plaid" and existing.data_source != "plaid":
+            existing.data_source = "plaid"
         return existing
     account = Account(**data)
     session.add(account)
@@ -86,6 +89,7 @@ async def update_document_status(
     status: str,
     error_message: Optional[str] = None,
     processed_path: Optional[str] = None,
+    document_type: Optional[str] = None,
 ) -> None:
     values: dict[str, Any] = {
         "status": status,
@@ -95,6 +99,8 @@ async def update_document_status(
         values["error_message"] = error_message
     if processed_path is not None:
         values["processed_path"] = processed_path
+    if document_type is not None:
+        values["document_type"] = document_type
     await session.execute(
         update(Document).where(Document.id == document_id).values(**values)
     )
@@ -300,6 +306,19 @@ async def get_tax_summary(session: AsyncSession, tax_year: int) -> dict[str, Any
         "capital_gains_short": 0.0,
         "capital_gains_long": 0.0,
         "interest_income": 0.0,
+        "k1_ordinary_income": 0.0,
+        "k1_rental_income": 0.0,
+        "k1_guaranteed_payments": 0.0,
+        "k1_interest_income": 0.0,
+        "k1_dividends": 0.0,
+        "k1_capital_gains": 0.0,
+        "retirement_distributions": 0.0,
+        "retirement_taxable": 0.0,
+        "unemployment_income": 0.0,
+        "state_tax_refund": 0.0,
+        "payment_platform_income": 0.0,
+        "mortgage_interest_deduction": 0.0,
+        "property_tax_deduction": 0.0,
     }
     for item in items:
         if item.form_type == "w2":
@@ -322,6 +341,24 @@ async def get_tax_summary(session: AsyncSession, tax_year: int) -> dict[str, Any
                 summary["capital_gains_long"] += gain
         elif item.form_type == "1099_int":
             summary["interest_income"] += item.int_interest or 0.0
+        elif item.form_type == "k1":
+            summary["k1_ordinary_income"] += item.k1_ordinary_income or 0.0
+            summary["k1_rental_income"] += (item.k1_rental_income or 0.0) + (item.k1_other_rental_income or 0.0)
+            summary["k1_guaranteed_payments"] += item.k1_guaranteed_payments or 0.0
+            summary["k1_interest_income"] += item.k1_interest_income or 0.0
+            summary["k1_dividends"] += item.k1_dividends or 0.0
+            summary["k1_capital_gains"] += (item.k1_short_term_capital_gain or 0.0) + (item.k1_long_term_capital_gain or 0.0)
+        elif item.form_type == "1099_r":
+            summary["retirement_distributions"] += item.r_gross_distribution or 0.0
+            summary["retirement_taxable"] += item.r_taxable_amount or 0.0
+        elif item.form_type == "1099_g":
+            summary["unemployment_income"] += item.g_unemployment_compensation or 0.0
+            summary["state_tax_refund"] += item.g_state_tax_refund or 0.0
+        elif item.form_type == "1099_k":
+            summary["payment_platform_income"] += item.k_gross_amount or 0.0
+        elif item.form_type == "1098":
+            summary["mortgage_interest_deduction"] += (item.m_mortgage_interest or 0.0) + (item.m_points_paid or 0.0)
+            summary["property_tax_deduction"] += item.m_property_tax or 0.0
     return summary
 
 
@@ -786,3 +823,131 @@ async def get_net_worth_snapshots(
     q = q.order_by(NetWorthSnapshot.year.desc(), NetWorthSnapshot.month.desc())
     result = await session.execute(q)
     return list(result.scalars().all())
+
+
+# ---------------------------------------------------------------------------
+# Life Events
+# ---------------------------------------------------------------------------
+
+async def get_life_events(
+    session: AsyncSession,
+    household_id: Optional[int] = None,
+    event_type: Optional[str] = None,
+    tax_year: Optional[int] = None,
+) -> list:
+    from .schema import LifeEvent
+    q = select(LifeEvent)
+    if household_id:
+        q = q.where(LifeEvent.household_id == household_id)
+    if event_type:
+        q = q.where(LifeEvent.event_type == event_type)
+    if tax_year:
+        q = q.where(LifeEvent.tax_year == tax_year)
+    q = q.order_by(LifeEvent.event_date.desc().nulls_last())
+    result = await session.execute(q)
+    return list(result.scalars().all())
+
+
+async def get_life_event(session: AsyncSession, event_id: int):
+    from .schema import LifeEvent
+    result = await session.execute(select(LifeEvent).where(LifeEvent.id == event_id))
+    return result.scalar_one_or_none()
+
+
+async def create_life_event(session: AsyncSession, data: dict[str, Any]):
+    from .schema import LifeEvent
+    event = LifeEvent(**data)
+    session.add(event)
+    await session.flush()
+    await session.refresh(event)
+    return event
+
+
+async def update_life_event(session: AsyncSession, event_id: int, data: dict[str, Any]):
+    from .schema import LifeEvent
+    from datetime import datetime, timezone
+    result = await session.execute(select(LifeEvent).where(LifeEvent.id == event_id))
+    event = result.scalar_one_or_none()
+    if not event:
+        return None
+    for field, value in data.items():
+        setattr(event, field, value)
+    event.updated_at = datetime.now(timezone.utc)
+    await session.flush()
+    await session.refresh(event)
+    return event
+
+
+async def delete_life_event(session: AsyncSession, event_id: int) -> bool:
+    from .schema import LifeEvent
+    result = await session.execute(select(LifeEvent).where(LifeEvent.id == event_id))
+    event = result.scalar_one_or_none()
+    if not event:
+        return False
+    await session.delete(event)
+    await session.flush()
+    return True
+
+
+# ---------------------------------------------------------------------------
+# Insurance Policies
+# ---------------------------------------------------------------------------
+
+async def get_insurance_policies(
+    session: AsyncSession,
+    household_id: Optional[int] = None,
+    policy_type: Optional[str] = None,
+    is_active: Optional[bool] = None,
+) -> list:
+    from .schema import InsurancePolicy
+    q = select(InsurancePolicy)
+    if household_id is not None:
+        q = q.where(InsurancePolicy.household_id == household_id)
+    if policy_type:
+        q = q.where(InsurancePolicy.policy_type == policy_type)
+    if is_active is not None:
+        q = q.where(InsurancePolicy.is_active == is_active)
+    q = q.order_by(InsurancePolicy.policy_type, InsurancePolicy.provider)
+    result = await session.execute(q)
+    return list(result.scalars().all())
+
+
+async def get_insurance_policy(session: AsyncSession, policy_id: int):
+    from .schema import InsurancePolicy
+    result = await session.execute(select(InsurancePolicy).where(InsurancePolicy.id == policy_id))
+    return result.scalar_one_or_none()
+
+
+async def create_insurance_policy(session: AsyncSession, data: dict[str, Any]):
+    from .schema import InsurancePolicy
+    policy = InsurancePolicy(**data)
+    session.add(policy)
+    await session.flush()
+    await session.refresh(policy)
+    return policy
+
+
+async def update_insurance_policy(session: AsyncSession, policy_id: int, data: dict[str, Any]):
+    from .schema import InsurancePolicy
+    from datetime import datetime, timezone
+    result = await session.execute(select(InsurancePolicy).where(InsurancePolicy.id == policy_id))
+    policy = result.scalar_one_or_none()
+    if not policy:
+        return None
+    for field, value in data.items():
+        setattr(policy, field, value)
+    policy.updated_at = datetime.now(timezone.utc)
+    await session.flush()
+    await session.refresh(policy)
+    return policy
+
+
+async def delete_insurance_policy(session: AsyncSession, policy_id: int) -> bool:
+    from .schema import InsurancePolicy
+    result = await session.execute(select(InsurancePolicy).where(InsurancePolicy.id == policy_id))
+    policy = result.scalar_one_or_none()
+    if not policy:
+        return False
+    await session.delete(policy)
+    await session.flush()
+    return True

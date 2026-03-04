@@ -23,3 +23,5 @@ export * from "./api-household";
 export * from "./api-life-events";
 export * from "./api-insurance";
 export * from "./api-benchmarks";
+export * from "./api-privacy";
+export * from "./api-setup";

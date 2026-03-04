@@ -23,6 +23,7 @@ class AccountOut(BaseModel):
     last_four: Optional[str]
     currency: str
     is_active: bool
+    data_source: str = "manual"
     default_segment: Optional[str]
     default_business_entity_id: Optional[int]
     notes: Optional[str]
@@ -32,6 +33,14 @@ class AccountOut(BaseModel):
 class AccountWithBalanceOut(AccountOut):
     balance: float = 0.0
     transaction_count: int = 0
+    # Plaid metadata (populated for plaid-sourced accounts)
+    current_balance: Optional[float] = None
+    available_balance: Optional[float] = None
+    plaid_mask: Optional[str] = None
+    plaid_type: Optional[str] = None
+    plaid_subtype: Optional[str] = None
+    plaid_last_synced: Optional[str] = None
+    plaid_institution: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------
@@ -92,6 +101,7 @@ class TransactionOut(BaseModel):
     period_year: Optional[int]
     notes: Optional[str]
     is_excluded: bool
+    data_source: str = "csv"
     created_at: datetime
 
 
@@ -229,6 +239,20 @@ class TaxSummaryOut(BaseModel):
     capital_gains_short: float
     capital_gains_long: float
     interest_income: float
+    k1_ordinary_income: float = 0.0
+    k1_rental_income: float = 0.0
+    k1_guaranteed_payments: float = 0.0
+    k1_interest_income: float = 0.0
+    k1_dividends: float = 0.0
+    k1_capital_gains: float = 0.0
+    retirement_distributions: float = 0.0
+    retirement_taxable: float = 0.0
+    unemployment_income: float = 0.0
+    state_tax_refund: float = 0.0
+    payment_platform_income: float = 0.0
+    mortgage_interest_deduction: float = 0.0
+    property_tax_deduction: float = 0.0
+    data_source: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------
@@ -250,6 +274,14 @@ class TaxStrategyOut(BaseModel):
     deadline: Optional[str]
     is_dismissed: bool
     generated_at: datetime
+    # Enhanced AI analysis fields
+    confidence: Optional[float] = None
+    confidence_reasoning: Optional[str] = None
+    category: Optional[str] = None
+    complexity: Optional[str] = None
+    prerequisites_json: Optional[str] = None
+    who_its_for: Optional[str] = None
+    related_simulator: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------
@@ -296,6 +328,7 @@ class TaxDeductionInsightsOut(BaseModel):
     marginal_rate: float
     opportunities: list[DeductionOpportunityOut]
     summary: str
+    data_source: str = "documents"
 
 
 # ---------------------------------------------------------------------------
@@ -336,6 +369,7 @@ class ManualAssetOut(BaseModel):
     annual_return_pct: Optional[float] = None
     allocation_json: Optional[str] = None
     beneficiary: Optional[str] = None
+    linked_account_id: Optional[int] = None
 
 
 class ManualAssetCreateIn(BaseModel):
@@ -814,8 +848,13 @@ class GoalIn(BaseModel):
 
 class GoalUpdateIn(BaseModel):
     name: Optional[str] = None
+    description: Optional[str] = None
+    goal_type: Optional[str] = None
     current_amount: Optional[float] = None
     target_amount: Optional[float] = None
+    target_date: Optional[str] = None
+    color: Optional[str] = None
+    icon: Optional[str] = None
     status: Optional[str] = None
     notes: Optional[str] = None
     monthly_contribution: Optional[float] = None
@@ -886,6 +925,205 @@ class ReminderOut(BaseModel):
 # Plaid
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Account CRUD
+# ---------------------------------------------------------------------------
+
+
+class AccountCreateIn(BaseModel):
+    name: str
+    account_type: str
+    subtype: Optional[str] = None
+    institution: Optional[str] = None
+    last_four: Optional[str] = None
+    currency: str = "USD"
+    notes: Optional[str] = None
+    data_source: str = "manual"
+    default_segment: Optional[str] = None
+    default_business_entity_id: Optional[int] = None
+
+
+class AccountUpdateIn(BaseModel):
+    name: Optional[str] = None
+    account_type: Optional[str] = None
+    subtype: Optional[str] = None
+    institution: Optional[str] = None
+    last_four: Optional[str] = None
+    currency: Optional[str] = None
+    notes: Optional[str] = None
+    is_active: Optional[bool] = None
+    default_segment: Optional[str] = None
+    default_business_entity_id: Optional[int] = None
+
+
+# ---------------------------------------------------------------------------
+# Account Linking
+# ---------------------------------------------------------------------------
+
+
+class LinkAccountIn(BaseModel):
+    target_account_id: int
+    link_type: str = "same_account"
+
+
+class AccountLinkOut(BaseModel):
+    id: int
+    primary_account_id: int
+    secondary_account_id: int
+    link_type: str
+    created_at: str
+
+
+class MergeResultOut(BaseModel):
+    primary_account_id: int
+    secondary_account_id: int
+    transactions_moved: int
+    documents_moved: int
+    secondary_deactivated: bool
+
+
+class SuggestedLinkOut(BaseModel):
+    account_a_id: int
+    account_a_name: str
+    account_a_source: str
+    account_b_id: int
+    account_b_name: str
+    account_b_source: str
+    match_reason: str
+
+
+# ---------------------------------------------------------------------------
+# Transactions
+# ---------------------------------------------------------------------------
+
+
+class TransactionCreateIn(BaseModel):
+    account_id: int
+    date: datetime
+    description: str
+    amount: float
+    currency: str = "USD"
+    segment: str = "personal"
+    category: Optional[str] = None
+    tax_category: Optional[str] = None
+    notes: Optional[str] = None
+
+
+# ---------------------------------------------------------------------------
+# Life Events
+# ---------------------------------------------------------------------------
+
+
+class LifeEventIn(BaseModel):
+    household_id: Optional[int] = None
+    event_type: str
+    event_subtype: Optional[str] = None
+    title: str
+    event_date: Optional[str] = None
+    tax_year: Optional[int] = None
+    amounts_json: Optional[str] = None
+    status: str = "completed"
+    action_items_json: Optional[str] = None
+    document_ids_json: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class LifeEventUpdateIn(BaseModel):
+    household_id: Optional[int] = None
+    event_type: Optional[str] = None
+    event_subtype: Optional[str] = None
+    title: Optional[str] = None
+    event_date: Optional[str] = None
+    tax_year: Optional[int] = None
+    amounts_json: Optional[str] = None
+    status: Optional[str] = None
+    action_items_json: Optional[str] = None
+    document_ids_json: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class ActionItemUpdate(BaseModel):
+    index: int
+    completed: bool
+
+
+class LifeEventOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    household_id: Optional[int]
+    event_type: str
+    event_subtype: Optional[str]
+    title: str
+    event_date: Optional[date] = None
+    tax_year: Optional[int]
+    amounts_json: Optional[str]
+    status: str
+    action_items_json: Optional[str]
+    document_ids_json: Optional[str]
+    notes: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+
+# ---------------------------------------------------------------------------
+# Insurance
+# ---------------------------------------------------------------------------
+
+
+class InsurancePolicyIn(BaseModel):
+    household_id: Optional[int] = None
+    owner_spouse: Optional[str] = None
+    policy_type: str
+    provider: Optional[str] = None
+    policy_number: Optional[str] = None
+    coverage_amount: Optional[float] = None
+    deductible: Optional[float] = None
+    oop_max: Optional[float] = None
+    annual_premium: Optional[float] = None
+    monthly_premium: Optional[float] = None
+    renewal_date: Optional[str] = None
+    beneficiaries_json: Optional[str] = None
+    employer_provided: bool = False
+    is_active: bool = True
+    notes: Optional[str] = None
+
+
+class InsurancePolicyOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    household_id: Optional[int]
+    owner_spouse: Optional[str]
+    policy_type: str
+    provider: Optional[str]
+    policy_number: Optional[str]
+    coverage_amount: Optional[float]
+    deductible: Optional[float]
+    oop_max: Optional[float]
+    annual_premium: Optional[float]
+    monthly_premium: Optional[float]
+    renewal_date: Optional[str] = None
+    beneficiaries_json: Optional[str]
+    employer_provided: bool
+    is_active: bool
+    notes: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+
+class GapAnalysisIn(BaseModel):
+    household_id: Optional[int] = None
+    spouse_a_income: float = 0
+    spouse_b_income: float = 0
+    total_debt: float = 0
+    dependents: int = 0
+    net_worth: float = 0
+
+
+# ---------------------------------------------------------------------------
+# Plaid
+# ---------------------------------------------------------------------------
+
+
 class ExchangeTokenIn(BaseModel):
     public_token: str
     institution_name: str
@@ -914,3 +1152,30 @@ class PlaidAccountOut(BaseModel):
     limit_balance: float | None = None
     mask: str | None = None
     last_updated: datetime | str | None = None
+
+
+# ---------------------------------------------------------------------------
+# Privacy & Consent
+# ---------------------------------------------------------------------------
+
+
+class ConsentIn(BaseModel):
+    consent_type: str  # ai_features | plaid_sync | telemetry
+    consented: bool
+
+
+class ConsentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    consent_type: str
+    consented: bool
+    consent_version: str
+    consented_at: datetime | None = None
+
+
+class PrivacyDisclosure(BaseModel):
+    data_handling: list[str]
+    ai_privacy: list[str]
+    encryption: list[str]
+    data_retention: list[str]

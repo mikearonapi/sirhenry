@@ -2,11 +2,12 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   TrendingUp, TrendingDown, Loader2, AlertCircle, Search,
-  BarChart3, Globe, Percent, DollarSign, Activity, Building2,
+  BarChart3, Globe, Percent, DollarSign, Activity, Building2, MessageCircle,
 } from "lucide-react";
 import { formatCurrency, formatPercent } from "@/lib/utils";
 import {
   getEconomicIndicators, getQuote, getTickerHistory, researchCompany,
+  getHoldings,
 } from "@/lib/api";
 import type { EconomicIndicator, MarketQuote } from "@/types/api";
 import { getErrorMessage } from "@/lib/errors";
@@ -17,7 +18,7 @@ import {
   ResponsiveContainer, LineChart, Line,
 } from "recharts";
 
-const CATEGORY_ICONS: Record<string, any> = {
+const CATEGORY_ICONS: Record<string, React.ElementType> = {
   rates: Percent, inflation: TrendingUp, employment: Activity, consumer: DollarSign, growth: BarChart3,
 };
 
@@ -38,6 +39,14 @@ export default function MarketPage() {
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [history, setHistory] = useState<Array<{ date: string; close: number }>>([]);
   const [research, setResearch] = useState<Record<string, unknown> | null>(null);
+  const [userTickers, setUserTickers] = useState<string[]>([]);
+
+  useEffect(() => {
+    getHoldings().then((h) => {
+      const tickers = [...new Set(h.map((x) => x.ticker).filter(Boolean))] as string[];
+      setUserTickers(tickers.slice(0, 10));
+    }).catch(() => {});
+  }, []);
 
   const loadIndicators = useCallback(async () => {
     setLoading(true);
@@ -62,7 +71,7 @@ export default function MarketPage() {
         getQuote(t),
         getTickerHistory(t, "1y"),
       ]);
-      setQuote(q as any);
+      setQuote(q);
       setHistory(h.data || []);
       try {
         const r = await researchCompany(t);
@@ -77,6 +86,14 @@ export default function MarketPage() {
       <PageHeader
         title="Market Pulse"
         subtitle="Economic indicators, market data, and research for informed decisions"
+        actions={
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent("ask-henry", { detail: { message: "How do current market conditions affect my portfolio? Any adjustments I should consider?" } }))}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-[#16A34A]/10 text-[#16A34A] hover:bg-[#16A34A]/20 transition-colors"
+          >
+            <MessageCircle size={14} /> Ask Sir Henry
+          </button>
+        }
       />
 
       {error && (
@@ -107,16 +124,38 @@ export default function MarketPage() {
             {quoteLoading ? <Loader2 size={16} className="animate-spin" /> : "Search"}
           </button>
         </div>
-        <div className="flex gap-2 mt-3 flex-wrap">
-          {QUICK_TICKERS.map((t) => (
-            <button
-              key={t}
-              onClick={() => { setSearchTicker(t); handleSearch(t); }}
-              className="text-xs px-3 py-1.5 rounded-full border border-stone-200 text-stone-600 hover:bg-stone-50 hover:border-stone-300 transition-colors"
-            >
-              {t}
-            </button>
-          ))}
+        {/* User's portfolio tickers */}
+        {userTickers.length > 0 && (
+          <div className="mt-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-stone-400 mb-2">Your Portfolio</p>
+            <div className="flex gap-2 flex-wrap">
+              {userTickers.map((t) => (
+                <button
+                  key={t}
+                  onClick={() => { setSearchTicker(t); handleSearch(t); }}
+                  className="text-xs px-3 py-1.5 rounded-full border border-[#16A34A]/30 text-[#16A34A] bg-green-50 hover:bg-green-100 hover:border-[#16A34A]/50 transition-colors font-medium"
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        <div className={userTickers.length > 0 ? "mt-2" : "mt-3"}>
+          {userTickers.length > 0 && (
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-stone-400 mb-2">Market Indices & Popular</p>
+          )}
+          <div className="flex gap-2 flex-wrap">
+            {QUICK_TICKERS.filter((t) => !userTickers.includes(t)).map((t) => (
+              <button
+                key={t}
+                onClick={() => { setSearchTicker(t); handleSearch(t); }}
+                className="text-xs px-3 py-1.5 rounded-full border border-stone-200 text-stone-600 hover:bg-stone-50 hover:border-stone-300 transition-colors"
+              >
+                {t}
+              </button>
+            ))}
+          </div>
         </div>
       </Card>
 
@@ -131,7 +170,7 @@ export default function MarketPage() {
                   <p className="text-sm text-stone-500">{quote.company_name}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-3xl font-bold text-stone-900 tabular-nums">{quote.price ? formatCurrency(quote.price) : "N/A"}</p>
+                  <p className="text-3xl font-bold text-stone-900 font-mono tabular-nums">{quote.price ? formatCurrency(quote.price) : "N/A"}</p>
                   {quote.change != null && (
                     <p className={`text-sm font-medium ${quote.change >= 0 ? "text-green-600" : "text-red-600"}`}>
                       {quote.change >= 0 ? "+" : ""}{formatCurrency(quote.change)} ({quote.change_pct?.toFixed(2)}%)
@@ -180,9 +219,9 @@ export default function MarketPage() {
                 </div>
               ))}
             </div>
-            {research && (research as any).description && (
+            {research && typeof research.description === "string" && (
               <div className="mt-4 pt-3 border-t border-stone-100">
-                <p className="text-xs text-stone-500 leading-relaxed line-clamp-4">{(research as any).description}</p>
+                <p className="text-xs text-stone-500 leading-relaxed line-clamp-4">{research.description}</p>
               </div>
             )}
           </Card>
@@ -220,7 +259,7 @@ export default function MarketPage() {
                       <p className="text-sm font-semibold text-stone-800">{ind.label}</p>
                       <p className="text-xs text-stone-400">{ind.latest_date}</p>
                     </div>
-                    <p className="ml-auto text-xl font-bold text-stone-900 tabular-nums">
+                    <p className="ml-auto text-xl font-bold text-stone-900 font-mono tabular-nums">
                       {ind.latest_value?.toFixed(ind.unit === "percent" ? 2 : 1)}{ind.unit === "percent" ? "%" : ""}
                     </p>
                   </div>

@@ -1,6 +1,6 @@
 """
-Tax document PDF importer (W-2, 1099-NEC, 1099-DIV, 1099-B, 1099-INT).
-Extracts structured fields via heuristics + Claude fallback, writes to tax_items.
+Tax document PDF/image importer.
+Sends documents to Claude AI for form type detection and field extraction.
 
 Usage:
     python -m pipeline.importers.tax_doc --file "data/imports/tax-documents/w2_accenture_2025.pdf"
@@ -26,20 +26,48 @@ from pipeline.db import (
     update_document_status,
 )
 from pipeline.db.schema import TaxItem
-from pipeline.parsers.pdf_parser import (
-    detect_form_type,
-    extract_1099_div_fields,
-    extract_1099_int_fields,
-    extract_1099_nec_fields,
-    extract_pdf,
-    extract_w2_fields,
-)
+from pipeline.parsers.pdf_parser import extract_pdf, extract_pdf_page_images, is_text_sparse
 from pipeline.utils import file_hash, create_engine_and_session
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
 PROCESSED_DIR = Path("data/processed/tax-documents")
+
+# Valid TaxItem column names — used to filter Claude output
+_TAXITEM_COLUMNS = {
+    "source_document_id", "tax_year", "form_type",
+    "payer_name", "payer_ein",
+    # W-2
+    "w2_wages", "w2_federal_tax_withheld", "w2_ss_wages", "w2_ss_tax_withheld",
+    "w2_medicare_wages", "w2_medicare_tax_withheld", "w2_state", "w2_state_wages",
+    "w2_state_income_tax", "w2_state_allocations",
+    # 1099-NEC
+    "nec_nonemployee_compensation", "nec_federal_tax_withheld",
+    # 1099-DIV
+    "div_total_ordinary", "div_qualified", "div_total_capital_gain", "div_federal_tax_withheld",
+    # 1099-B
+    "b_proceeds", "b_cost_basis", "b_gain_loss", "b_term", "b_wash_sale_loss",
+    # 1099-INT
+    "int_interest", "int_federal_tax_withheld",
+    # K-1
+    "k1_ordinary_income", "k1_rental_income", "k1_other_rental_income",
+    "k1_guaranteed_payments", "k1_interest_income", "k1_dividends",
+    "k1_qualified_dividends", "k1_short_term_capital_gain", "k1_long_term_capital_gain",
+    "k1_section_179", "k1_distributions",
+    # 1099-R
+    "r_gross_distribution", "r_taxable_amount", "r_federal_tax_withheld",
+    "r_distribution_code", "r_state_tax_withheld", "r_state",
+    # 1099-G
+    "g_unemployment_compensation", "g_state_tax_refund",
+    "g_federal_tax_withheld", "g_state",
+    # 1099-K
+    "k_gross_amount", "k_federal_tax_withheld", "k_state",
+    # 1098
+    "m_mortgage_interest", "m_points_paid", "m_property_tax",
+    # raw catch-all
+    "raw_fields",
+}
 
 
 def _infer_tax_year(filepath: str, text: str) -> int:
@@ -65,7 +93,7 @@ async def import_pdf_file(
 ) -> dict:
     """
     Import a single tax document PDF.
-    Returns a result summary dict.
+    Claude auto-detects form type and extracts all fields.
     """
     path = Path(filepath)
     if not path.exists():
@@ -86,51 +114,56 @@ async def import_pdf_file(
     except Exception as e:
         return {"status": "error", "message": f"PDF extraction failed: {e}"}
 
-    form_type = detect_form_type(pdf_doc)
     resolved_year = tax_year or _infer_tax_year(filepath, pdf_doc.full_text)
 
     doc = await create_document(session, {
         "filename": path.name,
         "original_path": str(path.resolve()),
         "file_type": "pdf",
-        "document_type": form_type,
+        "document_type": "processing",
         "status": "processing",
         "file_hash": fhash,
         "file_size_bytes": path.stat().st_size,
         "tax_year": resolved_year,
-        "raw_text": pdf_doc.full_text[:50000],  # store first 50k chars
+        "raw_text": pdf_doc.full_text[:50000],
     })
 
-    # Extract form fields
+    # Send to Claude for form type detection + field extraction
     extracted: dict = {}
-    try:
-        if form_type == "w2":
-            extracted = extract_w2_fields(pdf_doc)
-        elif form_type == "1099_nec":
-            extracted = extract_1099_nec_fields(pdf_doc)
-        elif form_type == "1099_div":
-            extracted = extract_1099_div_fields(pdf_doc)
-        elif form_type == "1099_int":
-            extracted = extract_1099_int_fields(pdf_doc)
-        # For 1099_b and brokerage_statement, Claude handles extraction
-    except Exception as e:
-        logger.warning(f"Heuristic extraction failed for {path.name}: {e}")
+    form_type = "other"
 
-    # Claude fallback for complex/missing fields
-    if claude_fallback and _needs_claude_fallback(form_type, extracted):
+    if claude_fallback:
         try:
             from pipeline.ai.categorizer import extract_tax_fields_with_claude
-            claude_fields = await extract_tax_fields_with_claude(
-                form_type=form_type,
+            # Use vision for scanned/image PDFs with sparse text
+            page_images = None
+            if is_text_sparse(pdf_doc):
+                try:
+                    page_images = extract_pdf_page_images(filepath, max_pages=3)
+                    logger.info(f"Vision mode for {path.name} (scanned PDF)")
+                except Exception as img_err:
+                    logger.warning(f"Image render failed for {path.name}: {img_err}")
+
+            extracted = await extract_tax_fields_with_claude(
                 text=pdf_doc.full_text[:8000],
                 tax_year=resolved_year,
+                images=page_images,
             )
-            # Merge: only fill missing fields from Claude
-            for k, v in claude_fields.items():
-                if k not in extracted or extracted[k] is None:
-                    extracted[k] = v
+
+            # Use Claude's detected form type
+            form_type = extracted.pop("_form_type", "other")
+            _VALID_FORM_TYPES = {"w2", "1099_nec", "1099_div", "1099_b", "1099_int",
+                                 "1099_r", "1099_g", "1099_k", "k1", "1098", "schedule_h", "other"}
+            if form_type not in _VALID_FORM_TYPES:
+                form_type = "other"
+
         except Exception as e:
-            logger.warning(f"Claude fallback failed for {path.name}: {e}")
+            logger.warning(f"Claude extraction failed for {path.name}: {e}")
+
+    # JSON-serialize any list/dict values (e.g. w2_state_allocations)
+    for k, v in list(extracted.items()):
+        if isinstance(v, (list, dict)):
+            extracted[k] = json.dumps(v)
 
     # Dedup: skip if a TaxItem already exists with same form_type + tax_year + payer
     dedup_q = sa_select(TaxItem.id).where(
@@ -145,24 +178,31 @@ async def import_pdf_file(
         dedup_q = dedup_q.where(TaxItem.payer_name == payer_name)
     existing_item = (await session.execute(dedup_q.limit(1))).scalar_one_or_none()
     if existing_item:
-        logger.warning(
-            f"Duplicate tax item skipped: {form_type} {resolved_year} "
-            f"payer={payer_ein or payer_name} (existing id={existing_item})"
-        )
+        logger.info(f"Dedup skip: {form_type} {resolved_year} payer={payer_ein or payer_name}")
     else:
         await create_tax_item(session, {
             "source_document_id": doc.id,
             "tax_year": resolved_year,
             "form_type": form_type,
             "raw_fields": json.dumps(extracted),
-            **{k: v for k, v in extracted.items() if not k.startswith("_")},
+            **{k: v for k, v in extracted.items() if k in _TAXITEM_COLUMNS},
         })
 
-    # Compute archive path (actual copy deferred until after transaction commits)
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
     dest = PROCESSED_DIR / f"{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{path.name}"
+    await update_document_status(session, doc.id, "completed", processed_path=str(dest), document_type=form_type)
 
-    await update_document_status(session, doc.id, "completed", processed_path=str(dest))
+    # Clear raw_text after successful extraction — data is now in TaxItem fields
+    from pipeline.security.file_cleanup import clear_document_raw_text
+    await clear_document_raw_text(session, doc.id)
+
+    # Audit log
+    try:
+        from pipeline.security.audit import log_audit
+        fields_count = len([v for v in extracted.values() if v is not None])
+        await log_audit(session, "data_import", "tax_document", f"type={form_type},year={resolved_year},fields={fields_count}")
+    except Exception:
+        pass
 
     logger.info(f"Imported {form_type} ({resolved_year}) from {path.name}")
     return {
@@ -178,26 +218,99 @@ async def import_pdf_file(
     }
 
 
-def _needs_claude_fallback(form_type: str, extracted: dict) -> bool:
-    """Return True if key fields are missing and Claude should try."""
-    if form_type == "w2":
-        return extracted.get("w2_wages") is None
-    if form_type == "1099_nec":
-        return extracted.get("nec_nonemployee_compensation") is None
-    if form_type == "1099_div":
-        return extracted.get("div_total_ordinary") is None
-    if form_type == "1099_int":
-        return extracted.get("int_interest") is None
-    if form_type in ("1099_b", "brokerage_statement", "other"):
-        return True
-    return False
+async def import_image_file(
+    session: AsyncSession,
+    filepath: str,
+    tax_year: int | None = None,
+) -> dict:
+    """
+    Import a tax document from an image file (JPG/PNG — e.g. phone photo of W-2).
+    Uses Claude vision exclusively for extraction.
+    """
+    path = Path(filepath)
+    if not path.exists():
+        return {"status": "error", "message": f"File not found: {filepath}"}
+
+    fhash = file_hash(filepath)
+    existing = await get_document_by_hash(session, fhash)
+    if existing:
+        return {
+            "status": "duplicate",
+            "message": f"Already imported as document #{existing.id}",
+            "document_id": existing.id,
+        }
+
+    img_bytes = path.read_bytes()
+    suffix = path.suffix.lower()
+    media_type = "image/jpeg" if suffix in (".jpg", ".jpeg") else "image/png"
+    resolved_year = tax_year or _infer_tax_year(filepath, "")
+
+    doc = await create_document(session, {
+        "filename": path.name,
+        "original_path": str(path.resolve()),
+        "file_type": "image",
+        "document_type": "other",
+        "status": "processing",
+        "file_hash": fhash,
+        "file_size_bytes": path.stat().st_size,
+        "tax_year": resolved_year,
+    })
+
+    try:
+        from pipeline.ai.categorizer import extract_tax_fields_with_claude
+        claude_fields = await extract_tax_fields_with_claude(
+            text="[Image-only document]",
+            tax_year=resolved_year,
+            images=[img_bytes],
+        )
+    except Exception as e:
+        await update_document_status(session, doc.id, "failed", error_message=str(e))
+        return {"status": "error", "message": f"Vision extraction failed: {e}", "document_id": doc.id}
+
+    # Detect form type from Claude's response
+    form_type = claude_fields.pop("_form_type", "other")
+    _VALID = {"w2", "1099_nec", "1099_div", "1099_b", "1099_int", "1099_r", "1099_g", "1099_k", "k1", "1098", "schedule_h", "other"}
+    if form_type not in _VALID:
+        form_type = "other"
+
+    # JSON-serialize any list/dict values
+    for k, v in claude_fields.items():
+        if isinstance(v, (list, dict)):
+            claude_fields[k] = json.dumps(v)
+
+    await create_tax_item(session, {
+        "source_document_id": doc.id,
+        "tax_year": resolved_year,
+        "form_type": form_type,
+        "raw_fields": json.dumps(claude_fields),
+        **{k: v for k, v in claude_fields.items() if k in _TAXITEM_COLUMNS},
+    })
+
+    await update_document_status(session, doc.id, "completed", document_type=form_type)
+    logger.info(f"Imported image {form_type} ({resolved_year}) from {path.name}")
+    return {
+        "status": "completed",
+        "document_id": doc.id,
+        "filename": path.name,
+        "form_type": form_type,
+        "tax_year": resolved_year,
+        "fields_extracted": len([v for v in claude_fields.values() if v is not None]),
+        "message": f"Imported {form_type} for tax year {resolved_year} (via vision).",
+    }
 
 
 async def import_directory(session: AsyncSession, directory: str, **kwargs) -> list[dict]:
     results = []
-    for pdf_file in sorted(Path(directory).glob("*.pdf")):
+    dir_path = Path(directory)
+    # Process PDFs
+    for pdf_file in sorted(dir_path.glob("*.pdf")):
         result = await import_pdf_file(session, str(pdf_file), **kwargs)
         results.append(result)
+    # Process images (phone photos of tax docs)
+    for ext in ("*.jpg", "*.jpeg", "*.png"):
+        for img_file in sorted(dir_path.glob(ext)):
+            result = await import_image_file(session, str(img_file), tax_year=kwargs.get("tax_year"))
+            results.append(result)
     return results
 
 
@@ -229,11 +342,13 @@ async def _main():
                     claude_fallback=not args.no_claude,
                 )
 
-        # Archive files after successful commit
+        # Archive files after successful commit, then securely delete source
+        from pipeline.security.file_cleanup import secure_delete_file
         for r in all_results:
             src, dst = r.pop("_archive_src", None), r.pop("_archive_dest", None)
             if src and dst:
                 shutil.copy2(src, dst)
+                secure_delete_file(src)
 
         if args.file:
             print(json.dumps(all_results[0], indent=2))

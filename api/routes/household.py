@@ -227,3 +227,41 @@ async def upsert_benefits(profile_id: int, body: BenefitPackageIn, session: Asyn
         session.add(pkg)
         await session.flush()
         return {"status": "created"}
+
+
+# ---------------------------------------------------------------------------
+# Tax Strategy Interview Profile
+# ---------------------------------------------------------------------------
+
+@router.get("/tax-strategy-profile")
+async def get_tax_strategy_profile(session: AsyncSession = Depends(get_session)):
+    """Get the tax strategy interview profile from the primary household."""
+    result = await session.execute(
+        select(HouseholdProfile).where(HouseholdProfile.is_primary == True).limit(1)
+    )
+    profile = result.scalar_one_or_none()
+    if not profile:
+        return {"profile": None}
+    import json
+    data = None
+    if profile.tax_strategy_profile_json:
+        try:
+            data = json.loads(profile.tax_strategy_profile_json)
+        except Exception:
+            pass
+    return {"profile": data}
+
+
+@router.put("/tax-strategy-profile")
+async def save_tax_strategy_profile(body: dict, session: AsyncSession = Depends(get_session)):
+    """Save tax strategy interview answers to the primary household profile."""
+    result = await session.execute(
+        select(HouseholdProfile).where(HouseholdProfile.is_primary == True).limit(1)
+    )
+    profile = result.scalar_one_or_none()
+    if not profile:
+        raise HTTPException(status_code=404, detail="No primary household profile found. Complete setup first.")
+    import json
+    profile.tax_strategy_profile_json = json.dumps(body)
+    await session.flush()
+    return {"status": "saved"}

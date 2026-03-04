@@ -27,8 +27,21 @@ export interface Transaction {
   period_month: number | null;
   period_year: number | null;
   notes: string | null;
+  data_source: "plaid" | "csv" | "manual" | "monarch";
   is_excluded: boolean;
   created_at: string;
+}
+
+export interface TransactionCreateIn {
+  account_id: number;
+  date: string;
+  description: string;
+  amount: number;
+  currency?: string;
+  segment?: string;
+  category?: string | null;
+  tax_category?: string | null;
+  notes?: string | null;
 }
 
 export interface TransactionListOut {

@@ -40,9 +40,13 @@ async def import_csv_file(
     account_subtype: str = "credit_card",
     institution: str = "",
     default_segment: str = "personal",
+    account_id: int | None = None,
 ) -> dict:
     """
     Import a single CSV file. Returns a result summary dict.
+
+    If account_id is provided, import directly into that existing account
+    (skips account creation). Otherwise, upsert by name + subtype.
     """
     path = Path(filepath)
     if not path.exists():
@@ -62,13 +66,20 @@ async def import_csv_file(
             "transactions_skipped": 0,
         }
 
-    # Ensure account exists
-    account = await upsert_account(session, {
-        "name": account_name,
-        "account_type": "personal",
-        "subtype": account_subtype,
-        "institution": institution or "",
-    })
+    # Get or create account
+    if account_id:
+        from pipeline.db import get_account
+        account = await get_account(session, account_id)
+        if not account:
+            return {"status": "error", "message": f"Account {account_id} not found"}
+    else:
+        account = await upsert_account(session, {
+            "name": account_name,
+            "account_type": "personal",
+            "subtype": account_subtype,
+            "institution": institution or "",
+            "data_source": "csv",
+        })
 
     # Create document record
     doc = await create_document(session, {

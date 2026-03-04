@@ -1,5 +1,6 @@
 import type {
   Transaction,
+  TransactionCreateIn,
   TransactionFilters,
   TransactionListOut,
   TransactionUpdateIn,
@@ -21,6 +22,13 @@ export function getTransaction(id: number): Promise<Transaction> {
 export function updateTransaction(id: number, body: TransactionUpdateIn): Promise<Transaction> {
   return request(`/transactions/${id}`, {
     method: "PATCH",
+    body: JSON.stringify(body),
+  });
+}
+
+export function createTransaction(body: TransactionCreateIn): Promise<Transaction> {
+  return request("/transactions", {
+    method: "POST",
     body: JSON.stringify(body),
   });
 }

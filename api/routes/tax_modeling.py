@@ -129,3 +129,108 @@ async def student_loan(body: StudentLoanIn):
         body.loan_balance, body.interest_rate, body.monthly_income,
         body.filing_status, body.pslf_eligible,
     )
+
+
+class DefinedBenefitIn(BaseModel):
+    self_employment_income: float
+    age: int
+    target_retirement_age: int = 65
+    filing_status: str = "mfj"
+    existing_retirement_contrib: float = 0
+
+
+class RealEstateSTRIn(BaseModel):
+    property_value: float
+    annual_rental_income: float
+    average_stay_days: float
+    hours_per_week_managing: float
+    w2_income: float
+    filing_status: str = "mfj"
+    land_value_pct: float = 0.20
+
+
+@router.post("/defined-benefit")
+async def defined_benefit(body: DefinedBenefitIn):
+    return TaxModelingEngine.defined_benefit_plan_analysis(
+        body.self_employment_income, body.age, body.target_retirement_age,
+        body.filing_status, body.existing_retirement_contrib,
+    )
+
+
+@router.post("/real-estate-str")
+async def real_estate_str(body: RealEstateSTRIn):
+    return TaxModelingEngine.real_estate_str_analysis(
+        body.property_value, body.annual_rental_income, body.average_stay_days,
+        body.hours_per_week_managing, body.w2_income, body.filing_status,
+        body.land_value_pct,
+    )
+
+
+class FilingStatusCompareIn(BaseModel):
+    spouse_a_income: float
+    spouse_b_income: float
+    investment_income: float = 0
+    itemized_deductions: float = 0
+    student_loan_payment: float = 0
+    state: str = "CA"
+
+
+@router.post("/filing-status-compare")
+async def filing_status_compare(body: FilingStatusCompareIn):
+    return TaxModelingEngine.filing_status_comparison(
+        body.spouse_a_income, body.spouse_b_income,
+        body.investment_income, body.itemized_deductions,
+        body.student_loan_payment, body.state,
+    )
+
+
+class Section179In(BaseModel):
+    equipment_cost: float
+    business_income: float
+    filing_status: str = "mfj"
+    equipment_category: str = "excavators"
+    equipment_index: int = 0
+    business_use_pct: float = 1.0
+    will_rent_out: bool = True
+    has_existing_business: bool = True
+
+
+@router.post("/section-179")
+async def section_179(body: Section179In):
+    return TaxModelingEngine.section_179_equipment_analysis(
+        body.equipment_cost, body.business_income, body.filing_status,
+        body.equipment_category, body.equipment_index,
+        body.business_use_pct, body.will_rent_out, body.has_existing_business,
+    )
+
+
+class QBIDeductionIn(BaseModel):
+    qbi_income: float
+    taxable_income: float
+    w2_wages_paid: float = 0
+    qualified_property: float = 0
+    filing_status: str = "mfj"
+    is_sstb: bool = False
+
+
+@router.post("/qbi-deduction")
+async def qbi_deduction(body: QBIDeductionIn):
+    return TaxModelingEngine.qbi_deduction_check(
+        body.qbi_income, body.taxable_income, body.w2_wages_paid,
+        body.qualified_property, body.filing_status, body.is_sstb,
+    )
+
+
+class StateComparisonIn(BaseModel):
+    income: float
+    filing_status: str = "mfj"
+    current_state: str = "CA"
+    comparison_states: Optional[list[str]] = None
+
+
+@router.post("/state-comparison")
+async def state_comparison(body: StateComparisonIn):
+    return TaxModelingEngine.state_tax_comparison(
+        body.income, body.filing_status, body.current_state,
+        body.comparison_states,
+    )

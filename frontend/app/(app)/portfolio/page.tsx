@@ -2,23 +2,29 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   Plus, RefreshCw, TrendingUp, Loader2, AlertCircle,
-  Scissors,
+  Scissors, MessageCircle,
 } from "lucide-react";
 import { formatCurrency, formatPercent } from "@/lib/utils";
 import {
   getHoldings, createHolding, deleteHolding, refreshPrices,
   getPortfolioSummary, getTaxLossHarvest, getCryptoHoldings,
   getPortfolioPerformance, getRebalanceRecommendations, getPortfolioConcentration,
-  getNetWorthTrend,
+  getNetWorthTrend, getPlaidAccounts,
 } from "@/lib/api";
+import { getManualAssets } from "@/lib/api-assets";
 import type {
   InvestmentHolding, PortfolioSummary, TaxLossHarvestResult, CryptoHoldingType,
   PortfolioPerformance, RebalanceRecommendation, PortfolioConcentration, NetWorthTrend,
+  PlaidAccount,
 } from "@/types/api";
+import type { ManualAsset } from "@/types/portfolio";
 import { getErrorMessage } from "@/lib/errors";
 import Card from "@/components/ui/Card";
 import PageHeader from "@/components/ui/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
+import ProgressBar from "@/components/ui/ProgressBar";
+import OverviewTab from "@/components/portfolio/OverviewTab";
+import TargetAllocationEditor from "@/components/portfolio/TargetAllocationEditor";
 import {
   PieChart as RePie, Pie, Cell, ResponsiveContainer, Tooltip,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -40,9 +46,10 @@ const ASSET_CLASSES = [
   { value: "other", label: "Other" },
 ];
 
-type TabId = "holdings" | "performance" | "allocation" | "risk" | "networth";
+type TabId = "overview" | "holdings" | "performance" | "allocation" | "risk" | "networth";
 
 const TABS: { id: TabId; label: string }[] = [
+  { id: "overview", label: "Overview" },
   { id: "holdings", label: "Holdings" },
   { id: "performance", label: "Performance" },
   { id: "allocation", label: "Allocation" },
@@ -53,6 +60,8 @@ const TABS: { id: TabId; label: string }[] = [
 export default function PortfolioPage() {
   const [holdings, setHoldings] = useState<InvestmentHolding[]>([]);
   const [crypto, setCrypto] = useState<CryptoHoldingType[]>([]);
+  const [manualInvestments, setManualInvestments] = useState<ManualAsset[]>([]);
+  const [plaidAccounts, setPlaidAccounts] = useState<PlaidAccount[]>([]);
   const [summary, setSummary] = useState<PortfolioSummary | null>(null);
   const [harvest, setHarvest] = useState<TaxLossHarvestResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -60,7 +69,7 @@ export default function PortfolioPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [showHarvest, setShowHarvest] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<TabId>("holdings");
+  const [activeTab, setActiveTab] = useState<TabId>("overview");
 
   const [performance, setPerformance] = useState<PortfolioPerformance | null>(null);
   const [rebalance, setRebalance] = useState<RebalanceRecommendation[]>([]);
@@ -81,15 +90,23 @@ export default function PortfolioPage() {
   const load = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     try {
-      const [h, s, c] = await Promise.all([
+      const [h, s, c, ma, pa] = await Promise.all([
         getHoldings(),
         getPortfolioSummary(),
         getCryptoHoldings(),
+        getManualAssets()
+          .then((a) => a.filter((x) => x.asset_type === "investment" && !x.is_liability))
+          .catch(() => [] as ManualAsset[]),
+        getPlaidAccounts()
+          .then((accts) => accts.filter((a) => a.type === "investment"))
+          .catch(() => [] as PlaidAccount[]),
       ]);
       if (signal?.aborted) return;
       setHoldings(Array.isArray(h) ? h : []);
       setSummary(s);
       setCrypto(Array.isArray(c) ? c : []);
+      setManualInvestments(ma);
+      setPlaidAccounts(pa);
     } catch (e: unknown) {
       if (!signal?.aborted) setError(getErrorMessage(e));
     }
@@ -204,6 +221,13 @@ export default function PortfolioPage() {
         actions={
           <div className="flex gap-2">
             <button
+              onClick={() => window.dispatchEvent(new CustomEvent("ask-henry", { detail: { message: "Analyze my portfolio allocation and risk. Am I well-diversified?" } }))}
+              className="flex items-center gap-1.5 text-xs text-[#16A34A] hover:text-[#15803D] transition-colors"
+            >
+              <MessageCircle size={14} />
+              Ask Sir Henry
+            </button>
+            <button
               onClick={loadHarvest}
               className="flex items-center gap-2 border border-stone-200 text-stone-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-stone-50"
             >
@@ -243,28 +267,59 @@ export default function PortfolioPage() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-white rounded-xl border border-stone-100 p-5 shadow-sm">
                 <p className="text-xs text-stone-500 font-medium">Total Portfolio Value</p>
-                <p className="text-2xl font-bold text-stone-900 mt-1 tabular-nums">{formatCurrency(summary.total_value, true)}</p>
-                <p className="text-xs text-stone-400 mt-1">{summary.holdings_count} holdings</p>
+                <p className="text-2xl font-bold text-stone-900 mt-1 font-mono tabular-nums">{formatCurrency(summary.total_value, true)}</p>
+                <p className="text-xs text-stone-400 mt-1">
+                  {summary.holdings_count > 0 ? `${summary.holdings_count} holdings` : ""}
+                  {summary.holdings_count > 0 && (summary.accounts_count ?? 0) > 0 ? " · " : ""}
+                  {(summary.accounts_count ?? 0) > 0 ? `${summary.accounts_count} accounts` : ""}
+                  {summary.holdings_count === 0 && (summary.accounts_count ?? 0) === 0 ? "No holdings" : ""}
+                </p>
               </div>
               <div className="bg-white rounded-xl border border-stone-100 p-5 shadow-sm">
-                <p className="text-xs text-stone-500 font-medium">Total Gain/Loss</p>
-                <p className={`text-2xl font-bold mt-1 tabular-nums ${summary.total_gain_loss >= 0 ? "text-green-600" : "text-red-600"}`}>
-                  {summary.total_gain_loss >= 0 ? "+" : ""}{formatCurrency(summary.total_gain_loss, true)}
-                </p>
-                <p className={`text-xs mt-1 ${summary.total_gain_loss_pct >= 0 ? "text-green-500" : "text-red-500"}`}>
-                  {summary.total_gain_loss_pct >= 0 ? "+" : ""}{formatPercent(summary.total_gain_loss_pct)}
-                </p>
+                {summary.has_cost_basis ? (
+                  <>
+                    <p className="text-xs text-stone-500 font-medium">Total Gain/Loss</p>
+                    <p className={`text-2xl font-bold mt-1 font-mono tabular-nums ${summary.total_gain_loss >= 0 ? "text-green-600" : "text-red-600"}`}>
+                      {summary.total_gain_loss >= 0 ? "+" : ""}{formatCurrency(summary.total_gain_loss, true)}
+                    </p>
+                    <p className={`text-xs mt-1 ${summary.total_gain_loss_pct >= 0 ? "text-green-600" : "text-red-600"}`}>
+                      {summary.total_gain_loss_pct >= 0 ? "+" : ""}{formatPercent(summary.total_gain_loss_pct)}
+                    </p>
+                  </>
+                ) : summary.weighted_avg_return != null ? (
+                  <>
+                    <p className="text-xs text-stone-500 font-medium">Avg Annual Return</p>
+                    <p className={`text-2xl font-bold mt-1 font-mono tabular-nums ${summary.weighted_avg_return >= 0 ? "text-green-600" : "text-red-600"}`}>
+                      {summary.weighted_avg_return >= 0 ? "+" : ""}{formatPercent(summary.weighted_avg_return)}
+                    </p>
+                    <p className="text-xs text-stone-400 mt-1">Weighted across accounts</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xs text-stone-500 font-medium">Total Gain/Loss</p>
+                    <p className="text-xl font-semibold text-stone-400 mt-1">Not tracked</p>
+                    <p className="text-xs text-stone-400 mt-1">Add cost basis to track</p>
+                  </>
+                )}
               </div>
               <div className="bg-white rounded-xl border border-stone-100 p-5 shadow-sm">
                 <p className="text-xs text-stone-500 font-medium">Cost Basis</p>
-                <p className="text-2xl font-bold text-stone-900 mt-1 tabular-nums">{formatCurrency(summary.total_cost_basis, true)}</p>
+                {summary.has_cost_basis ? (
+                  <p className="text-2xl font-bold text-stone-900 mt-1 font-mono tabular-nums">{formatCurrency(summary.total_cost_basis, true)}</p>
+                ) : (
+                  <>
+                    <p className="text-xl font-semibold text-stone-400 mt-1">Not tracked</p>
+                    <p className="text-xs text-stone-400 mt-1">Add purchase prices to accounts</p>
+                  </>
+                )}
               </div>
               <div className="bg-white rounded-xl border border-stone-100 p-5 shadow-sm">
                 <p className="text-xs text-stone-500 font-medium">Allocation</p>
-                <div className="flex gap-3 mt-2 text-xs">
+                <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-xs">
                   {summary.stock_value > 0 && <span className="text-blue-600">Stocks {formatCurrency(summary.stock_value, true)}</span>}
                   {summary.etf_value > 0 && <span className="text-emerald-600">ETFs {formatCurrency(summary.etf_value, true)}</span>}
                   {summary.crypto_value > 0 && <span className="text-amber-600">Crypto {formatCurrency(summary.crypto_value, true)}</span>}
+                  {(summary.manual_investment_value ?? 0) > 0 && <span className="text-indigo-600">Accounts {formatCurrency(summary.manual_investment_value ?? 0, true)}</span>}
                 </div>
               </div>
             </div>
@@ -285,6 +340,16 @@ export default function PortfolioPage() {
               </button>
             ))}
           </div>
+
+          {activeTab === "overview" && (
+            <OverviewTab
+              holdings={holdings}
+              summary={summary}
+              crypto={crypto}
+              manualInvestments={manualInvestments}
+              plaidAccounts={plaidAccounts}
+            />
+          )}
 
           {activeTab === "holdings" && (
             <>
@@ -333,19 +398,19 @@ export default function PortfolioPage() {
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                     <div>
                       <p className="text-xs text-stone-500">Harvestable Losses</p>
-                      <p className="text-lg font-bold text-red-600">{formatCurrency(harvest.harvestable_losses)}</p>
+                      <p className="text-lg font-bold text-red-600 font-mono tabular-nums">{formatCurrency(harvest.harvestable_losses)}</p>
                     </div>
                     <div>
                       <p className="text-xs text-stone-500">Estimated Tax Savings</p>
-                      <p className="text-lg font-bold text-green-600">{formatCurrency(harvest.estimated_tax_savings)}</p>
+                      <p className="text-lg font-bold text-green-600 font-mono tabular-nums">{formatCurrency(harvest.estimated_tax_savings)}</p>
                     </div>
                     <div>
                       <p className="text-xs text-stone-500">Unrealized Gains</p>
-                      <p className="text-lg font-bold text-green-600">{formatCurrency(harvest.total_unrealized_gains)}</p>
+                      <p className="text-lg font-bold text-green-600 font-mono tabular-nums">{formatCurrency(harvest.total_unrealized_gains)}</p>
                     </div>
                     <div>
                       <p className="text-xs text-stone-500">Net Unrealized</p>
-                      <p className={`text-lg font-bold ${harvest.net_unrealized >= 0 ? "text-green-600" : "text-red-600"}`}>
+                      <p className={`text-lg font-bold font-mono tabular-nums ${harvest.net_unrealized >= 0 ? "text-green-600" : "text-red-600"}`}>
                         {formatCurrency(harvest.net_unrealized)}
                       </p>
                     </div>
@@ -385,16 +450,23 @@ export default function PortfolioPage() {
                 </Card>
               )}
 
-              {holdings.length === 0 && crypto.length === 0 && !showAdd ? (
+              {holdings.length === 0 && crypto.length === 0 && manualInvestments.length === 0 && plaidAccounts.length === 0 && !showAdd ? (
                 <EmptyState
                   icon={<TrendingUp size={40} />}
-                  title="No investments tracked"
-                  description="Add your stock, ETF, and crypto holdings to track performance, monitor allocation, and optimize taxes."
+                  title="Build your investment portfolio"
+                  description="Track your stocks, ETFs, crypto, and retirement accounts in one place. Get tax-loss harvesting alerts, rebalancing advice, and concentration risk analysis."
+                  henryTip="Most HENRYs I work with are over-concentrated in their employer's stock. Getting your full portfolio picture is the first step to smarter diversification."
+                  askHenryPrompt="What should I know about building a diversified portfolio as a high earner?"
                   action={
                     <button onClick={() => setShowAdd(true)} className="bg-[#16A34A] text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-[#15803D] shadow-sm">
                       Add First Holding
                     </button>
                   }
+                  templates={[
+                    { icon: <TrendingUp size={16} className="text-blue-600" />, label: "Add stock or ETF", description: "Track individual stocks, index funds, or ETFs", onClick: () => setShowAdd(true) },
+                    { icon: <TrendingUp size={16} className="text-purple-600" />, label: "I have equity comp", description: "RSUs, ISOs, or ESPPs from your employer", onClick: () => { window.location.href = "/equity-comp"; } },
+                    { icon: <TrendingUp size={16} className="text-emerald-600" />, label: "Connect via Plaid", description: "Auto-sync your brokerage accounts", onClick: () => { window.location.href = "/accounts"; } },
+                  ]}
                 />
               ) : (
                 <Card padding="none">
@@ -434,7 +506,7 @@ export default function PortfolioPage() {
                             </td>
                             <td className="px-3 py-3 text-xs text-stone-500">{h.sector || "-"}</td>
                             <td className="px-5 py-3">
-                              <button onClick={() => handleDelete(h.id)} className="text-xs text-stone-400 hover:text-red-500">Remove</button>
+                              <button onClick={() => handleDelete(h.id)} className="text-xs text-stone-400 hover:text-red-600">Remove</button>
                             </td>
                           </tr>
                         ))}
@@ -461,6 +533,57 @@ export default function PortfolioPage() {
                   </div>
                 </Card>
               )}
+
+              {/* Manual Investment Accounts */}
+              {manualInvestments.length > 0 && (
+                <Card padding="lg">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-semibold text-stone-800">Investment Accounts</h3>
+                    <span className="text-xs text-stone-400">
+                      {manualInvestments.length} accounts · {formatCurrency(manualInvestments.reduce((s, a) => s + (a.current_value ?? 0), 0), true)}
+                    </span>
+                  </div>
+                  <div className="space-y-3">
+                    {manualInvestments.sort((a, b) => (b.current_value ?? 0) - (a.current_value ?? 0)).map((asset, i) => {
+                      const totalManual = manualInvestments.reduce((s, a) => s + (a.current_value ?? 0), 0);
+                      const weight = totalManual > 0 ? ((asset.current_value ?? 0) / totalManual) * 100 : 0;
+                      return (
+                        <div key={asset.id}>
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-3">
+                              <div
+                                className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-white shrink-0"
+                                style={{ backgroundColor: SECTOR_COLORS[i % SECTOR_COLORS.length] }}
+                              >
+                                {(asset.account_subtype || "INV").slice(0, 3).toUpperCase()}
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-stone-800">{asset.name}</p>
+                                <p className="text-xs text-stone-400">
+                                  {[asset.custodian || asset.institution, asset.account_subtype?.replace(/_/g, " ")].filter(Boolean).join(" · ") || "Investment"}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-semibold tabular-nums">{formatCurrency(asset.current_value ?? 0)}</p>
+                              {asset.annual_return_pct != null && (
+                                <p className={`text-xs ${asset.annual_return_pct >= 0 ? "text-green-600" : "text-red-600"}`}>
+                                  {asset.annual_return_pct >= 0 ? "+" : ""}{asset.annual_return_pct.toFixed(1)}% annual return
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <ProgressBar value={weight} color={SECTOR_COLORS[i % SECTOR_COLORS.length]} size="xs" />
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p className="text-xs text-stone-400 mt-4 pt-3 border-t border-stone-100">
+                    Manage investment accounts on the <a href="/accounts" className="text-[#16A34A] hover:underline">Accounts page</a>.
+                    Add individual stock/ETF positions above to track detailed performance.
+                  </p>
+                </Card>
+              )}
             </>
           )}
 
@@ -471,23 +594,43 @@ export default function PortfolioPage() {
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <Card padding="lg">
                   <p className="text-xs text-stone-500 font-medium">Time-Weighted Return</p>
-                  <p className={`text-2xl font-bold mt-1 tabular-nums ${(performance?.time_weighted_return ?? 0) >= 0 ? "text-green-600" : "text-red-600"}`}>
+                  <p className={`text-2xl font-bold mt-1 font-mono tabular-nums ${(performance?.time_weighted_return ?? 0) >= 0 ? "text-green-600" : "text-red-600"}`}>
                     {performance ? `${performance.time_weighted_return >= 0 ? "+" : ""}${formatPercent(performance.time_weighted_return)}` : "-"}
                   </p>
                 </Card>
                 <Card padding="lg">
-                  <p className="text-xs text-stone-500 font-medium">Total Return</p>
-                  <p className={`text-2xl font-bold mt-1 tabular-nums ${(summary?.total_gain_loss_pct ?? 0) >= 0 ? "text-green-600" : "text-red-600"}`}>
-                    {summary ? `${summary.total_gain_loss_pct >= 0 ? "+" : ""}${formatPercent(summary.total_gain_loss_pct)}` : "-"}
-                  </p>
+                  {summary?.has_cost_basis ? (
+                    <>
+                      <p className="text-xs text-stone-500 font-medium">Total Return</p>
+                      <p className={`text-2xl font-bold mt-1 font-mono tabular-nums ${(summary?.total_gain_loss_pct ?? 0) >= 0 ? "text-green-600" : "text-red-600"}`}>
+                        {summary ? `${summary.total_gain_loss_pct >= 0 ? "+" : ""}${formatPercent(summary.total_gain_loss_pct)}` : "-"}
+                      </p>
+                    </>
+                  ) : summary?.weighted_avg_return != null ? (
+                    <>
+                      <p className="text-xs text-stone-500 font-medium">Avg Annual Return</p>
+                      <p className={`text-2xl font-bold mt-1 font-mono tabular-nums ${summary.weighted_avg_return >= 0 ? "text-green-600" : "text-red-600"}`}>
+                        {summary.weighted_avg_return >= 0 ? "+" : ""}{formatPercent(summary.weighted_avg_return)}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-xs text-stone-500 font-medium">Total Return</p>
+                      <p className="text-xl font-semibold text-stone-400 mt-1">-</p>
+                    </>
+                  )}
                 </Card>
                 <Card padding="lg">
                   <p className="text-xs text-stone-500 font-medium">Total Value</p>
-                  <p className="text-2xl font-bold text-stone-900 mt-1 tabular-nums">{summary ? formatCurrency(summary.total_value, true) : "-"}</p>
+                  <p className="text-2xl font-bold text-stone-900 mt-1 font-mono tabular-nums">{summary ? formatCurrency(summary.total_value, true) : "-"}</p>
                 </Card>
                 <Card padding="lg">
                   <p className="text-xs text-stone-500 font-medium">Cost Basis</p>
-                  <p className="text-2xl font-bold text-stone-900 mt-1 tabular-nums">{summary ? formatCurrency(summary.total_cost_basis, true) : "-"}</p>
+                  {summary?.has_cost_basis ? (
+                    <p className="text-2xl font-bold text-stone-900 mt-1 font-mono tabular-nums">{formatCurrency(summary.total_cost_basis, true)}</p>
+                  ) : (
+                    <p className="text-xl font-semibold text-stone-400 mt-1">Not tracked</p>
+                  )}
                 </Card>
               </div>
             )
@@ -566,6 +709,13 @@ export default function PortfolioPage() {
                   </div>
                 )}
               </Card>
+              <TargetAllocationEditor onSaved={() => {
+                setRebalanceLoading(true);
+                getRebalanceRecommendations()
+                  .then((r) => setRebalance(Array.isArray(r) ? r : []))
+                  .catch((e: unknown) => setError(getErrorMessage(e)))
+                  .finally(() => setRebalanceLoading(false));
+              }} />
             </>
           )}
 
@@ -577,13 +727,13 @@ export default function PortfolioPage() {
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                   <Card padding="lg">
                     <p className="text-xs text-stone-500 font-medium">Top Holding %</p>
-                    <p className="text-2xl font-bold text-stone-900 mt-1 tabular-nums">
+                    <p className="text-2xl font-bold text-stone-900 mt-1 font-mono tabular-nums">
                       {concentration?.top_holding_pct != null ? formatPercent(concentration.top_holding_pct) : "-"}
                     </p>
                   </Card>
                   <Card padding="lg">
                     <p className="text-xs text-stone-500 font-medium">Top 3 Holdings %</p>
-                    <p className="text-2xl font-bold text-stone-900 mt-1 tabular-nums">
+                    <p className="text-2xl font-bold text-stone-900 mt-1 font-mono tabular-nums">
                       {concentration?.top_3_pct != null ? formatPercent(concentration.top_3_pct) : "-"}
                     </p>
                   </Card>
@@ -629,13 +779,13 @@ export default function PortfolioPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <Card padding="lg">
                     <p className="text-xs text-stone-500 font-medium">Current Net Worth</p>
-                    <p className="text-2xl font-bold text-stone-900 mt-1 tabular-nums">
+                    <p className="text-2xl font-bold text-stone-900 mt-1 font-mono tabular-nums">
                       {netWorth ? formatCurrency(netWorth.current_net_worth, true) : "-"}
                     </p>
                   </Card>
                   <Card padding="lg">
                     <p className="text-xs text-stone-500 font-medium">Growth Rate</p>
-                    <p className={`text-2xl font-bold mt-1 tabular-nums ${(netWorth?.growth_rate ?? 0) >= 0 ? "text-green-600" : "text-red-600"}`}>
+                    <p className={`text-2xl font-bold mt-1 font-mono tabular-nums ${(netWorth?.growth_rate ?? 0) >= 0 ? "text-green-600" : "text-red-600"}`}>
                       {netWorth ? `${netWorth.growth_rate >= 0 ? "+" : ""}${formatPercent(netWorth.growth_rate)}` : "-"}
                     </p>
                   </Card>

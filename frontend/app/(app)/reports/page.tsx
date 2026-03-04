@@ -3,6 +3,7 @@ import { useState } from "react";
 import { FileText, Download, Loader2, CheckCircle, AlertCircle, Printer, Users, User, Briefcase, TrendingUp } from "lucide-react";
 import { formatCurrency, monthName, safeJsonParse } from "@/lib/utils";
 import { getTaxSummary, getTaxEstimate, getPeriods, getMonthlyReport, getManualAssets } from "@/lib/api";
+import { getErrorMessage } from "@/lib/errors";
 
 const now = new Date();
 
@@ -28,9 +29,9 @@ export default function ReportsPage() {
     try {
       if (config.type === "tax_accountant") {
         const [summary, estimate, periods] = await Promise.all([
-          getTaxSummary(config.year).catch((e: any) => { setError(e.message); return null; }),
-          getTaxEstimate(config.year).catch((e: any) => { setError(e.message); return null; }),
-          getPeriods(config.year).catch((e: any) => { setError(e.message); return []; }),
+          getTaxSummary(config.year).catch((e: unknown) => { setError(getErrorMessage(e)); return null; }),
+          getTaxEstimate(config.year).catch((e: unknown) => { setError(getErrorMessage(e)); return null; }),
+          getPeriods(config.year).catch((e: unknown) => { setError(getErrorMessage(e)); return []; }),
         ]);
 
         const annual = periods.find((p) => p.month === null);
@@ -42,7 +43,7 @@ export default function ReportsPage() {
         md += `## Income Summary\n\n`;
         if (summary) {
           md += `| Source | Amount |\n|--------|--------|\n`;
-          md += `| W-2 Wages (Accenture) | ${formatCurrency(summary.w2_total_wages)} |\n`;
+          md += `| W-2 Total Wages | ${formatCurrency(summary.w2_total_wages)} |\n`;
           md += `| Board / Director Income (1099-NEC) | ${formatCurrency(summary.nec_total)} |\n`;
           md += `| Ordinary Dividends | ${formatCurrency(summary.div_ordinary)} |\n`;
           md += `| Qualified Dividends | ${formatCurrency(summary.div_qualified)} |\n`;
@@ -100,7 +101,7 @@ export default function ReportsPage() {
 
       } else if (config.type === "monthly_summary") {
         const m = config.month ?? now.getMonth() + 1;
-        const report = await getMonthlyReport(config.year, m).catch((e: any) => { setError(e.message); return null; });
+        const report = await getMonthlyReport(config.year, m).catch((e: unknown) => { setError(getErrorMessage(e)); return null; });
 
         let md = `# Monthly Summary — ${monthName(m)} ${config.year}\n`;
         md += `*Generated: ${new Date().toLocaleDateString()}*\n\n---\n\n`;
@@ -142,7 +143,7 @@ export default function ReportsPage() {
         setReportName(`Monthly_Summary_${config.year}_${String(m).padStart(2, "0")}.md`);
 
       } else if (config.type === "annual_financial") {
-        const periods = await getPeriods(config.year).catch((e: any) => { setError(e.message); return []; });
+        const periods = await getPeriods(config.year).catch((e: unknown) => { setError(getErrorMessage(e)); return []; });
         const annual = periods.find((p) => p.month === null);
 
         let md = `# Annual Financial Summary — ${config.year}\n`;
@@ -175,7 +176,7 @@ export default function ReportsPage() {
         setReportName(`Annual_Financial_${config.year}.md`);
 
       } else if (config.type === "net_worth") {
-        const assets = await getManualAssets().catch((e: any) => { setError(e.message); return []; });
+        const assets = await getManualAssets().catch((e: unknown) => { setError(getErrorMessage(e)); return []; });
 
         let md = `# Net Worth Statement\n`;
         md += `*As of ${new Date().toLocaleDateString()}*\n\n---\n\n`;

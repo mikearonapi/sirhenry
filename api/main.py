@@ -12,10 +12,15 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.database import engine
 from api.routes import (
-    accounts, assets, benchmarks, budget, chat, documents, entities,
-    equity_comp, family_members, goals, household, import_routes, insights, insurance,
-    life_events, market, plaid,
-    portfolio, recurring, reminders, reports, retirement, scenarios, tax,
+    account_links, accounts, assets, benchmarks, budget, budget_forecast, chat,
+    documents, entities,
+    equity_comp, family_members, goal_suggestions, goals,
+    household, household_optimization,
+    import_routes, insights, insurance,
+    life_events, market, plaid, privacy,
+    portfolio, portfolio_analytics, portfolio_crypto,
+    recurring, reminders, reports, retirement, retirement_scenarios,
+    scenarios, scenarios_calc, setup_status, tax, tax_analysis, tax_strategies,
     tax_modeling, transactions,
 )
 from pipeline.db import init_db  # importing pipeline.db also registers all extended models
@@ -25,6 +30,10 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s — %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+# Install PII redaction filter on all loggers (before any data is loaded)
+from pipeline.security.logging import install_pii_filter
+install_pii_filter()
 
 
 async def _seed_all_reminders() -> None:
@@ -61,6 +70,10 @@ async def _periodic_plaid_sync(interval_seconds: float) -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Register field-level encryption events before any DB operations
+    from pipeline.db.field_encryption import register_encryption_events
+    register_encryption_events()
+
     logger.info("Initializing database...")
     await init_db(engine)
     logger.info("Database ready.")
@@ -74,6 +87,26 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Schema migration failed: {e}")
         raise
+
+    # Load known PII names into the logging redaction filter
+    try:
+        from pipeline.security.logging import load_known_names_from_db, update_known_names
+        async with AsyncSessionLocal() as session:
+            names = await load_known_names_from_db(session)
+            if names:
+                update_known_names(names)
+    except Exception as e:
+        logger.warning(f"PII name loading failed (non-fatal): {e}")
+
+    # Clean up stale import files older than 7 days
+    try:
+        from pipeline.security.file_cleanup import cleanup_old_files
+        for import_dir in ["data/imports/credit-cards", "data/imports/tax-documents",
+                           "data/imports/investments", "data/imports/amazon",
+                           "data/processed/tax-documents"]:
+            cleanup_old_files(import_dir, max_age_days=7)
+    except Exception as e:
+        logger.warning(f"Import file cleanup failed (non-fatal): {e}")
 
     # Auto-recompute financial period summaries for recent years
     try:
@@ -169,6 +202,17 @@ cors_origins = [
     "http://127.0.0.1:3000",
     "http://127.0.0.1:3001",
 ]
+# Auto-detect LAN IPs so the frontend can reach the API from any local machine
+try:
+    import socket
+    hostname = socket.gethostname()
+    for info in socket.getaddrinfo(hostname, None, socket.AF_INET):
+        ip = info[4][0]
+        if ip != "127.0.0.1":
+            cors_origins.append(f"http://{ip}:3000")
+            cors_origins.append(f"http://{ip}:3001")
+except Exception:
+    pass
 extra = os.environ.get("CORS_ORIGINS", "")
 if extra:
     cors_origins.extend(o.strip() for o in extra.split(",") if o.strip())
@@ -181,6 +225,7 @@ app.add_middleware(
     allow_headers=["Content-Type", "Authorization"],
 )
 
+app.include_router(account_links.router)
 app.include_router(accounts.router)
 app.include_router(assets.router)
 app.include_router(transactions.router)
@@ -190,21 +235,32 @@ app.include_router(import_routes.router)
 app.include_router(reports.router)
 app.include_router(insights.router)
 app.include_router(tax.router)
+app.include_router(tax_analysis.router, prefix="/tax")
+app.include_router(tax_strategies.router, prefix="/tax")
 app.include_router(plaid.router)
 app.include_router(budget.router)
+app.include_router(budget_forecast.router, prefix="/budget")
 app.include_router(recurring.router)
+app.include_router(goal_suggestions.router)
 app.include_router(goals.router)
 app.include_router(reminders.router)
 app.include_router(chat.router)
 app.include_router(portfolio.router)
+app.include_router(portfolio_analytics.router, prefix="/portfolio")
+app.include_router(portfolio_crypto.router, prefix="/portfolio")
 app.include_router(market.router)
 app.include_router(retirement.router)
+app.include_router(retirement_scenarios.router, prefix="/retirement")
 app.include_router(scenarios.router)
+app.include_router(scenarios_calc.router, prefix="/scenarios")
 app.include_router(equity_comp.router)
 app.include_router(household.router)
+app.include_router(household_optimization.router, prefix="/household")
 app.include_router(family_members.router)
 app.include_router(life_events.router)
 app.include_router(insurance.router)
+app.include_router(privacy.router)
+app.include_router(setup_status.router)
 app.include_router(tax_modeling.router)
 app.include_router(benchmarks.router)
 

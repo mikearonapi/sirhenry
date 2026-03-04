@@ -4,12 +4,12 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, List, Upload,
-  Wallet, ArrowLeftRight, TrendingUp,
+  Wallet, ArrowLeftRight,
   RotateCcw, Target, FileBarChart, Building2,
   PieChart, ChevronLeft, ChevronRight, Activity, X,
-  Compass, ClipboardCheck, FileText, BarChart3,
+  Compass, FileText, BarChart3,
   Briefcase, Users, Settings, Zap, Landmark, Calendar, ShieldCheck,
-  ChevronUp,
+  ChevronUp, Sparkles,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 
@@ -34,7 +34,6 @@ const NAV_SECTIONS = [
     items: [
       { href: "/goals", label: "Goals", icon: Target },
       { href: "/portfolio", label: "Portfolio", icon: PieChart },
-      { href: "/investments", label: "Investments", icon: TrendingUp },
       { href: "/retirement", label: "Retirement", icon: Landmark },
       { href: "/market", label: "Market Pulse", icon: Activity },
       { href: "/equity-comp", label: "Equity Comp", icon: Briefcase },
@@ -45,13 +44,13 @@ const NAV_SECTIONS = [
     label: "Taxes",
     items: [
       { href: "/tax-strategy", label: "Tax Strategy", icon: Zap },
-      { href: "/tax", label: "Tax Checklist", icon: ClipboardCheck },
-      { href: "/tax-reports", label: "Tax Reports", icon: FileText },
+      { href: "/tax-documents", label: "Tax Documents", icon: FileText },
     ],
   },
   {
     label: "Setup",
     items: [
+      { href: "/setup", label: "Setup Wizard", icon: Sparkles },
       { href: "/accounts", label: "Accounts", icon: Building2 },
       { href: "/household", label: "Household", icon: Users },
       { href: "/life-events", label: "Life Events", icon: Calendar },
@@ -122,7 +121,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
             )}
             <div className="space-y-0.5">
               {section.items.map(({ href, label, icon: Icon }) => {
-                const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
+                const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(href + "/"));
                 return (
                   <Link
                     key={href}

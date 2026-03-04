@@ -1,43 +1,16 @@
+from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.database import get_session
-from api.models.schemas import AccountOut, AccountWithBalanceOut
+from api.models.schemas import AccountCreateIn, AccountOut, AccountUpdateIn, AccountWithBalanceOut
 from pipeline.db import PlaidAccount, get_account, get_all_accounts, upsert_account
-from pipeline.db.schema import Transaction
+from pipeline.db.schema import PlaidItem, Transaction
 
 router = APIRouter(prefix="/accounts", tags=["accounts"])
-
-
-# ---- Pydantic models for create / update ----
-
-class AccountCreateIn(BaseModel):
-    name: str
-    account_type: str
-    subtype: Optional[str] = None
-    institution: Optional[str] = None
-    last_four: Optional[str] = None
-    currency: str = "USD"
-    notes: Optional[str] = None
-    default_segment: Optional[str] = None
-    default_business_entity_id: Optional[int] = None
-
-
-class AccountUpdateIn(BaseModel):
-    name: Optional[str] = None
-    account_type: Optional[str] = None
-    subtype: Optional[str] = None
-    institution: Optional[str] = None
-    last_four: Optional[str] = None
-    currency: Optional[str] = None
-    notes: Optional[str] = None
-    is_active: Optional[bool] = None
-    default_segment: Optional[str] = None
-    default_business_entity_id: Optional[int] = None
 
 
 # ---- Endpoints ----
@@ -45,15 +18,29 @@ class AccountUpdateIn(BaseModel):
 @router.get("", response_model=list[AccountWithBalanceOut])
 async def list_accounts(
     session: AsyncSession = Depends(get_session),
-    exclude_plaid: bool = Query(True, description="Exclude accounts linked to Plaid (shown via /plaid/accounts)"),
+    exclude_plaid: bool = Query(False, description="Exclude accounts linked to Plaid"),
 ):
+    """Return all active accounts with balances and Plaid metadata.
+
+    Plaid-sourced accounts get their balance from PlaidAccount;
+    CSV/manual accounts compute balance from sum(transactions).
+    """
     accounts = await get_all_accounts(session)
 
+    # Build Plaid metadata map: account_id → PlaidAccount + PlaidItem info
+    pa_result = await session.execute(
+        select(PlaidAccount, PlaidItem.last_synced_at)
+        .join(PlaidItem, PlaidAccount.plaid_item_id == PlaidItem.id)
+        .where(PlaidItem.status != "removed")
+    )
+    plaid_map: dict[int, tuple] = {}  # account_id → (PlaidAccount, last_synced_at)
     plaid_linked_ids: set[int] = set()
-    if exclude_plaid:
-        pa_result = await session.execute(select(PlaidAccount.account_id))
-        plaid_linked_ids = {row[0] for row in pa_result if row[0] is not None}
+    for pa, last_synced in pa_result:
+        if pa.account_id is not None:
+            plaid_map[pa.account_id] = (pa, last_synced)
+            plaid_linked_ids.add(pa.account_id)
 
+    # Transaction-based balances for non-Plaid accounts
     balance_q = (
         select(
             Transaction.account_id,
@@ -68,12 +55,30 @@ async def list_accounts(
 
     out = []
     for a in accounts:
-        if a.id in plaid_linked_ids:
+        if exclude_plaid and a.id in plaid_linked_ids:
             continue
-        bal, txn_count = balance_map.get(a.id, (0.0, 0))
+
         data = AccountWithBalanceOut.model_validate(a)
-        data.balance = bal
-        data.transaction_count = txn_count
+
+        # Plaid-sourced: use Plaid balance + attach metadata
+        if a.id in plaid_map:
+            pa, last_synced = plaid_map[a.id]
+            data.balance = float(pa.current_balance or 0)
+            data.current_balance = pa.current_balance
+            data.available_balance = pa.available_balance
+            data.plaid_mask = pa.mask
+            data.plaid_type = pa.type
+            data.plaid_subtype = pa.subtype
+            data.plaid_last_synced = last_synced.isoformat() if last_synced else None
+            data.plaid_institution = a.institution
+            # Also include transaction count
+            _, txn_count = balance_map.get(a.id, (0.0, 0))
+            data.transaction_count = txn_count
+        else:
+            bal, txn_count = balance_map.get(a.id, (0.0, 0))
+            data.balance = bal
+            data.transaction_count = txn_count
+
         out.append(data)
     return out
 

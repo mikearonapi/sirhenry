@@ -19,7 +19,8 @@ from pipeline.db import (
     get_tax_summary,
     replace_tax_strategies,
 )
-from pipeline.db.schema import BusinessEntity, HouseholdProfile, Transaction
+from pipeline.ai.privacy import PIISanitizer, log_ai_privacy_audit
+from pipeline.db.schema import BenefitPackage, BusinessEntity, HouseholdProfile, Transaction
 from pipeline.utils import CLAUDE_MODEL, strip_json_fences, get_claude_client, call_claude_with_retry
 
 load_dotenv()
@@ -186,29 +187,55 @@ Return a JSON array of strategy objects. Each object must have:
   "estimated_savings_low": float (conservative estimate in dollars),
   "estimated_savings_high": float (optimistic estimate in dollars),
   "action_required": "specific next steps to take",
-  "deadline": "when action must be taken (e.g., April 15, December 31, No deadline)"
+  "deadline": "when action must be taken (e.g., April 15, December 31, No deadline)",
+  "confidence": float 0.0-1.0 (how confident you are this strategy applies and the savings estimate is accurate),
+  "confidence_reasoning": "one sentence explaining what makes you confident or uncertain",
+  "category": one of: "quick_win" (can do this week) | "this_year" (act before Dec 31) | "big_move" (structural change like starting a business or buying property) | "long_term" (multi-year play),
+  "complexity": one of: "low" (simple action) | "medium" (may need CPA) | "high" (requires legal/structural changes),
+  "prerequisites_json": "JSON string array of requirements, e.g. [\\"Must have self-employment income\\"]",
+  "who_its_for": "brief description of who benefits most",
+  "related_simulator": one of: "roth-conversion" | "scorp-analysis" | "estimated-payments" | "daf-bunching" | "student-loans" | "multi-year" | "tax-loss-harvest" | "mega-backdoor" | "defined-benefit" | "real-estate-str" | "section-179" | "equity-comp" | "hsa-max" | "filing-status" | "qbi-deduction" | "state-comparison" | null
 }}
 
 Focus on (as applicable to their income profile):
-1. Multi-state income allocation — which states have income, state tax credit strategies
+1. Multi-state income allocation — state tax credit strategies
 2. Partnership/K-1 income — partnership tax implications
 3. Retirement contributions — 401(k), backdoor Roth, SEP-IRA for side business income
 4. NIIT and AMT exposure given total income
-5. Capital gains optimization — long vs short term, tax-loss harvesting, RSU/ESPP treatment
-6. QBI deduction eligibility for any Schedule C or pass-through income
-7. Section 195 startup costs — expenses that can be elected to deduct or amortize
-8. Business expenses and deductions for active Schedule C entities
-9. SALT workaround strategies (if applicable)
-10. Charitable giving optimization (DAF, QCD if applicable)
+5. Capital gains optimization — tax-loss harvesting, RSU/ESPP treatment
+6. QBI deduction eligibility for pass-through income
+7. Section 195 startup costs
+8. Business expenses and deductions for Schedule C entities
+9. SALT workaround strategies
+10. Charitable giving optimization (DAF, QCD, donating appreciated stock)
 11. Year-end timing strategies (defer income, accelerate deductions)
-12. Reimbursable expense tracking — ensure reimbursed expenses are properly excluded
-13. Entity structure optimization — when to formalize or restructure business entities
+12. Reimbursable expense tracking
+13. Entity structure optimization
+14. Real estate strategies — short-term rental (STR) loophole with cost segregation and bonus depreciation to offset W-2 income
+15. Buy-borrow-die — leveraging appreciated assets with portfolio loans instead of selling
+16. Mega backdoor Roth — after-tax 401(k) contributions with in-plan Roth conversion
+17. Defined benefit plan — sheltering $100K-$300K/year for high-income self-employed
+18. Augusta Rule (Section 280A) — renting home to business for 14 days tax-free
+19. Hiring family members in a legitimate business
+20. Asset location — placing tax-inefficient investments in tax-advantaged accounts
+21. Section 179 heavy equipment — buying equipment (excavators, trucks, etc.) and deducting the full cost year-one, then renting it out for income
+22. HSA triple tax advantage — maximize contributions, invest the balance in index funds, use for medical in retirement
+23. 529 plan contributions — state income tax deductions, superfunding (5-year gift election), grandparent strategies
+24. Filing status optimization — MFJ vs MFS analysis, especially for dual-income couples with student loans on IDR
+25. Opportunity Zones — defer and reduce capital gains through Qualified Opportunity Fund investment (180-day window from realization)
+26. 1031 Like-Kind Exchange — defer capital gains on investment property sales by reinvesting in replacement property
+27. Estate and gift planning — annual gift exclusion ($19K/person), irrevocable trusts, generation-skipping strategies
+28. NIIT avoidance strategies — material participation, real estate professional status, passive activity grouping election
+29. Equity compensation planning — RSU withholding gap analysis, ISO AMT crossover, ESPP qualifying disposition timing
 
 Return ONLY the JSON array, no other text. Generate 8-15 strategies."""
 
 
-async def _build_tax_household_context(session: AsyncSession) -> str:
-    """Build dynamic household context for tax analysis prompt from DB."""
+async def _build_tax_household_context(session: AsyncSession) -> tuple[str, PIISanitizer]:
+    """Build sanitized household context for tax analysis — names/employers anonymized.
+
+    Returns (context_string, sanitizer) so entity names in the snapshot can also be sanitized.
+    """
     lines: list[str] = []
 
     result = await session.execute(
@@ -216,40 +243,74 @@ async def _build_tax_household_context(session: AsyncSession) -> str:
     )
     household = result.scalar_one_or_none()
 
+    entity_result = await session.execute(select(BusinessEntity))
+    entities = entity_result.scalars().all()
+
+    # Build sanitizer with all known PII
+    sanitizer = PIISanitizer()
+    sanitizer.register_household(household, entities)
+
     if household:
         filing = (household.filing_status or "mfj").upper()
         lines.append(f"- Filing status: {filing}")
-        if household.spouse_a_name and household.spouse_a_employer:
-            state = f", multi-state" if household.spouse_a_work_state else ""
-            lines.append(f"- {household.spouse_a_name}: W-2 employee at {household.spouse_a_employer}{state}")
-        elif household.spouse_a_name:
-            lines.append(f"- Primary earner: {household.spouse_a_name}")
-        if household.spouse_b_name and household.spouse_b_employer:
-            lines.append(f"- {household.spouse_b_name}: income from {household.spouse_b_employer}")
-        elif household.spouse_b_name:
-            lines.append(f"- Spouse/partner: {household.spouse_b_name}")
+        if household.spouse_a_income:
+            state = f", multi-state" if getattr(household, "spouse_a_work_state", None) else ""
+            lines.append(f"- Primary Earner: W-2 employee at Employer A{state}")
+        if household.spouse_b_income:
+            lines.append(f"- Secondary Earner: income from Employer B")
 
-    entity_result = await session.execute(
-        select(BusinessEntity)
-    )
-    entities = entity_result.scalars().all()
-    active = [e for e in entities if e.is_active and not e.is_provisional]
-    provisional = [e for e in entities if e.is_provisional]
-    inactive = [e for e in entities if not e.is_active and not e.is_provisional]
+    active = [e for e in entities if e.is_active and not getattr(e, "is_provisional", False)]
+    provisional = [e for e in entities if getattr(e, "is_provisional", False)]
+    inactive = [e for e in entities if not e.is_active and not getattr(e, "is_provisional", False)]
 
     if active:
         for e in active:
-            owner_part = f" (owner: {e.owner})" if e.owner else ""
-            lines.append(f"- Active business: {e.name} ({e.entity_type}, {e.tax_treatment}){owner_part}")
+            owner_part = f" (owner: {sanitizer.sanitize_text(e.owner)})" if e.owner else ""
+            lines.append(f"- Active business: {sanitizer.sanitize_text(e.name)} ({e.entity_type}, {e.tax_treatment}){owner_part}")
     if provisional:
         for e in provisional:
-            owner_part = f" (owner: {e.owner})" if e.owner else ""
-            lines.append(f"- Provisional entity: {e.name} ({e.entity_type}, {e.tax_treatment}){owner_part}")
+            owner_part = f" (owner: {sanitizer.sanitize_text(e.owner)})" if e.owner else ""
+            lines.append(f"- Provisional entity: {sanitizer.sanitize_text(e.name)} ({e.entity_type}, {e.tax_treatment}){owner_part}")
     if inactive:
         for e in inactive:
-            lines.append(f"- Inactive/defunct entity: {e.name} ({e.entity_type})")
+            lines.append(f"- Inactive/defunct entity: {sanitizer.sanitize_text(e.name)} ({e.entity_type})")
 
-    return "\n".join(lines) if lines else "- No household profile configured"
+    # Include benefit package info (HSA eligibility, 401k)
+    if household:
+        try:
+            benefit_result = await session.execute(
+                select(BenefitPackage).where(BenefitPackage.household_profile_id == household.id)
+            )
+            benefits = benefit_result.scalars().all()
+            for b in benefits:
+                benefit_parts = []
+                if getattr(b, "has_hsa", False):
+                    hsa_contrib = getattr(b, "annual_hsa_contribution", 0) or 0
+                    benefit_parts.append(f"HSA eligible (contributing ${hsa_contrib:,.0f})")
+                k401_contrib = getattr(b, "annual_401k_contribution", 0) or 0
+                if k401_contrib > 0:
+                    benefit_parts.append(f"401(k) contributing ${k401_contrib:,.0f}")
+                if getattr(b, "has_after_tax_401k", False):
+                    benefit_parts.append("after-tax 401(k) available")
+                if benefit_parts:
+                    lines.append(f"- Benefits: {', '.join(benefit_parts)}")
+        except Exception:
+            pass
+
+    # Include tax strategy interview answers if available
+    if household and getattr(household, "tax_strategy_profile_json", None):
+        try:
+            import json as _json
+            interview = _json.loads(household.tax_strategy_profile_json)
+            lines.append("\nTax Strategy Interview Responses:")
+            for key, val in interview.items():
+                label = key.replace("_", " ").title()
+                lines.append(f"- {label}: {val}")
+        except Exception:
+            pass
+
+    context = "\n".join(lines) if lines else "- No household profile configured"
+    return context, sanitizer
 
 
 async def run_tax_analysis(
@@ -266,10 +327,14 @@ async def run_tax_analysis(
 
     logger.info(f"Building financial snapshot for {year}...")
     snapshot = await _build_financial_snapshot(session, year)
-    household_context = await _build_tax_household_context(session)
+    household_context, sanitizer = await _build_tax_household_context(session)
+
+    # Sanitize entity names in the snapshot before sending to Claude
+    sanitized_snapshot = sanitizer.sanitize_dict(snapshot) if sanitizer.has_mappings else snapshot
+    log_ai_privacy_audit("tax_analysis", ["income", "expenses", "entities", "tax_items"], sanitized=True)
 
     logger.info(f"Requesting tax strategy analysis from Claude ({CLAUDE_MODEL})...")
-    prompt = _build_strategy_prompt(snapshot, household_context=household_context)
+    prompt = _build_strategy_prompt(sanitized_snapshot, household_context=household_context)
 
     response = call_claude_with_retry(
         client,
@@ -285,5 +350,12 @@ async def run_tax_analysis(
 
     # Store in DB (replace existing non-dismissed)
     await replace_tax_strategies(session, year, strategies)
+
+    # Audit log
+    try:
+        from pipeline.security.audit import log_audit
+        await log_audit(session, "ai_tax_analysis", "tax_strategies", f"year={year},strategies={len(strategies)}")
+    except Exception:
+        pass
 
     return strategies

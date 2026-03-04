@@ -9,6 +9,7 @@ import { getMonthlyReport, getPeriods } from "@/lib/api";
 import { formatCurrency, monthName, safeJsonParse } from "@/lib/utils";
 import type { FinancialPeriod, MonthlyReport } from "@/types/api";
 import StatCard from "@/components/ui/StatCard";
+import { getErrorMessage } from "@/lib/errors";
 
 const currentYear = new Date().getFullYear();
 const currentMonth = new Date().getMonth() + 1;
@@ -32,7 +33,7 @@ export default function StatementsPage() {
     setError(null);
     getPeriods(year, segment)
       .then(setPeriods)
-      .catch((e: any) => { setError(e.message); setPeriods([]); })
+      .catch((e: unknown) => { setError(getErrorMessage(e)); setPeriods([]); })
       .finally(() => setLoading(false));
   }, [year, segment]);
 
@@ -40,7 +41,7 @@ export default function StatementsPage() {
     if (month) {
       getMonthlyReport(year, month)
         .then(setMonthly)
-        .catch((e: any) => { setError(e.message); setMonthly(null); });
+        .catch((e: unknown) => { setError(getErrorMessage(e)); setMonthly(null); });
     } else {
       setMonthly(null);
     }

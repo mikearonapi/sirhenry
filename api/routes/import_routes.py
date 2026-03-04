@@ -64,6 +64,7 @@ async def upload_and_import(
     segment: Literal["personal", "business", "investment", "reimbursable"] = Form("personal"),
     tax_year: Optional[int] = Form(None),
     run_categorize: bool = Form(True),
+    account_id: Optional[int] = Form(None, description="Import into existing account (skip account creation)"),
     session: AsyncSession = Depends(get_session),
 ):
     """
@@ -74,9 +75,9 @@ async def upload_and_import(
         raise HTTPException(status_code=400, detail="No filename provided.")
 
     suffix = Path(file.filename).suffix.lower()
-    allowed = {".csv", ".pdf"}
+    allowed = {".csv", ".pdf", ".jpg", ".jpeg", ".png"}
     if suffix not in allowed:
-        raise HTTPException(status_code=400, detail=f"File type {suffix} not supported. Use .csv or .pdf")
+        raise HTTPException(status_code=400, detail=f"File type {suffix} not supported. Use .csv, .pdf, .jpg, or .png")
 
     dest_dir = IMPORT_DIRS.get(document_type)
     if not dest_dir:
@@ -105,10 +106,15 @@ async def upload_and_import(
             account_name=account_name or file.filename,
             institution=institution,
             default_segment=segment,
+            account_id=account_id,
         )
     elif document_type == "tax_document":
-        from pipeline.importers.tax_doc import import_pdf_file
-        result = await import_pdf_file(session, str(dest_path), tax_year=tax_year)
+        if suffix in (".jpg", ".jpeg", ".png"):
+            from pipeline.importers.tax_doc import import_image_file
+            result = await import_image_file(session, str(dest_path), tax_year=tax_year)
+        else:
+            from pipeline.importers.tax_doc import import_pdf_file
+            result = await import_pdf_file(session, str(dest_path), tax_year=tax_year)
     elif document_type == "investment":
         from pipeline.importers.investment import import_investment_file
         result = await import_investment_file(
@@ -144,6 +150,33 @@ async def upload_and_import(
         transactions_skipped=result.get("transactions_skipped", 0),
         message=result.get("message", ""),
     )
+
+
+@router.post("/batch-tax-docs")
+async def batch_import_tax_docs(
+    background_tasks: BackgroundTasks,
+    tax_year: Optional[int] = None,
+    claude_fallback: bool = True,
+    session: AsyncSession = Depends(get_session),
+):
+    """Batch-import all PDFs from data/imports/tax-documents/."""
+    from pipeline.importers.tax_doc import import_directory
+    directory = str(IMPORT_DIRS["tax_document"])
+    results = await import_directory(
+        session, directory,
+        tax_year=tax_year,
+        claude_fallback=claude_fallback,
+    )
+    # Kick off background recompute
+    if any(r.get("status") == "completed" for r in results):
+        background_tasks.add_task(_run_post_import_background, tax_year)
+    return {
+        "total": len(results),
+        "completed": sum(1 for r in results if r.get("status") == "completed"),
+        "duplicate": sum(1 for r in results if r.get("status") == "duplicate"),
+        "error": sum(1 for r in results if r.get("status") == "error"),
+        "results": results,
+    }
 
 
 @router.post("/categorize", tags=["import"])

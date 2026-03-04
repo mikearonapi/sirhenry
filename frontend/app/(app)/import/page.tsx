@@ -31,8 +31,8 @@ const DOC_TYPE_OPTIONS: { value: DocumentType; label: string; accept: string; hi
   {
     value: "tax_document",
     label: "Tax Document",
-    accept: ".pdf",
-    hint: "W-2, 1099-NEC, 1099-DIV, 1099-B, 1099-INT",
+    accept: ".pdf,.jpg,.jpeg,.png",
+    hint: "W-2, 1099-NEC, 1099-DIV, 1099-B, 1099-INT — PDFs or photos",
   },
   {
     value: "investment",

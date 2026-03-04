@@ -215,7 +215,8 @@ def extract_1099_int_fields(doc: PDFDocument) -> dict:
 def detect_form_type(doc: PDFDocument) -> str:
     """
     Heuristically detect form type from PDF text.
-    Returns one of: w2, 1099_nec, 1099_div, 1099_b, 1099_int, brokerage_statement, other
+    Returns one of: w2, 1099_nec, 1099_div, 1099_b, 1099_int, 1099_r, 1099_g,
+    1099_k, k1, 1098, schedule_h, brokerage_statement, other
     """
     text = doc.full_text.lower()
     if "wage and tax statement" in text or "w-2" in text:
@@ -228,6 +229,40 @@ def detect_form_type(doc: PDFDocument) -> str:
         return "1099_b"
     if "interest income" in text and "1099" in text:
         return "1099_int"
+    if "distributions from pensions" in text or "1099-r" in text:
+        return "1099_r"
+    if "certain government payments" in text or "1099-g" in text:
+        return "1099_g"
+    if any(k in text for k in ["payment card", "third party network", "1099-k"]):
+        return "1099_k"
+    if any(k in text for k in ["schedule k-1", "partner's share", "beneficiary's share"]):
+        return "k1"
+    if "mortgage interest statement" in text or "form 1098" in text:
+        return "1098"
+    if "household employment taxes" in text or "schedule h" in text:
+        return "schedule_h"
     if any(k in text for k in ["account summary", "portfolio", "trade confirmations", "realized gain"]):
         return "brokerage_statement"
     return "other"
+
+
+def is_text_sparse(doc: PDFDocument) -> bool:
+    """Return True if PDF text extraction yielded minimal text (likely scanned/image PDF)."""
+    return len(doc.full_text.strip()) < 100
+
+
+def extract_pdf_page_images(filepath: str, max_pages: int = 3, dpi: int = 200) -> list[bytes]:
+    """Render PDF pages as PNG images for vision-based extraction."""
+    import fitz  # pymupdf
+
+    images = []
+    doc = fitz.open(filepath)
+    zoom = dpi / 72
+    matrix = fitz.Matrix(zoom, zoom)
+    for i, page in enumerate(doc):
+        if i >= max_pages:
+            break
+        pix = page.get_pixmap(matrix=matrix)
+        images.append(pix.tobytes("png"))
+    doc.close()
+    return images

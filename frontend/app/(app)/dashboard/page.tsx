@@ -22,6 +22,7 @@ import ProgressBar from "@/components/ui/ProgressBar";
 import TrajectoryChart from "@/components/TrajectoryChart";
 import Link from "next/link";
 import { StatusCard, CashFlowWidget, ActionPlanWidget } from "@/components/dashboard";
+import SetupBanner from "@/components/setup/SetupBanner";
 
 const now = new Date();
 const CURRENT_YEAR = now.getFullYear();
@@ -163,6 +164,9 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* SETUP PROMPT */}
+      <SetupBanner />
 
       {/* STATUS */}
       <StatusCard effectiveSavingsRate={effectiveSavingsRate} effectiveNetWorth={effectiveNetWorth} targetSavingsRate={targetSavingsRate} />

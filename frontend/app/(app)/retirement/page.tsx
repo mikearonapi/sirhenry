@@ -3,15 +3,17 @@ import { useCallback, useEffect, useState } from "react";
 import {
   Calculator, Loader2, AlertCircle, TrendingUp, Target,
   DollarSign, Clock, Flame, Shield, ChevronDown, ChevronUp,
-  CheckCircle, XCircle, Save, Plus, Trash2, Zap, Calendar,
+  CheckCircle, XCircle, Save, Plus, Trash2, Zap, Calendar, BarChart3, MessageCircle,
 } from "lucide-react";
 import { formatCurrency, formatPercent } from "@/lib/utils";
 import { calculateRetirement, getRetirementProfiles, createRetirementProfile, getRetirementBudgetSnapshot } from "@/lib/api";
+import { request } from "@/lib/api-client";
 import { getManualAssets } from "@/lib/api-assets";
 import { getHouseholdProfiles, getHouseholdBenefits, getFamilyMembers } from "@/lib/api-household";
 import type { RetirementResults, RetirementProfile, DebtPayoff, BudgetSnapshot } from "@/types/api";
 import type { ManualAsset } from "@/types/portfolio";
 import type { HouseholdProfile, BenefitPackageType, FamilyMember } from "@/types/household";
+import { getErrorMessage } from "@/lib/errors";
 import Card from "@/components/ui/Card";
 import PageHeader from "@/components/ui/PageHeader";
 import {
@@ -91,6 +93,16 @@ export default function RetirementPage() {
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(true);
   const [budgetSnapshot, setBudgetSnapshot] = useState<BudgetSnapshot | null>(null);
+  const [monteCarloResult, setMonteCarloResult] = useState<{
+    success_rate: number;
+    num_simulations: number;
+    final_balance_p10: number;
+    final_balance_p25: number;
+    final_balance_p50: number;
+    final_balance_p75: number;
+    final_balance_p90: number;
+  } | null>(null);
+  const [mcLoading, setMcLoading] = useState(false);
   // Track whether defaults were seeded from real data so we don't overwrite a loaded profile
   const [contextSeeded, setContextSeeded] = useState(false);
 
@@ -268,9 +280,18 @@ export default function RetirementPage() {
         title="Retirement Calculator"
         subtitle="How much do you need? When can you retire? Are you on track?"
         actions={
-          <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 bg-[#16A34A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#15803D] shadow-sm disabled:opacity-60">
-            {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Save Profile
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent("ask-henry", { detail: { message: "Am I on track for retirement? What should I change about my savings strategy?" } }))}
+              className="flex items-center gap-1.5 text-xs text-[#16A34A] hover:text-[#15803D] transition-colors"
+            >
+              <MessageCircle size={14} />
+              Ask Sir Henry
+            </button>
+            <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 bg-[#16A34A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#15803D] shadow-sm disabled:opacity-60">
+              {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Save Profile
+            </button>
+          </div>
         }
       />
 
@@ -289,7 +310,7 @@ export default function RetirementPage() {
               {results.on_track ? <CheckCircle size={18} className="text-green-600" /> : <XCircle size={18} className="text-red-600" />}
               <p className="text-xs font-medium text-stone-600">Retirement Readiness</p>
             </div>
-            <p className={`text-3xl font-bold mt-2 ${results.on_track ? "text-green-700" : "text-red-700"}`}>
+            <p className={`text-3xl font-bold mt-2 font-mono tabular-nums ${results.on_track ? "text-green-700" : "text-red-700"}`}>
               {formatPercent(results.retirement_readiness_pct)}
             </p>
             <p className={`text-xs mt-1 ${results.on_track ? "text-green-600" : "text-red-600"}`}>
@@ -299,13 +320,13 @@ export default function RetirementPage() {
 
           <div className="bg-white rounded-xl border border-stone-100 p-5 shadow-sm">
             <div className="flex items-center gap-2"><Target size={18} className="text-blue-500" /><p className="text-xs font-medium text-stone-500">Target Nest Egg</p></div>
-            <p className="text-2xl font-bold text-stone-900 mt-2 tabular-nums">{formatCurrency(results.target_nest_egg, true)}</p>
+            <p className="text-2xl font-bold text-stone-900 mt-2 font-mono tabular-nums">{formatCurrency(results.target_nest_egg, true)}</p>
             <p className="text-xs text-stone-400 mt-1">Projected: {formatCurrency(results.projected_nest_egg, true)}</p>
           </div>
 
           <div className="bg-white rounded-xl border border-stone-100 p-5 shadow-sm">
             <div className="flex items-center gap-2"><Flame size={18} className="text-orange-500" /><p className="text-xs font-medium text-stone-500">FIRE Number</p></div>
-            <p className="text-2xl font-bold text-stone-900 mt-2 tabular-nums">{formatCurrency(results.fire_number, true)}</p>
+            <p className="text-2xl font-bold text-stone-900 mt-2 font-mono tabular-nums">{formatCurrency(results.fire_number, true)}</p>
             <p className="text-xs text-stone-400 mt-1">Coast FIRE: {formatCurrency(results.coast_fire_number, true)}</p>
           </div>
 
@@ -353,6 +374,87 @@ export default function RetirementPage() {
               <Area type="monotone" dataKey="balance" stroke="#16A34A" fill="url(#balGrad)" strokeWidth={2} />
             </AreaChart>
           </ResponsiveContainer>
+        </Card>
+      )}
+
+      {/* Monte Carlo Simulation */}
+      {results && (
+        <Card padding="lg">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <BarChart3 size={18} className="text-indigo-500" />
+              <h3 className="text-sm font-semibold text-stone-800">Monte Carlo Simulation</h3>
+            </div>
+            <button
+              onClick={async () => {
+                setMcLoading(true);
+                try {
+                  const mc = await request<typeof monteCarloResult>("/retirement/monte-carlo", {
+                    method: "POST",
+                    body: JSON.stringify(inputs),
+                  });
+                  setMonteCarloResult(mc);
+                } catch (e: unknown) {
+                  setError(getErrorMessage(e));
+                }
+                setMcLoading(false);
+              }}
+              disabled={mcLoading}
+              className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-60 shadow-sm"
+            >
+              {mcLoading ? <Loader2 size={13} className="animate-spin" /> : <BarChart3 size={13} />}
+              {mcLoading ? "Running 1,000 simulations..." : "Run Monte Carlo"}
+            </button>
+          </div>
+          <p className="text-xs text-stone-400 mb-4">
+            Runs 1,000 simulations varying annual returns and inflation to assess the probability your savings last through retirement.
+          </p>
+          {monteCarloResult && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <div className={`text-center px-6 py-4 rounded-xl ${
+                  monteCarloResult.success_rate >= 85 ? "bg-green-50 border border-green-200" :
+                  monteCarloResult.success_rate >= 60 ? "bg-yellow-50 border border-yellow-200" :
+                  "bg-red-50 border border-red-200"
+                }`}>
+                  <p className={`text-4xl font-bold font-mono tabular-nums ${
+                    monteCarloResult.success_rate >= 85 ? "text-green-700" :
+                    monteCarloResult.success_rate >= 60 ? "text-yellow-700" :
+                    "text-red-700"
+                  }`}>
+                    {monteCarloResult.success_rate}%
+                  </p>
+                  <p className="text-xs text-stone-500 mt-1">Success Rate</p>
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm text-stone-600">
+                    {monteCarloResult.success_rate >= 85
+                      ? "Your retirement plan has a strong probability of success. You're well-positioned."
+                      : monteCarloResult.success_rate >= 60
+                      ? "Your plan has a moderate chance of success. Consider increasing contributions or adjusting your target."
+                      : "Your plan has a significant risk of running short. Consider increasing savings or adjusting retirement age."}
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-5 gap-3">
+                {[
+                  { label: "P10 (pessimistic)", value: monteCarloResult.final_balance_p10 },
+                  { label: "P25", value: monteCarloResult.final_balance_p25 },
+                  { label: "P50 (median)", value: monteCarloResult.final_balance_p50 },
+                  { label: "P75", value: monteCarloResult.final_balance_p75 },
+                  { label: "P90 (optimistic)", value: monteCarloResult.final_balance_p90 },
+                ].map(({ label, value }) => (
+                  <div key={label} className="bg-stone-50 rounded-lg p-3 text-center">
+                    <p className="text-xs text-stone-400">{label}</p>
+                    <p className="text-sm font-bold font-mono tabular-nums mt-1">{formatCurrency(value, true)}</p>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-stone-400">
+                Based on {monteCarloResult.num_simulations.toLocaleString()} simulations. Final balance at age {inputs.life_expectancy}.
+              </p>
+            </div>
+          )}
         </Card>
       )}
 

@@ -6,17 +6,19 @@ import {
   Building2, RefreshCw, Loader2, CheckCircle, AlertCircle, Plus, X,
 } from "lucide-react";
 import { usePlaidLink } from "react-plaid-link";
+import type { PlaidLinkOnSuccessMetadata, PlaidLinkError } from "react-plaid-link";
+import type { InvestmentSubtype, TaxTreatment, ContributionType } from "@/types/portfolio";
 import {
-  getAccounts, getPlaidItems, getPlaidAccounts,
+  getAccounts, getPlaidItems,
   syncPlaid, getPlaidLinkToken, exchangePlaidPublicToken,
   getManualAssets, createManualAsset, updateManualAsset, deleteManualAsset,
-  getPortfolioSummary, getEquityDashboard,
+  getEquityDashboard,
   getHouseholdProfiles, getLifeEvents, getInsurancePolicies, getBusinessEntities,
 } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
 import type {
-  Account, PlaidItem, PlaidAccount, ManualAsset, ManualAssetType,
-  PortfolioSummary, EquityDashboard,
+  Account, PlaidItem, ManualAsset, ManualAssetType,
+  EquityDashboard,
 } from "@/types/api";
 import PageHeader from "@/components/ui/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
@@ -52,7 +54,6 @@ function AccountsPageContent() {
   const [adminHealth, setAdminHealth] = useState<AdminHealthSection[]>([]);
   const [healthLoading, setHealthLoading] = useState(true);
   const [plaidItems, setPlaidItems] = useState<PlaidItem[]>([]);
-  const [plaidAccounts, setPlaidAccounts] = useState<PlaidAccount[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -62,7 +63,6 @@ function AccountsPageContent() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [manualAssets, setManualAssets] = useState<ManualAsset[]>([]);
-  const [portfolioSummary, setPortfolioSummary] = useState<PortfolioSummary | null>(null);
   const [equityDashboard, setEquityDashboard] = useState<EquityDashboard | null>(null);
   const [addFlowStep, setAddFlowStep] = useState<AddFlowStep | null>(null);
   const [editingAsset, setEditingAsset] = useState<ManualAsset | null>(null);
@@ -73,19 +73,15 @@ function AccountsPageContent() {
     setLoading(true);
     setError(null);
     try {
-      const [items, accts, manualAccts, assets, portfolio, equity] = await Promise.all([
+      const [items, allAccounts, assets, equity] = await Promise.all([
         getPlaidItems(),
-        getPlaidAccounts(),
         getAccounts(),
         getManualAssets(),
-        getPortfolioSummary().catch(() => null),
         getEquityDashboard().catch(() => null),
       ]);
       setPlaidItems(items);
-      setPlaidAccounts(accts);
-      setAccounts(manualAccts);
+      setAccounts(allAccounts);
       setManualAssets(assets);
-      setPortfolioSummary(portfolio);
       setEquityDashboard(equity);
     } catch (e: unknown) {
       setError(getErrorMessage(e));
@@ -114,7 +110,7 @@ function AccountsPageContent() {
           getInsurancePolicies(),
           getBusinessEntities(false),
         ]);
-        const healthOf = (label: string, href: string, action: string, r: PromiseSettledResult<any>) => {
+        const healthOf = (label: string, href: string, action: string, r: PromiseSettledResult<unknown>) => {
           const arr = r.status === "fulfilled" ? (r.value as unknown[]) : [];
           return { label, href, count: arr.length, status: (arr.length > 0 ? "complete" : "empty") as "complete" | "empty", action };
         };
@@ -150,7 +146,7 @@ function AccountsPageContent() {
     }
   }
 
-  const onPlaidSuccess = useCallback(async (publicToken: string, metadata: any) => {
+  const onPlaidSuccess = useCallback(async (publicToken: string, metadata: PlaidLinkOnSuccessMetadata) => {
     setConnectingPlaid(false);
     const institutionName = metadata?.institution?.name ?? "Unknown Institution";
     // Clear OAuth session storage in case the user completed via non-OAuth path
@@ -167,7 +163,7 @@ function AccountsPageContent() {
     }
   }, []);
 
-  const onPlaidExit = useCallback((err: any) => {
+  const onPlaidExit = useCallback((err: PlaidLinkError | null) => {
     setConnectingPlaid(false);
     setLinkToken(null);
     sessionStorage.removeItem(LINK_TOKEN_KEY);
@@ -242,12 +238,12 @@ function AccountsPageContent() {
 
       const investmentFields = assetForm.asset_type === "investment" ? {
         owner: assetForm.owner || null,
-        account_subtype: (assetForm.account_subtype || null) as any,
+        account_subtype: (assetForm.account_subtype || null) as InvestmentSubtype | null,
         custodian: assetForm.custodian || null,
         employer: assetForm.employer || null,
-        tax_treatment: (assetForm.tax_treatment || null) as any,
+        tax_treatment: (assetForm.tax_treatment || null) as TaxTreatment | null,
         is_retirement_account: assetForm.is_retirement_account,
-        contribution_type: (assetForm.contribution_type || null) as any,
+        contribution_type: (assetForm.contribution_type || null) as ContributionType | null,
         contribution_rate_pct: assetForm.contribution_rate_pct ? parseFloat(assetForm.contribution_rate_pct) : null,
         employee_contribution_ytd: assetForm.employee_contribution_ytd ? parseFloat(assetForm.employee_contribution_ytd) : null,
         employer_contribution_ytd: assetForm.employer_contribution_ytd ? parseFloat(assetForm.employer_contribution_ytd) : null,
@@ -316,34 +312,48 @@ function AccountsPageContent() {
     return g;
   }
 
-  plaidAccounts.forEach((acct) => {
-    const gk = plaidTypeToGroupKey(acct.type, acct.subtype);
-    const g = ensureGroup(gk);
-    const val = Math.abs(acct.current_balance ?? 0);
-    g.total += val;
-    g.items.push({
-      id: `plaid-${acct.id}`,
-      name: `${acct.name}${acct.mask ? ` (...${acct.mask})` : ""}`,
-      subtitle: acct.subtype ?? acct.type,
-      value: val,
-      detail: acct.last_updated ? new Date(acct.last_updated).toLocaleDateString() : undefined,
-    });
-  });
-
   accounts.forEach((acct) => {
+    // Determine group: Plaid-sourced accounts use plaid_type, others use subtype
     let gk: string;
-    if (acct.subtype === "credit_card") gk = "credit_cards";
-    else if (acct.subtype === "savings") gk = "savings";
-    else gk = "checking";
+    if (acct.data_source === "plaid" && acct.plaid_type) {
+      gk = plaidTypeToGroupKey(acct.plaid_type, acct.plaid_subtype ?? null);
+    } else if (acct.subtype === "credit_card") {
+      gk = "credit_cards";
+    } else if (acct.subtype === "savings") {
+      gk = "savings";
+    } else if (acct.subtype === "brokerage" || acct.account_type === "investment") {
+      gk = "investments";
+    } else {
+      gk = "checking";
+    }
     const g = ensureGroup(gk);
     const val = Math.abs(acct.balance ?? 0);
     g.total += val;
+
+    // Build display info based on data source
+    const sourceBadge = acct.data_source === "plaid" ? "Plaid" : acct.data_source === "csv" ? "CSV" : acct.data_source === "monarch" ? "Monarch" : "";
+    const mask = acct.plaid_mask ?? acct.last_four;
+    const displayName = `${acct.name}${mask ? ` (...${mask})` : ""}`;
+    const subtitleParts: string[] = [];
+    if (acct.plaid_subtype ?? acct.subtype) subtitleParts.push(acct.plaid_subtype ?? acct.subtype ?? "");
+    if (acct.institution) subtitleParts.push(acct.institution);
+    if (sourceBadge) subtitleParts.push(sourceBadge);
+
+    let detail: string | undefined;
+    if (acct.data_source === "plaid" && acct.plaid_last_synced) {
+      detail = `Synced ${new Date(acct.plaid_last_synced).toLocaleDateString()}`;
+    }
+    if (acct.transaction_count && acct.transaction_count > 0) {
+      const txnLabel = `${acct.transaction_count} txns`;
+      detail = detail ? `${detail} · ${txnLabel}` : txnLabel;
+    }
+
     g.items.push({
-      id: `csv-${acct.id}`,
-      name: acct.name,
-      subtitle: `${acct.subtype ?? acct.account_type}${acct.institution ? ` · ${acct.institution}` : ""}`,
+      id: `account-${acct.id}`,
+      name: displayName,
+      subtitle: subtitleParts.join(" · ") || acct.account_type,
       value: val,
-      detail: `${acct.transaction_count ?? 0} txns`,
+      detail,
     });
   });
 
@@ -385,26 +395,6 @@ function AccountsPageContent() {
     });
   });
 
-  const portfolioTotal = portfolioSummary?.total_value ?? 0;
-  if (portfolioTotal > 0 && portfolioSummary) {
-    const g = ensureGroup("investments");
-    g.total += portfolioTotal;
-    const parts: string[] = [];
-    if (portfolioSummary.stock_value > 0) parts.push(`Stocks ${formatCurrency(portfolioSummary.stock_value)}`);
-    if (portfolioSummary.etf_value > 0) parts.push(`ETFs ${formatCurrency(portfolioSummary.etf_value)}`);
-    if (portfolioSummary.crypto_value > 0) parts.push(`Crypto ${formatCurrency(portfolioSummary.crypto_value)}`);
-    if (portfolioSummary.other_value > 0) parts.push(`Other ${formatCurrency(portfolioSummary.other_value)}`);
-    g.items.push({
-      id: "portfolio-total",
-      name: "Portfolio Holdings",
-      subtitle: parts.join(" · ") || `${portfolioSummary.holdings_count} holdings`,
-      value: portfolioTotal,
-      detail: portfolioSummary.total_gain_loss !== 0
-        ? `${portfolioSummary.total_gain_loss >= 0 ? "+" : ""}${formatCurrency(portfolioSummary.total_gain_loss)} (${portfolioSummary.total_gain_loss_pct >= 0 ? "+" : ""}${portfolioSummary.total_gain_loss_pct.toFixed(1)}%)`
-        : undefined,
-    });
-  }
-
   const equityTotal = equityDashboard?.total_equity_value ?? 0;
   if (equityTotal > 0 && equityDashboard && equityDashboard.grants.length > 0) {
     const g = ensureGroup("equity_comp");
@@ -431,14 +421,15 @@ function AccountsPageContent() {
   const totalLiabilities = unifiedGroups.filter((g) => g.isLiability).reduce((s, g) => s + g.total, 0);
   const netWorth = totalAssets - totalLiabilities;
 
-  const hasAnyAccounts = plaidItems.length > 0 || accounts.length > 0 || manualAssets.length > 0
-    || portfolioTotal > 0 || equityTotal > 0;
+  const plaidAccountCount = accounts.filter((a) => a.data_source === "plaid").length;
+  const hasAnyAccounts = accounts.length > 0 || manualAssets.length > 0
+    || equityTotal > 0;
 
-  const investCountForTracker = plaidAccounts.filter((a) => a.type === "investment").length
-    + manualAssets.filter((a) => ["investment_account", "brokerage", "ira", "401k"].includes(a.asset_type)).length
-    + (portfolioTotal > 0 ? 1 : 0) + (equityTotal > 0 ? 1 : 0);
+  const investCountForTracker = accounts.filter((a) => a.account_type === "investment").length
+    + manualAssets.filter((a) => a.asset_type === "investment").length
+    + (equityTotal > 0 ? 1 : 0);
   const completenessSteps: CompletenessStep[] = [
-    { label: "Bank Accounts", count: plaidItems.length + accounts.filter((a) => a.account_type === "personal").length, action: "Connect via Plaid or add manually" },
+    { label: "Bank Accounts", count: accounts.filter((a) => a.account_type === "personal").length, action: "Connect via Plaid or add manually" },
     { label: "Investments", count: investCountForTracker, action: "Link brokerage, 401k, or IRA" },
     { label: "Real Estate", count: manualAssets.filter((a) => a.asset_type === "real_estate").length, action: "Add your home or property value" },
     { label: "Liabilities", count: manualAssets.filter((a) => a.is_liability).length, action: "Add mortgage, auto loans, credit cards" },
@@ -473,7 +464,7 @@ function AccountsPageContent() {
       {!healthLoading && adminHealth.length > 0 && (
         <AdminHealthBar
           adminHealth={adminHealth}
-          accountsCount={plaidItems.length + accounts.length + manualAssets.length}
+          accountsCount={accounts.length + manualAssets.length}
         />
       )}
 

@@ -3,17 +3,23 @@ import { useEffect, useState } from "react";
 import {
   Briefcase, Plus, TrendingUp, AlertTriangle, PieChart, DollarSign,
   Calendar, ChevronDown, ChevronUp, Trash2, Calculator, ArrowRightLeft,
-  LogOut, ShoppingCart, Loader2, X,
+  LogOut, ShoppingCart, Loader2, X, RefreshCw, MessageCircle,
 } from "lucide-react";
+import { formatCurrency, formatPercent } from "@/lib/utils";
 import {
   getEquityGrants, createEquityGrant, deleteEquityGrant, getEquityDashboard,
   calcWithholdingGap, calcSellStrategy, calcAMTCrossover, calcConcentrationRisk,
 } from "@/lib/api";
+import { getHouseholdProfiles } from "@/lib/api-household";
 import type {
   EquityGrant, EquityDashboard, WithholdingGapResult,
   SellStrategyResult, AMTCrossoverResult, ConcentrationRiskResult,
 } from "@/types/api";
 import { getErrorMessage } from "@/lib/errors";
+import { request } from "@/lib/api-client";
+import EmptyState from "@/components/ui/EmptyState";
+import ESPPAnalysis from "@/components/equity-comp/ESPPAnalysis";
+import VestingCalendar from "@/components/equity-comp/VestingCalendar";
 
 const GRANT_TYPE_COLORS: Record<string, string> = {
   rsu: "bg-blue-100 text-blue-800",
@@ -30,7 +36,7 @@ const RISK_COLORS: Record<string, string> = {
   critical: "text-red-700",
 };
 
-type AnalysisTab = "withholding" | "sell" | "amt" | "leave" | "espp";
+type AnalysisTab = "withholding" | "sell" | "amt" | "leave" | "espp" | "vesting";
 
 export default function EquityCompPage() {
   const [dashboard, setDashboard] = useState<EquityDashboard | null>(null);
@@ -46,6 +52,7 @@ export default function EquityCompPage() {
   const [amtResult, setAmtResult] = useState<AMTCrossoverResult | null>(null);
   const [concentrationResult, setConcentrationResult] = useState<ConcentrationRiskResult | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Add form state
@@ -69,6 +76,19 @@ export default function EquityCompPage() {
       const [d, g] = await Promise.all([getEquityDashboard(), getEquityGrants()]);
       setDashboard(d);
       setGrants(g);
+      // Seed analysis form defaults from household data
+      try {
+        const profiles = await getHouseholdProfiles();
+        const primary = profiles.find((p) => p.is_primary) ?? profiles[0];
+        if (primary) {
+          const income = primary.combined_income ?? 200000;
+          const filing = primary.filing_status ?? "mfj";
+          const state = primary.state ?? "CA";
+          setGapForm((f) => ({ ...f, other_income: income, filing_status: filing, state }));
+          setSellForm((f) => ({ ...f, other_income: income }));
+          setAmtForm((f) => ({ ...f, other_income: income }));
+        }
+      } catch { /* non-fatal */ }
     } catch (e: unknown) { setError(getErrorMessage(e)); }
     setLoading(false);
   }
@@ -139,8 +159,8 @@ export default function EquityCompPage() {
 
   useEffect(() => { if (dashboard && !concentrationResult) runConcentration(); }, [dashboard]);
 
-  const fmt = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
-  const pct = (n: number) => `${(n * 100).toFixed(1)}%`;
+  const fmt = (n: number) => formatCurrency(n);
+  const pct = (n: number) => formatPercent(n * 100);
 
   if (loading) return <div className="flex items-center justify-center h-96"><Loader2 className="animate-spin text-stone-400" size={32} /></div>;
 
@@ -158,9 +178,33 @@ export default function EquityCompPage() {
           <h1 className="text-2xl font-bold text-stone-900">Equity Compensation</h1>
           <p className="text-stone-500 text-sm mt-1">Track grants, model tax impact, and optimize your equity strategy</p>
         </div>
-        <button onClick={() => setShowAddForm(true)} className="flex items-center gap-2 px-4 py-2 bg-[#16A34A] text-white rounded-lg hover:bg-[#d04a22] text-sm font-medium">
-          <Plus size={16} /> Add Grant
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent("ask-henry", { detail: { message: "Help me plan my equity compensation strategy. What should I know about RSU/ISO taxes?" } }))}
+            className="flex items-center gap-1.5 text-xs text-[#16A34A] hover:text-[#15803D] transition-colors"
+          >
+            <MessageCircle size={14} />
+            Ask Sir Henry
+          </button>
+          <button
+            onClick={async () => {
+              setRefreshing(true);
+              try {
+                await request("/equity-comp/refresh-prices", { method: "POST" });
+                await loadData();
+              } catch (e: unknown) { setError(getErrorMessage(e)); }
+              setRefreshing(false);
+            }}
+            disabled={refreshing}
+            className="flex items-center gap-2 border border-stone-200 text-stone-700 px-3 py-2 rounded-lg text-sm font-medium hover:bg-stone-50 disabled:opacity-50"
+          >
+            <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
+            {refreshing ? "Refreshing..." : "Refresh Prices"}
+          </button>
+          <button onClick={() => setShowAddForm(true)} className="flex items-center gap-2 px-4 py-2 bg-[#16A34A] text-white rounded-lg hover:bg-[#15803D] text-sm font-medium">
+            <Plus size={16} /> Add Grant
+          </button>
+        </div>
       </div>
 
       {/* Dashboard Stats */}
@@ -169,13 +213,13 @@ export default function EquityCompPage() {
           <div className="bg-white rounded-xl border border-stone-200 p-5">
             <div className="flex items-center gap-3 mb-2">
               <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center"><DollarSign size={20} className="text-blue-600" /></div>
-              <div><p className="text-xs text-stone-500">Total Equity Value</p><p className="text-xl font-bold text-stone-900">{fmt(dashboard.total_equity_value)}</p></div>
+              <div><p className="text-xs text-stone-500">Total Equity Value</p><p className="text-xl font-bold text-stone-900 font-mono tabular-nums">{fmt(dashboard.total_equity_value)}</p></div>
             </div>
           </div>
           <div className="bg-white rounded-xl border border-stone-200 p-5">
             <div className="flex items-center gap-3 mb-2">
               <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center"><Calendar size={20} className="text-green-600" /></div>
-              <div><p className="text-xs text-stone-500">Upcoming Vests (12mo)</p><p className="text-xl font-bold text-stone-900">{fmt(dashboard.upcoming_vest_value_12mo)}</p></div>
+              <div><p className="text-xs text-stone-500">Upcoming Vests (12mo)</p><p className="text-xl font-bold text-stone-900 font-mono tabular-nums">{fmt(dashboard.upcoming_vest_value_12mo)}</p></div>
             </div>
           </div>
           <div className="bg-white rounded-xl border border-stone-200 p-5">
@@ -191,7 +235,7 @@ export default function EquityCompPage() {
               <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center"><PieChart size={20} className="text-purple-600" /></div>
               <div>
                 <p className="text-xs text-stone-500">Concentration Risk</p>
-                <p className={`text-xl font-bold ${concentrationResult ? RISK_COLORS[concentrationResult.risk_level] : "text-stone-900"}`}>
+                <p className={`text-xl font-bold font-mono tabular-nums ${concentrationResult ? RISK_COLORS[concentrationResult.risk_level] : "text-stone-900"}`}>
                   {concentrationResult ? `${concentrationResult.concentration_pct.toFixed(0)}%` : "—"}
                 </p>
               </div>
@@ -239,7 +283,7 @@ export default function EquityCompPage() {
               <input className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm" placeholder="e.g. ACN" value={form.ticker} onChange={e => setForm({ ...form, ticker: e.target.value })} />
             </div>
           </div>
-          <button onClick={handleAddGrant} className="mt-4 px-6 py-2 bg-[#16A34A] text-white rounded-lg text-sm font-medium hover:bg-[#d04a22]">Save Grant</button>
+          <button onClick={handleAddGrant} className="mt-4 px-6 py-2 bg-[#16A34A] text-white rounded-lg text-sm font-medium hover:bg-[#15803D]">Save Grant</button>
         </div>
       )}
 
@@ -247,7 +291,20 @@ export default function EquityCompPage() {
       <div className="bg-white rounded-xl border border-stone-200">
         <div className="px-5 py-4 border-b border-stone-100"><h2 className="font-semibold text-stone-900">Your Grants</h2></div>
         {grants.length === 0 ? (
-          <div className="p-8 text-center text-stone-400">No equity grants yet. Add your first grant above.</div>
+          <div className="p-8">
+            <EmptyState
+              icon={<Briefcase size={36} />}
+              title="Track your equity compensation"
+              description="RSUs, ISOs, NSOs, ESPP — most HENRYs leave money on the table with equity comp. Model tax impact, avoid underwithholding, and time your sales."
+              henryTip="At $200K+ income, your RSU vests are withheld at 22% but your marginal rate is likely 32-37%. That gap adds up fast — I can help you plan for it."
+              askHenryPrompt="I just got a stock grant from my employer. What should I know about the tax implications?"
+              action={
+                <button onClick={() => setShowAddForm(true)} className="bg-[#16A34A] text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-[#15803D] shadow-sm">
+                  Add Your First Grant
+                </button>
+              }
+            />
+          </div>
         ) : (
           <div className="divide-y divide-stone-100">
             {grants.map(g => (
@@ -266,7 +323,7 @@ export default function EquityCompPage() {
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="text-right">
-                      <p className="font-semibold text-stone-900">{g.current_fmv ? fmt(g.total_shares * g.current_fmv) : "—"}</p>
+                      <p className="font-semibold text-stone-900 font-mono tabular-nums">{g.current_fmv ? fmt(g.total_shares * g.current_fmv) : "—"}</p>
                       <p className="text-xs text-stone-400">{g.vested_shares.toLocaleString()} vested / {g.unvested_shares.toLocaleString()} unvested</p>
                     </div>
                     {expandedGrant === g.id ? <ChevronUp size={16} className="text-stone-400" /> : <ChevronDown size={16} className="text-stone-400" />}
@@ -295,6 +352,7 @@ export default function EquityCompPage() {
           <h2 className="font-semibold text-stone-900 mb-3">Analysis Tools</h2>
           <div className="flex gap-2 flex-wrap">
             {([
+              ["vesting", "Vesting Calendar", Calendar],
               ["withholding", "Underwithholding", AlertTriangle],
               ["sell", "Sell Strategy", ArrowRightLeft],
               ["amt", "AMT Calculator", Calculator],
@@ -333,15 +391,15 @@ export default function EquityCompPage() {
                   <input className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm" value={gapForm.state} onChange={e => setGapForm({ ...gapForm, state: e.target.value })} />
                 </div>
               </div>
-              <button onClick={runWithholdingGap} disabled={analyzing} className="px-4 py-2 bg-[#16A34A] text-white rounded-lg text-sm font-medium hover:bg-[#d04a22] disabled:opacity-50">
+              <button onClick={runWithholdingGap} disabled={analyzing} className="px-4 py-2 bg-[#16A34A] text-white rounded-lg text-sm font-medium hover:bg-[#15803D] disabled:opacity-50">
                 {analyzing ? "Calculating..." : "Calculate Gap"}
               </button>
               {gapResult && (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-stone-50 rounded-lg p-4">
-                  <div><p className="text-xs text-stone-500">Withheld at 22%</p><p className="font-semibold">{fmt(gapResult.total_withholding_at_supplemental)}</p></div>
-                  <div><p className="text-xs text-stone-500">Actual Tax Owed</p><p className="font-semibold">{fmt(gapResult.total_tax_at_marginal)}</p></div>
-                  <div><p className="text-xs text-stone-500">Marginal Rate</p><p className="font-semibold">{pct(gapResult.actual_marginal_rate)}</p></div>
-                  <div><p className="text-xs text-stone-500">Withholding Gap</p><p className={`font-bold text-lg ${gapResult.withholding_gap > 0 ? "text-red-600" : "text-green-600"}`}>{fmt(gapResult.withholding_gap)}</p></div>
+                  <div><p className="text-xs text-stone-500">Withheld at 22%</p><p className="font-semibold font-mono tabular-nums">{fmt(gapResult.total_withholding_at_supplemental)}</p></div>
+                  <div><p className="text-xs text-stone-500">Actual Tax Owed</p><p className="font-semibold font-mono tabular-nums">{fmt(gapResult.total_tax_at_marginal)}</p></div>
+                  <div><p className="text-xs text-stone-500">Marginal Rate</p><p className="font-semibold font-mono tabular-nums">{pct(gapResult.actual_marginal_rate)}</p></div>
+                  <div><p className="text-xs text-stone-500">Withholding Gap</p><p className={`font-bold text-lg font-mono tabular-nums ${gapResult.withholding_gap > 0 ? "text-red-600" : "text-green-600"}`}>{fmt(gapResult.withholding_gap)}</p></div>
                   {gapResult.quarterly_payments.length > 0 && (
                     <div className="col-span-2 md:col-span-4">
                       <p className="text-xs font-medium text-stone-600 mb-2">Recommended Quarterly Estimated Payments</p>
@@ -386,7 +444,7 @@ export default function EquityCompPage() {
                   <input type="number" className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm" value={sellForm.holding_period_months} onChange={e => setSellForm({ ...sellForm, holding_period_months: Number(e.target.value) })} />
                 </div>
               </div>
-              <button onClick={runSellStrategy} disabled={analyzing} className="px-4 py-2 bg-[#16A34A] text-white rounded-lg text-sm font-medium hover:bg-[#d04a22] disabled:opacity-50">
+              <button onClick={runSellStrategy} disabled={analyzing} className="px-4 py-2 bg-[#16A34A] text-white rounded-lg text-sm font-medium hover:bg-[#15803D] disabled:opacity-50">
                 {analyzing ? "Calculating..." : "Compare Strategies"}
               </button>
               {sellResult && (
@@ -394,17 +452,17 @@ export default function EquityCompPage() {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div className="bg-stone-50 rounded-lg p-4 border border-stone-200">
                       <p className="text-xs font-medium text-stone-500 mb-2">Sell Now</p>
-                      <p className="text-lg font-bold text-stone-900">{fmt(sellResult.immediate_sell.net_proceeds)}</p>
+                      <p className="text-lg font-bold text-stone-900 font-mono tabular-nums">{fmt(sellResult.immediate_sell.net_proceeds)}</p>
                       <p className="text-xs text-stone-500">Tax: {fmt(sellResult.immediate_sell.tax)} at {pct(sellResult.immediate_sell.tax_rate)}</p>
                     </div>
                     <div className="bg-stone-50 rounded-lg p-4 border border-stone-200">
                       <p className="text-xs font-medium text-stone-500 mb-2">Hold 1 Year (projected)</p>
-                      <p className="text-lg font-bold text-stone-900">{fmt(sellResult.hold_one_year.net_proceeds)}</p>
+                      <p className="text-lg font-bold text-stone-900 font-mono tabular-nums">{fmt(sellResult.hold_one_year.net_proceeds)}</p>
                       <p className="text-xs text-stone-500">Tax: {fmt(sellResult.hold_one_year.tax)} at {pct(sellResult.hold_one_year.tax_rate)}</p>
                     </div>
                     <div className="bg-stone-50 rounded-lg p-4 border border-stone-200">
                       <p className="text-xs font-medium text-stone-500 mb-2">Staged (50/50)</p>
-                      <p className="text-lg font-bold text-stone-900">{fmt(sellResult.staged_sell.net_proceeds)}</p>
+                      <p className="text-lg font-bold text-stone-900 font-mono tabular-nums">{fmt(sellResult.staged_sell.net_proceeds)}</p>
                       <p className="text-xs text-stone-500">Tax: {fmt(sellResult.staged_sell.total_tax)}</p>
                     </div>
                   </div>
@@ -436,15 +494,15 @@ export default function EquityCompPage() {
                   <input type="number" className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm" value={amtForm.other_income} onChange={e => setAmtForm({ ...amtForm, other_income: Number(e.target.value) })} />
                 </div>
               </div>
-              <button onClick={runAMT} disabled={analyzing} className="px-4 py-2 bg-[#16A34A] text-white rounded-lg text-sm font-medium hover:bg-[#d04a22] disabled:opacity-50">
+              <button onClick={runAMT} disabled={analyzing} className="px-4 py-2 bg-[#16A34A] text-white rounded-lg text-sm font-medium hover:bg-[#15803D] disabled:opacity-50">
                 {analyzing ? "Calculating..." : "Calculate AMT Crossover"}
               </button>
               {amtResult && (
                 <div className="bg-stone-50 rounded-lg p-4 space-y-3">
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    <div><p className="text-xs text-stone-500">Safe Exercise Shares</p><p className="text-xl font-bold text-green-600">{amtResult.safe_exercise_shares.toLocaleString()}</p></div>
-                    <div><p className="text-xs text-stone-500">AMT Trigger Point</p><p className="font-semibold">{fmt(amtResult.amt_trigger_point)}</p></div>
-                    <div><p className="text-xs text-stone-500">Bargain Element / Share</p><p className="font-semibold">{fmt(amtResult.iso_bargain_element)}</p></div>
+                    <div><p className="text-xs text-stone-500">Safe Exercise Shares</p><p className="text-xl font-bold text-green-600 font-mono tabular-nums">{amtResult.safe_exercise_shares.toLocaleString()}</p></div>
+                    <div><p className="text-xs text-stone-500">AMT Trigger Point</p><p className="font-semibold font-mono tabular-nums">{fmt(amtResult.amt_trigger_point)}</p></div>
+                    <div><p className="text-xs text-stone-500">Bargain Element / Share</p><p className="font-semibold font-mono tabular-nums">{fmt(amtResult.iso_bargain_element)}</p></div>
                   </div>
                   <div className="bg-blue-50 rounded-lg p-3 text-sm text-blue-800">{amtResult.recommendation}</div>
                 </div>
@@ -472,14 +530,15 @@ export default function EquityCompPage() {
             </div>
           )}
 
+          {/* Vesting Calendar Tab */}
+          {activeTab === "vesting" && <VestingCalendar />}
+
           {/* ESPP Tab */}
           {activeTab === "espp" && (
-            <div className="space-y-4">
-              <p className="text-sm text-stone-600">Compare qualifying vs disqualifying dispositions for ESPP shares to optimize your tax treatment.</p>
-              <div className="bg-stone-50 rounded-lg p-4 text-sm text-stone-600">
-                Add an ESPP grant above, then use this tool to model whether to hold for qualifying disposition treatment (2+ years from offering, 1+ year from purchase).
-              </div>
-            </div>
+            <ESPPAnalysis
+              defaultIncome={gapForm.other_income}
+              defaultFilingStatus={gapForm.filing_status}
+            />
           )}
         </div>
       </div>

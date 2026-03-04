@@ -47,11 +47,11 @@ export default function StatCard({
         <span className="text-xs font-medium text-stone-500 uppercase tracking-wider">{label}</span>
         {icon && <span className="text-stone-300">{icon}</span>}
       </div>
-      <div className={`${valueClasses[size]} font-bold text-stone-900 tracking-tight`}>{value}</div>
+      <div className={`${valueClasses[size]} font-bold text-stone-900 tracking-tight font-mono tabular-nums`}>{value}</div>
       {(sub || trendValue) && (
         <div className="flex items-center gap-1.5 mt-1.5">
-          {trend === "up" && <TrendingUp size={13} className="text-green-500" />}
-          {trend === "down" && <TrendingDown size={13} className="text-red-500" />}
+          {trend === "up" && <TrendingUp size={13} className="text-green-600" />}
+          {trend === "down" && <TrendingDown size={13} className="text-red-600" />}
           {trendValue && (
             <span
               className={`text-xs font-medium ${

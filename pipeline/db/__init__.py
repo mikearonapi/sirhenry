@@ -11,6 +11,7 @@ from .schema import (
     Transaction,
     VendorEntityRule,
     # Extended
+    AccountLink,
     AmazonOrder,
     Budget,
     Goal,
@@ -41,6 +42,9 @@ from .schema import (
     LifeEvent,
     InsurancePolicy,
     FamilyMember,
+    # Privacy & Audit
+    UserPrivacyConsent,
+    AuditLog,
     # DB init
     init_db,
     init_extended_db,
@@ -89,12 +93,22 @@ from .models import (
     create_reminder_record,
     get_recurring,
     get_net_worth_snapshots,
+    get_life_events,
+    get_life_event,
+    create_life_event,
+    update_life_event,
+    delete_life_event,
+    get_insurance_policies,
+    get_insurance_policy,
+    create_insurance_policy,
+    update_insurance_policy,
+    delete_insurance_policy,
 )
 
 __all__ = [
     "Account", "Base", "BusinessEntity", "Document", "FinancialPeriod",
     "OutlierFeedback", "TaxItem", "TaxStrategy", "Transaction", "VendorEntityRule",
-    "AmazonOrder", "Budget", "Goal", "ManualAsset", "NetWorthSnapshot",
+    "AccountLink", "AmazonOrder", "Budget", "Goal", "ManualAsset", "NetWorthSnapshot",
     "PlaidAccount", "PlaidItem", "RecurringTransaction", "Reminder",
     "InvestmentHolding", "MarketQuoteCache", "EconomicIndicatorCache",
     "RetirementProfile", "LifeScenario", "CryptoHolding", "PortfolioSnapshot",

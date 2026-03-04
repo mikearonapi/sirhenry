@@ -54,6 +54,8 @@ class Account(Base):
     default_business_entity_id = Column(Integer, ForeignKey("business_entities.id"), nullable=True)
 
     notes = Column(Text, nullable=True)
+    # plaid | csv | manual | api
+    data_source = Column(String(20), nullable=False, default="manual")
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -165,6 +167,8 @@ class Transaction(Base):
 
     notes = Column(Text, nullable=True)
     is_excluded = Column(Boolean, nullable=False, default=False)  # hide from reports
+    # plaid | csv | manual | monarch | amazon
+    data_source = Column(String(20), nullable=False, default="csv")
 
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -284,6 +288,43 @@ class TaxItem(Base):
     int_interest = Column(Float, nullable=True)          # Box 1
     int_federal_tax_withheld = Column(Float, nullable=True) # Box 4
 
+    # K-1 fields (Schedule K-1 — partnerships, S-corps, trusts)
+    k1_ordinary_income = Column(Float, nullable=True)       # Box 1 (ordinary business income/loss)
+    k1_rental_income = Column(Float, nullable=True)         # Box 2 (net rental real estate income/loss)
+    k1_other_rental_income = Column(Float, nullable=True)   # Box 3 (other net rental income/loss)
+    k1_guaranteed_payments = Column(Float, nullable=True)   # Box 4 (guaranteed payments)
+    k1_interest_income = Column(Float, nullable=True)       # Box 5 (interest income)
+    k1_dividends = Column(Float, nullable=True)             # Box 6a (ordinary dividends)
+    k1_qualified_dividends = Column(Float, nullable=True)   # Box 6b (qualified dividends)
+    k1_short_term_capital_gain = Column(Float, nullable=True) # Box 8 (net short-term capital gain/loss)
+    k1_long_term_capital_gain = Column(Float, nullable=True)  # Box 9a (net long-term capital gain/loss)
+    k1_section_179 = Column(Float, nullable=True)           # Box 12 (section 179 deduction)
+    k1_distributions = Column(Float, nullable=True)         # Box 19 (distributions)
+
+    # 1099-R fields (retirement distributions — pensions, IRAs, 401k)
+    r_gross_distribution = Column(Float, nullable=True)     # Box 1
+    r_taxable_amount = Column(Float, nullable=True)         # Box 2a
+    r_federal_tax_withheld = Column(Float, nullable=True)   # Box 4
+    r_distribution_code = Column(String(10), nullable=True) # Box 7 (e.g. "1", "7", "G")
+    r_state_tax_withheld = Column(Float, nullable=True)     # Box 12
+    r_state = Column(String(2), nullable=True)              # Box 13
+
+    # 1099-G fields (government payments — tax refunds, unemployment)
+    g_unemployment_compensation = Column(Float, nullable=True)  # Box 1
+    g_state_tax_refund = Column(Float, nullable=True)           # Box 2
+    g_federal_tax_withheld = Column(Float, nullable=True)       # Box 4
+    g_state = Column(String(2), nullable=True)                  # Box 10a
+
+    # 1099-K fields (payment platform — Stripe, PayPal, Square, Venmo)
+    k_gross_amount = Column(Float, nullable=True)           # Box 1a
+    k_federal_tax_withheld = Column(Float, nullable=True)   # Box 4
+    k_state = Column(String(2), nullable=True)              # Box 7
+
+    # 1098 fields (mortgage interest / property tax deductions)
+    m_mortgage_interest = Column(Float, nullable=True)      # Box 1
+    m_points_paid = Column(Float, nullable=True)            # Box 6
+    m_property_tax = Column(Float, nullable=True)           # Box 10
+
     # Raw JSON of all extracted fields (for future expansion)
     raw_fields = Column(Text, nullable=True)
 
@@ -313,6 +354,14 @@ class TaxStrategy(Base):
     deadline = Column(String(100), nullable=True)
     is_dismissed = Column(Boolean, nullable=False, default=False)
     generated_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    # Phase 2 — enhanced AI analysis fields
+    confidence = Column(Float, nullable=True)  # 0.0–1.0
+    confidence_reasoning = Column(Text, nullable=True)
+    category = Column(String(50), nullable=True)  # quick_win | this_year | big_move | long_term
+    complexity = Column(String(20), nullable=True)  # low | medium | high
+    prerequisites_json = Column(Text, nullable=True)  # JSON array of requirements
+    who_its_for = Column(Text, nullable=True)
+    related_simulator = Column(String(50), nullable=True)  # key linking to simulator tab
 
 
 class OutlierFeedback(Base):
@@ -395,6 +444,19 @@ async def init_db(engine: Optional[AsyncEngine] = None) -> AsyncEngine:
 # Extended schema (formerly schema_extended.py)
 # Budget, Recurring, Goals, Reminders, Plaid, Amazon, ManualAssets, NetWorth
 # ═══════════════════════════════════════════════════════════════════════════
+
+
+class AccountLink(Base):
+    """Links two Account records that represent the same real-world account
+    from different data sources (e.g., CSV import merged into Plaid account)."""
+    __tablename__ = "account_links"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    primary_account_id = Column(Integer, ForeignKey("accounts.id"), nullable=False)
+    secondary_account_id = Column(Integer, ForeignKey("accounts.id"), nullable=False)
+    # same_account | transferred_to
+    link_type = Column(String(20), nullable=False, default="same_account")
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
 
 class PlaidItem(Base):
@@ -577,6 +639,8 @@ class ManualAsset(Base):
     annual_return_pct = Column(Float, nullable=True)
     allocation_json = Column(Text, nullable=True)
     beneficiary = Column(String(255), nullable=True)
+    # Bridge to Account table (investment ManualAssets become proper Accounts)
+    linked_account_id = Column(Integer, ForeignKey("accounts.id"), nullable=True)
 
 
 class NetWorthSnapshot(Base):
@@ -969,6 +1033,7 @@ class HouseholdProfile(Base):
     beneficiaries_reviewed_date = Column(Date, nullable=True)
     is_primary = Column(Boolean, nullable=False, default=False)
     notes = Column(Text, nullable=True)
+    tax_strategy_profile_json = Column(Text, nullable=True)  # Interview answers for tax strategy
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -1156,6 +1221,42 @@ class BenchmarkSnapshot(Base):
 
     __table_args__ = (
         Index("ix_benchmark_date", "snapshot_date"),
+    )
+
+
+class UserPrivacyConsent(Base):
+    """Tracks user consent for AI features, Plaid sync, and telemetry."""
+    __tablename__ = "user_privacy_consent"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    consent_type = Column(String(50), nullable=False)  # ai_features | plaid_sync | telemetry
+    consented = Column(Boolean, nullable=False, default=False)
+    consent_version = Column(String(20), nullable=False, default="1.0")
+    consented_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("consent_type", name="uq_consent_type"),
+    )
+
+
+class AuditLog(Base):
+    """Structured audit trail for sensitive operations. NEVER stores PII in detail."""
+    __tablename__ = "audit_log"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    timestamp = Column(DateTime, nullable=False, default=datetime.utcnow)
+    action_type = Column(String(50), nullable=False)
+    # ai_chat | ai_categorize | ai_tax_analysis | data_import | plaid_sync | consent_change
+    data_category = Column(String(50), nullable=True)
+    # transactions | tax_documents | household | plaid | ai_prompt
+    detail = Column(String(500), nullable=True)  # NO PII — only counts, types, metadata
+    duration_ms = Column(Integer, nullable=True)
+
+    __table_args__ = (
+        Index("ix_audit_timestamp", "timestamp"),
+        Index("ix_audit_action", "action_type"),
     )
 
 

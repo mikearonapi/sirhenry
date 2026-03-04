@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Search,
   FileEdit,
@@ -11,6 +11,8 @@ import {
 import {
   SUGGESTION_CATEGORIES,
   SUGGESTION_CATEGORIES_DARK,
+  SETUP_SUGGESTION_CATEGORY,
+  SETUP_SUGGESTION_CATEGORY_DARK,
 } from "./constants";
 
 // ---------------------------------------------------------------------------
@@ -22,6 +24,19 @@ export interface ChatSuggestionsProps {
 }
 
 export default function ChatSuggestions({ onSend }: ChatSuggestionsProps) {
+  // Detect if user is on setup page — show setup-specific suggestions first
+  const isSetup = typeof window !== "undefined" && window.location.pathname.includes("/setup");
+
+  const categories = useMemo(() => {
+    if (isSetup) return [SETUP_SUGGESTION_CATEGORY, ...SUGGESTION_CATEGORIES];
+    return SUGGESTION_CATEGORIES;
+  }, [isSetup]);
+
+  const categoriesDark = useMemo(() => {
+    if (isSetup) return [SETUP_SUGGESTION_CATEGORY_DARK, ...SUGGESTION_CATEGORIES_DARK];
+    return SUGGESTION_CATEGORIES_DARK;
+  }, [isSetup]);
+
   const [activeCategory, setActiveCategory] = useState(0);
 
   return (
@@ -32,12 +47,15 @@ export default function ChatSuggestions({ onSend }: ChatSuggestionsProps) {
       </div>
       <h2 className="text-lg font-bold text-zinc-100 mb-1" style={{ fontFamily: "var(--font-display, sans-serif)" }}>Sir Henry</h2>
       <p className="text-sm text-zinc-500 text-center max-w-sm mb-6">
-        Your AI financial advisor. Ask anything about your finances — I know your full picture.
+        {isSetup
+          ? "Need help setting up? I can guide you through filing status, entity formation, insurance, and more."
+          : "Your AI financial advisor. Ask anything about your finances — I know your full picture."
+        }
       </p>
 
       {/* Quick actions grid */}
-      <div className="w-full max-w-md grid grid-cols-4 gap-2 mb-5">
-        {SUGGESTION_CATEGORIES_DARK.map((cat, i) => {
+      <div className={`w-full max-w-md grid gap-2 mb-5 ${categoriesDark.length > 4 ? "grid-cols-5" : "grid-cols-4"}`}>
+        {categoriesDark.map((cat, i) => {
           const Icon = cat.icon;
           return (
             <button
@@ -58,7 +76,7 @@ export default function ChatSuggestions({ onSend }: ChatSuggestionsProps) {
 
       {/* Suggestions for active category */}
       <div className="w-full max-w-md space-y-1.5">
-        {SUGGESTION_CATEGORIES[activeCategory].suggestions.map((s) => (
+        {categories[activeCategory]?.suggestions.map((s) => (
           <button
             key={s}
             onClick={() => onSend(s)}

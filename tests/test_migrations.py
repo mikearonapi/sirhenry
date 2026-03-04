@@ -38,6 +38,32 @@ async def session():
                 description TEXT
             )
         """))
+        await conn.execute(text("""
+            CREATE TABLE documents (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                document_type TEXT,
+                raw_text TEXT
+            )
+        """))
+        await conn.execute(text("""
+            CREATE TABLE tax_items (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                source_document_id INTEGER,
+                form_type TEXT
+            )
+        """))
+        await conn.execute(text("""
+            CREATE TABLE plaid_accounts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                account_id INTEGER
+            )
+        """))
+        await conn.execute(text("""
+            CREATE TABLE manual_assets (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT
+            )
+        """))
 
     async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     async with async_session() as sess:

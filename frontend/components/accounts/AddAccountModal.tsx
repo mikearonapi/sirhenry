@@ -197,7 +197,7 @@ export default function AddAccountModal({
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-stone-700 mb-1">
-                    {formConfig?.isLiability ? "Original Amount" : "Purchase Price"}
+                    {formConfig?.isLiability ? "Original Amount" : assetForm.asset_type === "investment" ? "Original Cost Basis" : "Purchase Price"}
                   </label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-sm">$</span>
@@ -207,10 +207,13 @@ export default function AddAccountModal({
                       step="0.01"
                       value={assetForm.purchase_price}
                       onChange={(e) => onSetAssetForm((f) => ({ ...f, purchase_price: e.target.value }))}
-                      placeholder="Optional"
+                      placeholder={assetForm.asset_type === "investment" ? "Total amount invested" : "Optional"}
                       className={DOLLAR_CLS}
                     />
                   </div>
+                  {assetForm.asset_type === "investment" && (
+                    <p className="text-xs text-stone-400 mt-1">Used to calculate total gain/loss on your portfolio</p>
+                  )}
                 </div>
               </div>
               {(assetForm.asset_type === "real_estate" || editingAsset?.asset_type === "real_estate") && (

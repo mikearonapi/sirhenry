@@ -185,6 +185,7 @@ def parse_credit_card_csv(
             "period_year": tx_date.year,
             "transaction_hash": tx_hash,
             "effective_segment": default_segment,
+            "data_source": "csv",
         })
 
     logger.info(f"Parsed {len(rows)} transactions, skipped {skipped} rows.")
@@ -415,6 +416,7 @@ def parse_investment_csv(
             "period_year": tx_date.year,
             "transaction_hash": tx_hash,
             "effective_segment": default_segment,
+            "data_source": "csv",
         })
 
     logger.info(f"Parsed {len(rows)} investment transactions, skipped {skipped} rows.")

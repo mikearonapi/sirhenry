@@ -5,6 +5,7 @@ years money will last, and confidence metrics.
 Uses deterministic projections with optional Monte Carlo simulation.
 """
 import logging
+import random
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -428,6 +429,118 @@ class RetirementCalculator:
                 break
 
         return projection
+
+    @staticmethod
+    def monte_carlo(
+        inputs: RetirementInputs,
+        num_simulations: int = 1000,
+        return_sigma: float = 15.0,
+        inflation_sigma: float = 1.5,
+        seed: int | None = 42,
+    ) -> dict:
+        """
+        Monte Carlo retirement simulation.
+
+        Runs `num_simulations` trials varying annual returns and inflation
+        around the configured mean. Returns success rate and percentile outcomes.
+
+        Args:
+            inputs: Standard retirement inputs (mean assumptions)
+            num_simulations: Number of simulation runs (default 1000)
+            return_sigma: Std dev of annual return in percentage points (default 15)
+            inflation_sigma: Std dev of annual inflation in percentage points (default 1.5)
+            seed: Random seed for reproducibility (None for non-deterministic)
+        """
+        if seed is not None:
+            random.seed(seed)
+
+        years_to_ret = max(0, inputs.retirement_age - inputs.current_age)
+        years_in_ret = max(0, inputs.life_expectancy - inputs.retirement_age)
+        total_years = years_to_ret + years_in_ret
+
+        debts = RetirementCalculator._parse_debt_payoffs(inputs.debt_payoffs)
+        base_expenses = RetirementCalculator._base_expenses(inputs, debts, inputs.retirement_age)
+
+        # Guaranteed income
+        ss_annual = inputs.expected_social_security_monthly * 12
+        pension_annual = inputs.pension_monthly * 12
+        other_annual = inputs.other_retirement_income_monthly * 12
+
+        # Track final balances
+        final_balances: list[float] = []
+        success_count = 0
+        percentile_series: dict[str, list[dict]] = {
+            "p10": [], "p25": [], "p50": [], "p75": [], "p90": [],
+        }
+        # Collect all simulation year-by-year for percentile extraction
+        all_runs: list[list[float]] = []
+
+        for _ in range(num_simulations):
+            balance = inputs.current_retirement_savings + inputs.current_other_investments
+            match_monthly = RetirementCalculator._compute_employer_match(
+                inputs.monthly_retirement_contribution, inputs.current_annual_income,
+                inputs.employer_match_pct, inputs.employer_match_limit_pct,
+            )
+            annual_contribution = (inputs.monthly_retirement_contribution + match_monthly) * 12
+            current_income = inputs.current_annual_income
+            yearly = []
+
+            for yr in range(total_years):
+                age = inputs.current_age + yr
+
+                # Randomize returns and inflation for this year
+                annual_return = random.gauss(inputs.pre_retirement_return_pct if yr < years_to_ret else inputs.post_retirement_return_pct, return_sigma) / 100
+                annual_inflation = max(0, random.gauss(inputs.inflation_rate_pct, inflation_sigma)) / 100
+
+                if yr < years_to_ret:
+                    # Accumulation phase
+                    balance = balance * (1 + annual_return) + annual_contribution
+                    current_income *= (1 + inputs.expected_income_growth_pct / 100)
+                    base_c = inputs.monthly_retirement_contribution * (1 + inputs.expected_income_growth_pct / 100) ** (yr + 1)
+                    m = RetirementCalculator._compute_employer_match(
+                        base_c, current_income, inputs.employer_match_pct, inputs.employer_match_limit_pct,
+                    )
+                    annual_contribution = (base_c + m) * 12
+                else:
+                    # Distribution phase
+                    inflation_factor = (1 + annual_inflation) ** yr
+                    needed = base_expenses * inflation_factor / (1 - inputs.tax_rate_in_retirement_pct / 100)
+                    guaranteed = 0.0
+                    if age >= inputs.social_security_start_age:
+                        guaranteed = (ss_annual + pension_annual + other_annual) * inflation_factor
+                    withdrawal = max(0, needed - guaranteed)
+                    balance = balance * (1 + annual_return) - withdrawal
+                    balance = max(0, balance)
+
+                yearly.append(round(balance, 0))
+
+            all_runs.append(yearly)
+            final_balances.append(balance)
+            if balance > 0:
+                success_count += 1
+
+        # Compute percentiles year-by-year
+        for yr_idx in range(total_years):
+            values = sorted(run[yr_idx] if yr_idx < len(run) else 0 for run in all_runs)
+            n = len(values)
+            age = inputs.current_age + yr_idx
+            for pct_key, pct_val in [("p10", 0.10), ("p25", 0.25), ("p50", 0.50), ("p75", 0.75), ("p90", 0.90)]:
+                idx = min(int(n * pct_val), n - 1)
+                percentile_series[pct_key].append({"age": age, "balance": values[idx]})
+
+        final_sorted = sorted(final_balances)
+        n = len(final_sorted)
+
+        return {
+            "success_rate": round(success_count / num_simulations * 100, 1),
+            "num_simulations": num_simulations,
+            "final_balance_p10": round(final_sorted[int(n * 0.10)], 0),
+            "final_balance_p25": round(final_sorted[int(n * 0.25)], 0),
+            "final_balance_p50": round(final_sorted[int(n * 0.50)], 0),
+            "final_balance_p75": round(final_sorted[int(n * 0.75)], 0),
+            "final_balance_p90": round(final_sorted[int(n * 0.90)], 0),
+            "percentile_series": percentile_series,
+        }
 
     @staticmethod
     def from_db_row(row) -> RetirementResults:

@@ -66,49 +66,102 @@ You are the household's dedicated AI financial advisor. You know their financial
 - Keep responses focused but thorough — aim for the detail level of a professional financial review"""
 
 
-async def _build_system_prompt(session: AsyncSession) -> str:
-    """Build the Sir Henry system prompt with dynamic household context from DB."""
+async def _build_system_prompt(session: AsyncSession) -> tuple[str, "PIISanitizer"]:
+    """Build the Sir Henry system prompt with dynamic household context from DB.
+
+    PII (names, employers, entity names) is replaced with generic labels
+    via PIISanitizer before the prompt is sent to Claude.
+
+    Returns (prompt_text, sanitizer) so the caller can desanitize Claude's response.
+    """
     from sqlalchemy import select as sa_select
-    from pipeline.db.schema import HouseholdProfile, BusinessEntity
+    from pipeline.db.schema import (
+        HouseholdProfile, BusinessEntity, Account, BenefitPackage, InsurancePolicy,
+    )
+    from pipeline.ai.privacy import (
+        PIISanitizer, build_sanitized_household_context, log_ai_privacy_audit,
+    )
 
-    lines: list[str] = []
-
+    # ---------- Load data ----------
     result = await session.execute(
         sa_select(HouseholdProfile).where(HouseholdProfile.is_primary == True).limit(1)
     )
     household = result.scalar_one_or_none()
 
-    if household:
-        filing = (household.filing_status or "unknown").upper()
-        lines.append(f"- Filing status: {filing}")
-        if household.spouse_a_name and household.spouse_a_employer:
-            lines.append(f"- {household.spouse_a_name}: W-2 income from {household.spouse_a_employer}")
-        elif household.spouse_a_name:
-            lines.append(f"- Primary earner: {household.spouse_a_name}")
-        if household.spouse_b_name and household.spouse_b_employer:
-            lines.append(f"- {household.spouse_b_name}: income from {household.spouse_b_employer}")
-        elif household.spouse_b_name:
-            lines.append(f"- Spouse/partner: {household.spouse_b_name}")
-
     entity_result = await session.execute(
         sa_select(BusinessEntity).where(BusinessEntity.is_active == True)
     )
     active_entities = entity_result.scalars().all()
+
+    # ---------- Build sanitizer ----------
+    sanitizer = PIISanitizer()
+    sanitizer.register_household(household, active_entities)
+
+    # ---------- Household context (sanitized) ----------
+    lines: list[str] = []
+    if household:
+        household_context = build_sanitized_household_context(household, sanitizer)
+        lines.extend(household_context.split("\n"))
+
+    # ---------- Business Entities (sanitized) ----------
     if active_entities:
         entity_lines = [
-            f"  - {e.name} ({e.entity_type}, {e.tax_treatment}"
-            + (f", owner: {e.owner}" if e.owner else "")
+            f"  - {sanitizer.sanitize_text(e.name)} ({e.entity_type}, {e.tax_treatment}"
+            + (f", owner: {sanitizer.sanitize_text(e.owner)}" if e.owner else ", owner: unassigned")
             + ")"
             for e in active_entities
         ]
         lines.append("- Active business entities:")
         lines.extend(entity_lines)
 
-    if lines:
-        household_section = "\n## Household Context\n" + "\n".join(lines)
-        return _SYSTEM_PROMPT_BASE + household_section
+    log_ai_privacy_audit("chat_system_prompt", ["household", "entities", "accounts"], sanitized=True)
 
-    return _SYSTEM_PROMPT_BASE
+    # ---------- Setup Status ----------
+    acct_result = await session.execute(
+        sa_select(func.count(Account.id)).where(Account.is_active == True)
+    )
+    account_count = acct_result.scalar() or 0
+
+    benefit_result = await session.execute(sa_select(func.count(BenefitPackage.id)))
+    benefit_count = benefit_result.scalar() or 0
+
+    policy_result = await session.execute(
+        sa_select(func.count(InsurancePolicy.id)).where(InsurancePolicy.is_active == True)
+    )
+    policy_count = policy_result.scalar() or 0
+
+    setup_lines: list[str] = []
+    setup_lines.append(f"- Household profile: {'COMPLETE' if household else 'NOT SET UP'}")
+    setup_lines.append(f"- Accounts connected: {account_count}")
+    setup_lines.append(f"- Benefits packages: {benefit_count}")
+    setup_lines.append(f"- Insurance policies: {policy_count}")
+    setup_lines.append(f"- Business entities: {len(active_entities)}")
+
+    # Flag gaps that affect features
+    gaps: list[str] = []
+    if not household:
+        gaps.append("- No household profile → Tax strategy, W-4 optimization, and insurance gap analysis won't work correctly")
+    else:
+        if not household.spouse_a_income and not household.spouse_b_income:
+            gaps.append("- No income data → Tax bracket analysis will be inaccurate")
+    if account_count == 0:
+        gaps.append("- No accounts connected → Cash flow, budget, and spending insights unavailable")
+    for e in active_entities:
+        if not e.owner:
+            gaps.append(f"- {sanitizer.sanitize_text(e.name)} has no owner assigned → Can't attribute to correct spouse for tax filing")
+    if benefit_count == 0 and household:
+        gaps.append("- No benefits configured → 401k optimization, HSA strategy unavailable")
+
+    # ---------- Assemble ----------
+    prompt = _SYSTEM_PROMPT_BASE
+    if lines:
+        prompt += "\n\n## Household Context\n" + "\n".join(lines)
+    prompt += "\n\n## Setup Progress\n" + "\n".join(setup_lines)
+    if gaps:
+        prompt += "\n\n## Missing Data Affecting Features\n" + "\n".join(gaps)
+        prompt += "\n\nWhen relevant to the user's question, proactively mention missing data that would improve your analysis. Guide them to complete setup if it would help answer their question."
+
+    return prompt, sanitizer
 
 TOOLS = [
     {
@@ -228,6 +281,60 @@ TOOLS = [
             "required": [],
         },
     },
+    {
+        "name": "get_setup_status",
+        "description": "Get the user's setup/onboarding status showing what's configured and what's missing, with feature impact for each gap.",
+        "input_schema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    },
+    {
+        "name": "get_household_summary",
+        "description": "Get the complete household profile including incomes, other income sources, benefits, insurance policies, business entities, and dependents.",
+        "input_schema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    },
+    {
+        "name": "get_goals_summary",
+        "description": "Get all financial goals with progress percentages, on-track status, and monthly contribution needs.",
+        "input_schema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    },
+    {
+        "name": "get_portfolio_overview",
+        "description": "Get portfolio summary including total value, holdings by asset class, allocation percentages, top holdings, and gain/loss.",
+        "input_schema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    },
+    {
+        "name": "get_retirement_status",
+        "description": "Get retirement readiness including saved amount, target nest egg, FIRE number, projected gap, and on-track percentage.",
+        "input_schema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    },
+    {
+        "name": "get_life_scenarios",
+        "description": "Get saved life scenarios (home purchase, job change, etc.) with affordability scores, verdicts, and key financial impacts.",
+        "input_schema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    },
 ]
 
 
@@ -250,6 +357,18 @@ async def _exec_tool(session: AsyncSession, tool_name: str, tool_input: dict) ->
             return await _tool_get_budget_status(session, tool_input)
         elif tool_name == "get_recurring_expenses":
             return await _tool_get_recurring_expenses(session)
+        elif tool_name == "get_setup_status":
+            return await _tool_get_setup_status(session)
+        elif tool_name == "get_household_summary":
+            return await _tool_get_household_summary(session)
+        elif tool_name == "get_goals_summary":
+            return await _tool_get_goals_summary(session)
+        elif tool_name == "get_portfolio_overview":
+            return await _tool_get_portfolio_overview(session)
+        elif tool_name == "get_retirement_status":
+            return await _tool_get_retirement_status(session)
+        elif tool_name == "get_life_scenarios":
+            return await _tool_get_life_scenarios(session)
         else:
             return json.dumps({"error": f"Unknown tool: {tool_name}"})
     except Exception as e:
@@ -615,6 +734,418 @@ async def _tool_get_recurring_expenses(session: AsyncSession) -> str:
     })
 
 
+async def _tool_get_setup_status(session: AsyncSession) -> str:
+    """Return setup completeness with feature impact for each gap."""
+    from pipeline.db.schema import (
+        HouseholdProfile, Account, BenefitPackage, InsurancePolicy, BusinessEntity, LifeEvent,
+    )
+
+    result = await session.execute(
+        select(HouseholdProfile).where(HouseholdProfile.is_primary == True).limit(1)
+    )
+    household = result.scalar_one_or_none()
+
+    acct_result = await session.execute(
+        select(func.count(Account.id)).where(Account.is_active == True)
+    )
+    account_count = acct_result.scalar() or 0
+
+    benefit_result = await session.execute(select(func.count(BenefitPackage.id)))
+    benefit_count = benefit_result.scalar() or 0
+
+    policy_result = await session.execute(
+        select(func.count(InsurancePolicy.id)).where(InsurancePolicy.is_active == True)
+    )
+    policy_count = policy_result.scalar() or 0
+
+    entity_result = await session.execute(
+        select(BusinessEntity).where(BusinessEntity.is_active == True)
+    )
+    entities = entity_result.scalars().all()
+
+    event_result = await session.execute(select(func.count(LifeEvent.id)))
+    event_count = event_result.scalar() or 0
+
+    sections = {
+        "household": {
+            "status": "complete" if household else "missing",
+            "detail": f"Filing: {household.filing_status}, State: {household.state}" if household else None,
+            "features_affected": ["Tax Strategy", "W-4 Optimization", "Insurance Gap Analysis"],
+        },
+        "accounts": {
+            "status": "complete" if account_count > 0 else "missing",
+            "count": account_count,
+            "features_affected": ["Cash Flow", "Budget Tracking", "Spending Insights"],
+        },
+        "benefits": {
+            "status": "complete" if benefit_count > 0 else "missing",
+            "count": benefit_count,
+            "features_affected": ["401k Optimization", "HSA Strategy", "Retirement Projections"],
+        },
+        "insurance": {
+            "status": "complete" if policy_count > 0 else "missing",
+            "count": policy_count,
+            "features_affected": ["Coverage Gap Analysis", "Premium Optimization"],
+        },
+        "business_entities": {
+            "status": "complete" if len(entities) > 0 else "none",
+            "entities": [
+                {"name": e.name, "type": e.entity_type, "owner": e.owner or "unassigned"}
+                for e in entities
+            ],
+            "features_affected": ["Business Expense Tracking", "Schedule C/K-1 Tax Planning"],
+        },
+        "life_events": {
+            "status": "complete" if event_count > 0 else "none",
+            "count": event_count,
+            "features_affected": ["Tax Impact Checklists", "Action Items"],
+        },
+    }
+
+    gaps: list[str] = []
+    if not household:
+        gaps.append("No household profile — Tax strategy, W-4 optimization, and insurance gap analysis won't work")
+    else:
+        if not household.spouse_a_income and not household.spouse_b_income:
+            gaps.append("No income data — Tax bracket analysis will be inaccurate")
+    if account_count == 0:
+        gaps.append("No accounts connected — Cash flow, budget, and spending insights unavailable")
+    for e in entities:
+        if not e.owner:
+            gaps.append(f"'{e.name}' has no owner assigned — Can't attribute to correct spouse for tax filing")
+    if benefit_count == 0 and household:
+        gaps.append("No benefits configured — 401k optimization, HSA strategy unavailable")
+
+    return json.dumps({
+        "sections": sections,
+        "gaps": gaps,
+        "overall_completeness": sum(1 for s in sections.values() if s["status"] == "complete") / len(sections),
+    })
+
+
+async def _tool_get_household_summary(session: AsyncSession) -> str:
+    """Return full household profile with all related data."""
+    from pipeline.db.schema import (
+        HouseholdProfile, BenefitPackage, InsurancePolicy, BusinessEntity,
+    )
+
+    result = await session.execute(
+        select(HouseholdProfile).where(HouseholdProfile.is_primary == True).limit(1)
+    )
+    household = result.scalar_one_or_none()
+
+    if not household:
+        return json.dumps({"error": "No household profile set up yet"})
+
+    # Parse other income sources
+    other_incomes: list[dict] = []
+    if household.other_income_sources_json:
+        try:
+            other_incomes = json.loads(household.other_income_sources_json)
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    # Parse dependents
+    dependents: list[dict] = []
+    if household.dependents_json:
+        try:
+            dependents = json.loads(household.dependents_json)
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    # Benefits
+    benefit_result = await session.execute(select(BenefitPackage))
+    benefits = benefit_result.scalars().all()
+    benefit_list = [
+        {
+            "spouse": b.spouse,
+            "employer": b.employer_name,
+            "has_401k": b.has_401k,
+            "employer_match_pct": b.employer_match_pct,
+            "has_hsa": b.has_hsa,
+            "has_espp": b.has_espp,
+            "life_insurance_coverage": b.life_insurance_coverage,
+        }
+        for b in benefits
+    ]
+
+    # Insurance
+    policy_result = await session.execute(
+        select(InsurancePolicy).where(InsurancePolicy.is_active == True)
+    )
+    policies = policy_result.scalars().all()
+    policy_list = [
+        {"type": p.policy_type, "provider": p.provider}
+        for p in policies
+    ]
+
+    # Entities
+    entity_result = await session.execute(
+        select(BusinessEntity).where(BusinessEntity.is_active == True)
+    )
+    entities = entity_result.scalars().all()
+    entity_list = [
+        {"name": e.name, "type": e.entity_type, "tax_treatment": e.tax_treatment, "owner": e.owner}
+        for e in entities
+    ]
+
+    return json.dumps({
+        "filing_status": household.filing_status,
+        "state": household.state,
+        "spouse_a": {
+            "name": household.spouse_a_name,
+            "w2_income": household.spouse_a_income,
+            "employer": household.spouse_a_employer,
+        },
+        "spouse_b": {
+            "name": household.spouse_b_name,
+            "w2_income": household.spouse_b_income,
+            "employer": household.spouse_b_employer,
+        },
+        "other_income_sources": other_incomes,
+        "other_income_total": household.other_income_annual,
+        "combined_income": household.combined_income,
+        "dependents": dependents,
+        "benefits": benefit_list,
+        "insurance_policies": policy_list,
+        "business_entities": entity_list,
+    })
+
+
+async def _tool_get_goals_summary(session: AsyncSession) -> str:
+    """Return all financial goals with progress and on-track analysis."""
+    from pipeline.db.schema import Goal
+
+    result = await session.execute(
+        select(Goal).where(Goal.status.in_(["active", "in_progress"]))
+    )
+    goals = result.scalars().all()
+
+    if not goals:
+        return json.dumps({"count": 0, "goals": [], "message": "No financial goals set up yet"})
+
+    from datetime import datetime, date
+    now = datetime.utcnow()
+    goal_list = []
+    for g in goals:
+        progress_pct = (g.current_amount / g.target_amount * 100) if g.target_amount else 0
+        remaining = max(0, g.target_amount - g.current_amount)
+
+        # Calculate months remaining and required monthly contribution
+        months_remaining = None
+        monthly_needed = None
+        on_track = None
+        if g.target_date:
+            td = g.target_date if isinstance(g.target_date, date) else g.target_date.date() if hasattr(g.target_date, "date") else g.target_date
+            delta = (td.year - now.year) * 12 + (td.month - now.month)
+            months_remaining = max(0, delta)
+            if months_remaining > 0:
+                monthly_needed = round(remaining / months_remaining, 2)
+                if g.monthly_contribution and g.monthly_contribution > 0:
+                    on_track = g.monthly_contribution >= monthly_needed * 0.9  # 90% threshold
+
+        goal_list.append({
+            "id": g.id,
+            "name": g.name,
+            "type": g.goal_type,
+            "target_amount": g.target_amount,
+            "current_amount": g.current_amount,
+            "progress_pct": round(progress_pct, 1),
+            "remaining": round(remaining, 2),
+            "target_date": str(g.target_date)[:10] if g.target_date else None,
+            "months_remaining": months_remaining,
+            "monthly_contribution": g.monthly_contribution,
+            "monthly_needed": monthly_needed,
+            "on_track": on_track,
+        })
+
+    total_target = sum(g["target_amount"] for g in goal_list)
+    total_saved = sum(g["current_amount"] for g in goal_list)
+
+    return json.dumps({
+        "count": len(goal_list),
+        "total_target": round(total_target, 2),
+        "total_saved": round(total_saved, 2),
+        "overall_progress_pct": round(total_saved / total_target * 100, 1) if total_target else 0,
+        "goals": goal_list,
+    })
+
+
+async def _tool_get_portfolio_overview(session: AsyncSession) -> str:
+    """Return portfolio summary: holdings, allocation, total value, gains."""
+    from pipeline.db.schema import InvestmentHolding, CryptoHolding, ManualAsset
+
+    # Investment holdings
+    hold_result = await session.execute(
+        select(InvestmentHolding).where(InvestmentHolding.is_active == True)
+    )
+    holdings = hold_result.scalars().all()
+
+    # Crypto holdings
+    crypto_result = await session.execute(
+        select(CryptoHolding).where(CryptoHolding.is_active == True)
+    )
+    crypto = crypto_result.scalars().all()
+
+    # Manual investment assets (retirement accounts, etc.)
+    manual_result = await session.execute(
+        select(ManualAsset).where(
+            ManualAsset.is_active == True,
+            ManualAsset.is_liability == False,
+            ManualAsset.asset_type.in_(["retirement_account", "brokerage", "investment", "529_plan"]),
+        )
+    )
+    manual = manual_result.scalars().all()
+
+    # Aggregate by asset class
+    asset_class_totals: dict[str, float] = {}
+    total_value = 0.0
+    total_cost = 0.0
+    top_holdings = []
+
+    for h in holdings:
+        val = h.current_value or 0
+        cost = h.total_cost_basis or 0
+        total_value += val
+        total_cost += cost
+        cls = h.asset_class or "stock"
+        asset_class_totals[cls] = asset_class_totals.get(cls, 0) + val
+        top_holdings.append({
+            "ticker": h.ticker,
+            "name": h.name,
+            "value": round(val, 2),
+            "shares": h.shares,
+            "gain_loss": round(val - cost, 2) if cost else None,
+            "gain_loss_pct": round((val - cost) / cost * 100, 1) if cost and cost != 0 else None,
+            "asset_class": cls,
+        })
+
+    crypto_total = sum(c.current_value or 0 for c in crypto)
+    if crypto_total > 0:
+        asset_class_totals["crypto"] = crypto_total
+        total_value += crypto_total
+
+    manual_total = sum(m.current_value or 0 for m in manual)
+    if manual_total > 0:
+        asset_class_totals["retirement/other"] = manual_total
+        total_value += manual_total
+
+    # Sort top holdings by value
+    top_holdings.sort(key=lambda x: x["value"], reverse=True)
+
+    # Allocation percentages
+    allocation = {
+        cls: {"value": round(v, 2), "pct": round(v / total_value * 100, 1) if total_value else 0}
+        for cls, v in sorted(asset_class_totals.items(), key=lambda x: x[1], reverse=True)
+    }
+
+    total_gain = total_value - total_cost if total_cost > 0 else None
+
+    return json.dumps({
+        "total_value": round(total_value, 2),
+        "total_cost_basis": round(total_cost, 2) if total_cost > 0 else None,
+        "total_gain_loss": round(total_gain, 2) if total_gain is not None else None,
+        "total_gain_loss_pct": round(total_gain / total_cost * 100, 1) if total_gain is not None and total_cost > 0 else None,
+        "holdings_count": len(holdings),
+        "crypto_count": len(crypto),
+        "manual_accounts": len(manual),
+        "allocation": allocation,
+        "top_holdings": top_holdings[:10],
+        "crypto_holdings": [
+            {"symbol": c.symbol, "name": c.name, "value": round(c.current_value or 0, 2), "quantity": c.quantity}
+            for c in crypto
+        ],
+    })
+
+
+async def _tool_get_retirement_status(session: AsyncSession) -> str:
+    """Return retirement readiness: savings, target, FIRE number, on-track %."""
+    from pipeline.db.schema import RetirementProfile
+
+    result = await session.execute(
+        select(RetirementProfile).order_by(RetirementProfile.is_primary.desc()).limit(1)
+    )
+    profile = result.scalar_one_or_none()
+
+    if not profile:
+        return json.dumps({"error": "No retirement profile set up yet"})
+
+    years_to_retirement = max(0, (profile.retirement_age or 65) - (profile.current_age or 35))
+    years_in_retirement = max(0, (profile.life_expectancy or 90) - (profile.retirement_age or 65))
+
+    # Simple projection
+    current_savings = profile.current_retirement_savings or 0
+    monthly_contrib = profile.monthly_retirement_contribution or 0
+    annual_return = (profile.pre_retirement_return_pct or 7) / 100
+
+    projected_at_retirement = current_savings
+    for _ in range(years_to_retirement):
+        projected_at_retirement = projected_at_retirement * (1 + annual_return) + monthly_contrib * 12
+
+    target = profile.target_nest_egg or 0
+    fire_number = profile.fire_number or 0
+    readiness_pct = (projected_at_retirement / target * 100) if target > 0 else 0
+
+    return json.dumps({
+        "profile_name": profile.name,
+        "current_age": profile.current_age,
+        "retirement_age": profile.retirement_age,
+        "life_expectancy": profile.life_expectancy,
+        "years_to_retirement": years_to_retirement,
+        "current_savings": round(current_savings, 2),
+        "monthly_contribution": round(monthly_contrib, 2),
+        "employer_match_pct": profile.employer_match_pct,
+        "projected_at_retirement": round(projected_at_retirement, 2),
+        "target_nest_egg": round(target, 2),
+        "fire_number": round(fire_number, 2),
+        "readiness_pct": round(readiness_pct, 1),
+        "on_track": readiness_pct >= 90,
+        "gap": round(max(0, target - projected_at_retirement), 2),
+        "social_security_monthly": profile.expected_social_security_monthly,
+        "social_security_start_age": profile.social_security_start_age,
+        "income_replacement_pct": profile.income_replacement_pct,
+    })
+
+
+async def _tool_get_life_scenarios(session: AsyncSession) -> str:
+    """Return saved life scenarios with verdicts and financial impacts."""
+    from pipeline.db.schema import LifeScenario
+
+    result = await session.execute(
+        select(LifeScenario).order_by(LifeScenario.created_at.desc())
+    )
+    scenarios = result.scalars().all()
+
+    if not scenarios:
+        return json.dumps({"count": 0, "scenarios": [], "message": "No life scenarios saved yet"})
+
+    scenario_list = [
+        {
+            "id": s.id,
+            "name": s.name,
+            "type": s.scenario_type,
+            "status": s.status,
+            "is_favorite": s.is_favorite,
+            "total_cost": round(s.total_cost or 0, 2),
+            "new_monthly_payment": round(s.new_monthly_payment or 0, 2),
+            "monthly_surplus_after": round(s.monthly_surplus_after or 0, 2),
+            "savings_rate_before_pct": round(s.savings_rate_before_pct or 0, 1),
+            "savings_rate_after_pct": round(s.savings_rate_after_pct or 0, 1),
+            "dti_before_pct": round(s.dti_before_pct or 0, 1),
+            "dti_after_pct": round(s.dti_after_pct or 0, 1),
+            "affordability_score": round(s.affordability_score or 0, 1),
+            "verdict": s.verdict,
+            "has_ai_analysis": bool(s.ai_analysis),
+        }
+        for s in scenarios
+    ]
+
+    return json.dumps({
+        "count": len(scenario_list),
+        "scenarios": scenario_list,
+    })
+
+
 async def run_chat(
     session: AsyncSession,
     messages: list[dict[str, str]],
@@ -629,10 +1160,30 @@ async def run_chat(
     Returns:
         {"response": "...", "actions": [...], "tool_calls_made": int}
     """
+    # Check AI consent before proceeding
+    from pipeline.db import UserPrivacyConsent
+    consent_result = await session.execute(
+        select(UserPrivacyConsent).where(
+            UserPrivacyConsent.consent_type == "ai_features",
+            UserPrivacyConsent.consented == True,
+        )
+    )
+    if not consent_result.scalar_one_or_none():
+        return {
+            "response": None,
+            "requires_consent": True,
+            "actions": [],
+            "tool_calls_made": 0,
+        }
+
+    import time as _time
+    from pipeline.security.audit import log_audit
+    _chat_start = _time.monotonic()
+
     client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
     actions: list[dict] = []
 
-    system_prompt = await _build_system_prompt(session)
+    system_prompt, sanitizer = await _build_system_prompt(session)
 
     api_messages = [
         {"role": m["role"], "content": m["content"]}
@@ -650,8 +1201,11 @@ async def run_chat(
 
         if response.stop_reason == "end_turn":
             text_parts = [b.text for b in response.content if b.type == "text"]
+            raw_response = "\n".join(text_parts)
+            _elapsed = int((_time.monotonic() - _chat_start) * 1000)
+            await log_audit(session, "ai_chat", "conversation", f"tools_used={len(actions)}", _elapsed)
             return {
-                "response": "\n".join(text_parts),
+                "response": sanitizer.desanitize_text(raw_response) if sanitizer.has_mappings else raw_response,
                 "actions": actions,
                 "tool_calls_made": round_num,
             }
@@ -672,7 +1226,7 @@ async def run_chat(
                         "input": block.input,
                     })
 
-                    logger.info(f"Chat tool call: {block.name}({json.dumps(block.input)[:200]})")
+                    logger.info(f"Chat tool call: {block.name}")
                     result_str = await _exec_tool(session, block.name, block.input)
 
                     tool_results.append({
@@ -693,12 +1247,17 @@ async def run_chat(
 
         # Unexpected stop reason
         text_parts = [b.text for b in response.content if b.type == "text"]
+        raw_response = "\n".join(text_parts) or "I wasn't able to complete that request."
+        _elapsed = int((_time.monotonic() - _chat_start) * 1000)
+        await log_audit(session, "ai_chat", "conversation", f"tools_used={len(actions)}", _elapsed)
         return {
-            "response": "\n".join(text_parts) or "I wasn't able to complete that request.",
+            "response": sanitizer.desanitize_text(raw_response) if sanitizer.has_mappings else raw_response,
             "actions": actions,
             "tool_calls_made": round_num + 1,
         }
 
+    _elapsed = int((_time.monotonic() - _chat_start) * 1000)
+    await log_audit(session, "ai_chat", "conversation", f"tools_used={len(actions)},max_rounds=true", _elapsed)
     return {
         "response": "I've reached the maximum number of steps for this request. Please try a more specific question.",
         "actions": actions,

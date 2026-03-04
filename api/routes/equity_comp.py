@@ -205,6 +205,78 @@ async def get_vesting_calendar(grant_id: int, session: AsyncSession = Depends(ge
 
 
 # ---------------------------------------------------------------------------
+# All vesting events (cross-grant timeline)
+# ---------------------------------------------------------------------------
+
+@router.get("/vesting-events")
+async def all_vesting_events(
+    months: int = Query(24, ge=1, le=60),
+    session: AsyncSession = Depends(get_session),
+):
+    """Return upcoming vesting events across all active grants for a timeline view."""
+    today = date.today()
+    cutoff = today.replace(year=today.year + months // 12, month=((today.month - 1 + months) % 12) + 1)
+
+    result = await session.execute(
+        select(VestingEvent, EquityGrant.employer_name, EquityGrant.grant_type, EquityGrant.current_fmv, EquityGrant.ticker)
+        .join(EquityGrant, VestingEvent.grant_id == EquityGrant.id)
+        .where(
+            EquityGrant.is_active.is_(True),
+            VestingEvent.vest_date > today,
+            VestingEvent.vest_date <= cutoff,
+        )
+        .order_by(VestingEvent.vest_date)
+    )
+    events = []
+    for row in result.all():
+        ev = row[0]
+        fmv = row.current_fmv or 0
+        events.append({
+            "id": ev.id,
+            "grant_id": ev.grant_id,
+            "employer": row.employer_name,
+            "grant_type": row.grant_type,
+            "ticker": row.ticker,
+            "vest_date": ev.vest_date.isoformat(),
+            "shares": ev.shares,
+            "estimated_value": round(ev.shares * fmv, 2),
+            "status": ev.status,
+        })
+    return {"events": events, "months": months}
+
+
+# ---------------------------------------------------------------------------
+# Price refresh for equity grants
+# ---------------------------------------------------------------------------
+
+@router.post("/refresh-prices")
+async def refresh_equity_prices(session: AsyncSession = Depends(get_session)):
+    """Update current_fmv for all grants that have a ticker using Yahoo Finance."""
+    from pipeline.market.yahoo_finance import YahooFinanceService
+
+    result = await session.execute(
+        select(EquityGrant).where(EquityGrant.is_active.is_(True), EquityGrant.ticker.isnot(None))
+    )
+    grants = list(result.scalars().all())
+    tickers = list({g.ticker for g in grants if g.ticker})
+
+    if not tickers:
+        return {"updated": 0}
+
+    quotes = YahooFinanceService.get_bulk_quotes(tickers)
+    updated = 0
+    for g in grants:
+        q = quotes.get(g.ticker.upper()) if g.ticker else None
+        if q and q.get("price"):
+            g.current_fmv = q["price"]
+            g.updated_at = datetime.now(timezone.utc)
+            updated += 1
+
+    await session.flush()
+    return {"updated": updated, "tickers": tickers}
+
+
+# ---------------------------------------------------------------------------
 # Dashboard aggregate
 # ---------------------------------------------------------------------------
 

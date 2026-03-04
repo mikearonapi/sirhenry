@@ -23,3 +23,31 @@ export function exchangePlaidPublicToken(publicToken: string, institution: strin
     body: JSON.stringify({ public_token: publicToken, institution_name: institution }),
   });
 }
+
+export function deletePlaidItem(itemId: number): Promise<{ status: string; institution: string }> {
+  return request(`/plaid/items/${itemId}`, { method: "DELETE" });
+}
+
+export function getUpdateLinkToken(itemId: number): Promise<{ link_token: string }> {
+  return request(`/plaid/link-token/update/${itemId}`);
+}
+
+export function getPlaidHealth(): Promise<{
+  items: Array<{
+    id: number;
+    institution: string;
+    status: string;
+    stale: boolean;
+    account_count: number;
+  }>;
+  summary: {
+    total_items: number;
+    total_accounts: number;
+    total_assets: number;
+    total_liabilities: number;
+    net_balance: number;
+    any_stale: boolean;
+  };
+}> {
+  return request("/plaid/health");
+}

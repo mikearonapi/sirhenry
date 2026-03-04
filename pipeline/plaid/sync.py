@@ -78,6 +78,13 @@ async def sync_all_items(session: AsyncSession, run_categorize: bool = True) -> 
     except Exception as e:
         logger.warning(f"Net worth snapshot failed: {e}")
 
+    # Audit log
+    try:
+        from pipeline.security.audit import log_audit
+        await log_audit(session, "plaid_sync", "bank_data", f"items={len(items)},added={total_added},accounts={total_updated_accounts}")
+    except Exception:
+        pass
+
     return {
         "items_synced": len(items),
         "transactions_added": total_added,
@@ -139,6 +146,7 @@ async def _update_account_balances(
                 "institution": item.institution_name,
                 "last_four": acct_data.get("mask"),
                 "currency": acct_data.get("iso_currency", "USD"),
+                "data_source": "plaid",
             })
             new_plaid_acct = PlaidAccount(
                 plaid_item_id=item.id,
@@ -198,6 +206,7 @@ async def _process_new_transactions(
             "plaid_location_json": tx.get("plaid_location_json"),
             "plaid_counterparties_json": tx.get("plaid_counterparties_json"),
             "notes": f"Plaid: {tx.get('plaid_merchant', '')}",
+            "data_source": "plaid",
         })
 
     inserted = await bulk_create_transactions(session, rows)

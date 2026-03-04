@@ -9,7 +9,7 @@ import pandas as pd
 from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker, create_async_engine
 
-load_dotenv()
+load_dotenv(override=True)
 
 def _default_database_url() -> str:
     """Resolve the default database path, preferring a user-home directory when available."""

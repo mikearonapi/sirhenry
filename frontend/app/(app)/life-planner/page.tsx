@@ -4,7 +4,7 @@ import {
   Home, Car, Hammer, GraduationCap, Briefcase, Palmtree,
   Sparkles, Sunset, Loader2, AlertCircle, Star, Trash2, Plus,
   CheckCircle, XCircle, AlertTriangle, ChevronRight,
-  TrendingUp, BarChart3, Target, GitCompare,
+  TrendingUp, BarChart3, Target, GitCompare, MessageCircle,
 } from "lucide-react";
 import { formatCurrency, formatPercent } from "@/lib/utils";
 import {
@@ -23,16 +23,17 @@ import type {
 import type { ManualAsset } from "@/types/portfolio";
 import type { HouseholdProfile } from "@/types/household";
 import { getErrorMessage } from "@/lib/errors";
+import { request } from "@/lib/api-client";
 import Card from "@/components/ui/Card";
 import PageHeader from "@/components/ui/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
 
-const ICONS: Record<string, any> = {
+const ICONS: Record<string, React.ElementType> = {
   home: Home, car: Car, hammer: Hammer, "graduation-cap": GraduationCap,
   briefcase: Briefcase, "palm-tree": Palmtree, sparkles: Sparkles, sunset: Sunset,
 };
 
-const VERDICT_CONFIG: Record<string, { label: string; color: string; bg: string; icon: any }> = {
+const VERDICT_CONFIG: Record<string, { label: string; color: string; bg: string; icon: React.ElementType }> = {
   comfortable: { label: "Comfortable", color: "text-green-700", bg: "bg-green-50 border-green-200", icon: CheckCircle },
   feasible: { label: "Feasible", color: "text-blue-700", bg: "bg-blue-50 border-blue-200", icon: CheckCircle },
   stretch: { label: "Stretch", color: "text-amber-700", bg: "bg-amber-50 border-amber-200", icon: AlertTriangle },
@@ -62,6 +63,8 @@ export default function LifePlannerPage() {
   const [loadingProjection, setLoadingProjection] = useState<number | null>(null);
   const [loadingMonteCarlo, setLoadingMonteCarlo] = useState<number | null>(null);
   const [loadingRetirement, setLoadingRetirement] = useState<number | null>(null);
+  const [aiAnalysisResults, setAiAnalysisResults] = useState<Record<number, string>>({});
+  const [loadingAiAnalysis, setLoadingAiAnalysis] = useState<number | null>(null);
 
   // Financial context inputs — seeded from real household + account data
   const [annualIncome, setAnnualIncome] = useState(200000);
@@ -71,13 +74,19 @@ export default function LifePlannerPage() {
   const [savings, setSavings] = useState(150000);
   const [investments, setInvestments] = useState(500000);
   const [contextLoaded, setContextLoaded] = useState(false);
+  const [scenarioSuggestions, setScenarioSuggestions] = useState<Array<{ scenario_type: string; label: string; reason: string; source: string; source_detail?: string }>>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [t, s] = await Promise.all([getScenarioTemplates(), getScenarios()]);
+      const [t, s, sugg] = await Promise.all([
+        getScenarioTemplates(),
+        getScenarios(),
+        request<{ suggestions: Array<{ scenario_type: string; label: string; reason: string; source: string; source_detail?: string }> }>("/scenarios/suggestions").catch(() => ({ suggestions: [] })),
+      ]);
       setTemplates(t.templates || {});
       setSavedScenarios(Array.isArray(s) ? s : []);
+      setScenarioSuggestions(sugg.suggestions || []);
     } catch (e: unknown) { setError(getErrorMessage(e)); }
     setLoading(false);
   }, []);
@@ -186,7 +195,7 @@ export default function LifePlannerPage() {
   }
 
   async function toggleFavorite(s: LifeScenarioType) {
-    await updateScenario(s.id, { is_favorite: !s.is_favorite } as any);
+    await updateScenario(s.id, { is_favorite: !s.is_favorite });
     load();
   }
 
@@ -275,6 +284,19 @@ export default function LifePlannerPage() {
     setLoadingRetirement(null);
   }
 
+  async function handleAiAnalysis(id: number) {
+    setLoadingAiAnalysis(id);
+    try {
+      const r = await request<{ analysis: string }>(`/scenarios/${id}/ai-analysis`, { method: "POST" });
+      setAiAnalysisResults((prev) => ({ ...prev, [id]: r.analysis }));
+      // Also update the savedScenarios to show the badge
+      setSavedScenarios((prev) => prev.map((s) => s.id === id ? { ...s, ai_analysis: r.analysis } : s));
+    } catch (e: unknown) {
+      setError(getErrorMessage(e));
+    }
+    setLoadingAiAnalysis(null);
+  }
+
   const tmpl = selectedType ? templates[selectedType] : null;
   const verdict = result?.verdict ? VERDICT_CONFIG[result.verdict] : null;
 
@@ -282,7 +304,15 @@ export default function LifePlannerPage() {
     <div className="space-y-6">
       <PageHeader
         title="Life Planner"
-        subtitle="Can you afford it? Model major life decisions before you commit."
+        subtitle="Can you afford it? Model major life decisions before you commit. Every scenario uses your actual financial data."
+        actions={
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent("ask-henry", { detail: { message: "What major financial decisions should I be planning for? Review my scenarios and life events and give me advice." } }))}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-[#16A34A]/10 text-[#16A34A] hover:bg-[#16A34A]/20 transition-colors"
+          >
+            <MessageCircle size={14} /> Ask Sir Henry
+          </button>
+        }
       />
 
       {error && (
@@ -296,6 +326,42 @@ export default function LifePlannerPage() {
         <div className="flex justify-center py-16"><Loader2 className="animate-spin text-stone-300" size={28} /></div>
       ) : (
         <>
+          {/* Suggested Scenarios from Life Events */}
+          {!selectedType && scenarioSuggestions.length > 0 && (
+            <Card padding="lg" className="border-[#16A34A]/20 bg-green-50/30">
+              <div className="flex items-center gap-2 mb-3">
+                <Sparkles size={16} className="text-[#16A34A]" />
+                <h2 className="text-sm font-semibold text-stone-700">Suggested for You</h2>
+                <span className="text-xs text-stone-400">Based on your life events and financial data</span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {scenarioSuggestions.map((sugg, i) => {
+                  const tmplData = templates[sugg.scenario_type];
+                  const IconComp = tmplData ? (ICONS[tmplData.icon] || Sparkles) : Sparkles;
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => { setSelectedType(sugg.scenario_type); setResult(null); setParams({}); }}
+                      className="flex items-start gap-3 p-3 rounded-lg bg-white border border-stone-200 hover:border-[#16A34A]/40 hover:shadow-sm transition-all text-left"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-[#16A34A]/10 flex items-center justify-center shrink-0">
+                        <IconComp size={16} className="text-[#16A34A]" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-stone-800">{sugg.label}</p>
+                        <p className="text-xs text-stone-500 mt-0.5">{sugg.reason}</p>
+                        {sugg.source_detail && (
+                          <p className="text-[10px] text-[#16A34A] mt-1">From: {sugg.source_detail}</p>
+                        )}
+                      </div>
+                      <ChevronRight size={14} className="text-stone-300 shrink-0 mt-1" />
+                    </button>
+                  );
+                })}
+              </div>
+            </Card>
+          )}
+
           {/* Scenario Templates Grid */}
           {!selectedType && (
             <>
@@ -376,6 +442,15 @@ export default function LifePlannerPage() {
                                 {loadingRetirement === s.id ? <Loader2 size={12} className="animate-spin" /> : <Target size={12} />}
                                 Retirement
                               </button>
+                              <button
+                                onClick={() => handleAiAnalysis(s.id)}
+                                disabled={loadingAiAnalysis === s.id}
+                                className="flex items-center gap-1 text-xs text-[#16A34A] hover:text-[#15803D] disabled:opacity-60"
+                                title="AI Analysis"
+                              >
+                                {loadingAiAnalysis === s.id ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                                AI Analysis
+                              </button>
                               <span className={`text-xs font-semibold px-2 py-0.5 rounded ${v?.color || ""}`}>
                                 {v?.label || s.verdict}
                               </span>
@@ -443,6 +518,17 @@ export default function LifePlannerPage() {
                               </div>
                             </div>
                           )}
+                          {(aiAnalysisResults[s.id] || s.ai_analysis) && (
+                            <div className="mt-3 pt-3 border-t border-stone-200 bg-green-50/50 rounded-lg p-3">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Sparkles size={14} className="text-[#16A34A]" />
+                                <p className="text-xs font-semibold text-[#16A34A]">Sir Henry&apos;s Analysis</p>
+                              </div>
+                              <div className="text-xs text-stone-700 leading-relaxed whitespace-pre-wrap">
+                                {aiAnalysisResults[s.id] || s.ai_analysis}
+                              </div>
+                            </div>
+                          )}
                         </Card>
                       );
                     })}
@@ -476,15 +562,15 @@ export default function LifePlannerPage() {
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                           <div className="bg-white rounded-lg p-3">
                             <p className="text-xs text-stone-500">Total Monthly Impact</p>
-                            <p className="text-lg font-bold text-stone-800">{formatCurrency(composeResult.combined_monthly_impact)}</p>
+                            <p className="text-lg font-bold text-stone-800 font-mono tabular-nums">{formatCurrency(composeResult.combined_monthly_impact)}</p>
                           </div>
                           <div className="bg-white rounded-lg p-3">
                             <p className="text-xs text-stone-500">Savings Rate After</p>
-                            <p className="text-lg font-bold text-stone-800">{formatPercent(composeResult.combined_savings_rate_after ?? 0)}</p>
+                            <p className="text-lg font-bold text-stone-800 font-mono tabular-nums">{formatPercent(composeResult.combined_savings_rate_after ?? 0)}</p>
                           </div>
                           <div className="bg-white rounded-lg p-3">
                             <p className="text-xs text-stone-500">Affordability Score</p>
-                            <p className="text-lg font-bold text-stone-800">{composeResult.combined_affordability_score?.toFixed(0) ?? "-"}/100</p>
+                            <p className="text-lg font-bold text-stone-800 font-mono tabular-nums">{composeResult.combined_affordability_score?.toFixed(0) ?? "-"}/100</p>
                           </div>
                           <div className="bg-white rounded-lg p-3">
                             <p className="text-xs text-stone-500">Verdict</p>
@@ -627,22 +713,22 @@ export default function LifePlannerPage() {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                     <div className="bg-white/70 rounded-lg p-3">
                       <p className="text-xs text-stone-500">New Monthly Payment</p>
-                      <p className="text-lg font-bold text-stone-800">{formatCurrency(result.new_monthly_payment)}</p>
+                      <p className="text-lg font-bold text-stone-800 font-mono tabular-nums">{formatCurrency(result.new_monthly_payment)}</p>
                     </div>
                     <div className="bg-white/70 rounded-lg p-3">
                       <p className="text-xs text-stone-500">Monthly Surplus After</p>
-                      <p className={`text-lg font-bold ${result.monthly_surplus_after >= 0 ? "text-green-700" : "text-red-700"}`}>
+                      <p className={`text-lg font-bold font-mono tabular-nums ${result.monthly_surplus_after >= 0 ? "text-green-600" : "text-red-600"}`}>
                         {formatCurrency(result.monthly_surplus_after)}
                       </p>
                     </div>
                     <div className="bg-white/70 rounded-lg p-3">
                       <p className="text-xs text-stone-500">Savings Rate After</p>
-                      <p className="text-lg font-bold text-stone-800">{formatPercent(result.savings_rate_after_pct)}</p>
+                      <p className="text-lg font-bold text-stone-800 font-mono tabular-nums">{formatPercent(result.savings_rate_after_pct)}</p>
                       <p className="text-xs text-stone-400">was {formatPercent(result.savings_rate_before_pct)}</p>
                     </div>
                     <div className="bg-white/70 rounded-lg p-3">
                       <p className="text-xs text-stone-500">Total Cost</p>
-                      <p className="text-lg font-bold text-stone-800">{formatCurrency(result.total_cost, true)}</p>
+                      <p className="text-lg font-bold text-stone-800 font-mono tabular-nums">{formatCurrency(result.total_cost, true)}</p>
                     </div>
                   </div>
 

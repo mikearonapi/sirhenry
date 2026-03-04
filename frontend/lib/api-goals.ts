@@ -16,3 +16,17 @@ export function updateGoal(id: number, body: Partial<Goal>): Promise<Goal> {
 export function deleteGoal(id: number): Promise<void> {
   return request(`/goals/${id}`, { method: "DELETE" });
 }
+
+export interface GoalSuggestion {
+  name: string;
+  goal_type: string;
+  target_amount: number;
+  monthly_contribution: number;
+  description: string;
+  color: string;
+  priority: number;
+}
+
+export function getGoalSuggestions(): Promise<{ suggestions: GoalSuggestion[]; annual_income: number }> {
+  return request("/goals/suggestions");
+}

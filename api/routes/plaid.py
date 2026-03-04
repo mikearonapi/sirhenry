@@ -10,6 +10,7 @@ from sqlalchemy.orm import selectinload
 from api.database import AsyncSessionLocal, get_session
 from api.models.schemas import ExchangeTokenIn, PlaidAccountOut, PlaidItemOut
 from pipeline.db import PlaidAccount, PlaidItem
+from pipeline.db.schema import Account
 from pipeline.db.encryption import decrypt_token, encrypt_token
 from pipeline.plaid.client import (
     create_link_token, exchange_public_token, get_accounts, remove_item,
@@ -88,13 +89,39 @@ async def exchange_token(
         accounts = get_accounts(result["access_token"])
         from pipeline.db import upsert_account
         for acct_data in accounts:
-            our_account = await upsert_account(session, {
-                "name": acct_data["name"],
-                "account_type": "personal",
-                "subtype": acct_data["subtype"],
-                "institution": body.institution_name,
-                "last_four": acct_data.get("mask"),
-            })
+            # Smart linking: check for existing account with matching last_four
+            existing_match = None
+            mask = acct_data.get("mask")
+            if mask:
+                match_q = await session.execute(
+                    select(Account).where(
+                        Account.is_active.is_(True),
+                        Account.last_four == mask,
+                        Account.institution.ilike(f"%{body.institution_name}%"),
+                        Account.data_source != "plaid",
+                    )
+                )
+                existing_match = match_q.scalar_one_or_none()
+
+            if existing_match:
+                # Link Plaid to existing account, upgrade its source
+                existing_match.data_source = "plaid"
+                existing_match.institution = body.institution_name
+                our_account = existing_match
+                logger.info(
+                    f"Smart-linked Plaid account to existing: "
+                    f"{our_account.name} (id={our_account.id})"
+                )
+            else:
+                our_account = await upsert_account(session, {
+                    "name": acct_data["name"],
+                    "account_type": "personal",
+                    "subtype": acct_data["subtype"],
+                    "institution": body.institution_name,
+                    "last_four": mask,
+                    "data_source": "plaid",
+                })
+
             pa = PlaidAccount(
                 plaid_item_id=item.id,
                 account_id=our_account.id,

@@ -43,3 +43,12 @@ export interface EntityReassignIn {
   date_from?: string | null;
   date_to?: string | null;
 }
+
+export interface VendorEntityRuleCreateIn {
+  vendor_pattern: string;
+  business_entity_id: number;
+  segment_override?: string | null;
+  effective_from?: string | null;
+  effective_to?: string | null;
+  priority?: number;
+}

@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.database import get_session
 from api.models.schemas import ManualAssetCreateIn, ManualAssetOut, ManualAssetUpdateIn
-from pipeline.db import ManualAsset
+from pipeline.db import ManualAsset, upsert_account
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +39,19 @@ async def create_asset(
     session: AsyncSession = Depends(get_session),
 ):
     is_liability = body.asset_type in LIABILITY_TYPES
+
+    # For investment-type assets, auto-create a linked Account record
+    linked_account_id = None
+    if body.asset_type == "investment":
+        account = await upsert_account(session, {
+            "name": body.name,
+            "account_type": "investment",
+            "subtype": body.account_subtype or "brokerage",
+            "institution": body.institution or "",
+            "data_source": "manual",
+        })
+        linked_account_id = account.id
+
     asset = ManualAsset(
         name=body.name,
         asset_type=body.asset_type,
@@ -67,6 +80,7 @@ async def create_asset(
         annual_return_pct=body.annual_return_pct,
         allocation_json=body.allocation_json,
         beneficiary=body.beneficiary,
+        linked_account_id=linked_account_id,
     )
     session.add(asset)
     await session.flush()

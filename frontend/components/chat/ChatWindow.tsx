@@ -14,6 +14,7 @@ import type { ChatMessage as ChatMessageType } from "@/types/api";
 import ChatMessage, { SirHenryAvatar, type DisplayMessage } from "./ChatMessage";
 import ChatToolCall from "./ChatToolCall";
 import ChatSuggestions from "./ChatSuggestions";
+import ConsentModal from "./ConsentModal";
 
 // ---------------------------------------------------------------------------
 // Main chat component
@@ -26,6 +27,8 @@ export default function ChatWindow() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showConsent, setShowConsent] = useState(false);
+  const [pendingMessage, setPendingMessage] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -46,6 +49,21 @@ export default function ChatWindow() {
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [open]);
+
+  // Listen for "ask-henry" events from setup steps and other pages
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.message) {
+        setOpen(true);
+        // Small delay to ensure panel is open before sending
+        setTimeout(() => handleSend(detail.message), 300);
+      }
+    };
+    window.addEventListener("ask-henry", handler);
+    return () => window.removeEventListener("ask-henry", handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -78,9 +96,17 @@ export default function ChatWindow() {
 
       const result = await sendChatMessage(apiMessages);
 
+      if (result.requires_consent) {
+        setPendingMessage(messageText);
+        setShowConsent(true);
+        // Remove the user message we just added since we can't process it yet
+        setMessages((prev) => prev.slice(0, -1));
+        return;
+      }
+
       const assistantMsg: DisplayMessage = {
         role: "assistant",
-        content: result.response,
+        content: result.response ?? "",
         actions: result.actions,
         timestamp: new Date(),
       };
@@ -278,6 +304,24 @@ export default function ChatWindow() {
             </div>
           </div>
         </>
+      )}
+      {/* Privacy consent modal */}
+      {showConsent && (
+        <ConsentModal
+          onAccept={() => {
+            setShowConsent(false);
+            // Retry the pending message now that consent is granted
+            if (pendingMessage) {
+              const msg = pendingMessage;
+              setPendingMessage(null);
+              handleSend(msg);
+            }
+          }}
+          onDecline={() => {
+            setShowConsent(false);
+            setPendingMessage(null);
+          }}
+        />
       )}
     </>
   );

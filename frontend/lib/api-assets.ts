@@ -16,3 +16,13 @@ export function updateManualAsset(id: number, body: ManualAssetUpdateIn): Promis
 export function deleteManualAsset(id: number): Promise<void> {
   return request(`/assets/${id}`, { method: "DELETE" });
 }
+
+export function getAssetSummary(): Promise<{
+  total_assets: number;
+  total_liabilities: number;
+  net: number;
+  count: number;
+  by_type: Record<string, number>;
+}> {
+  return request("/assets/summary");
+}

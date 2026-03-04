@@ -157,6 +157,7 @@ async def import_monarch_csv(
                 "transaction_hash": tx_hash,
                 "effective_segment": segment,
                 "notes": tx.notes or None,
+                "data_source": "monarch",
             }
 
             if tx.category:

@@ -10,7 +10,23 @@ export interface ChatAction {
 }
 
 export interface ChatResponse {
-  response: string;
+  response: string | null;
+  requires_consent?: boolean;
   actions: ChatAction[];
   tool_calls_made: number;
+}
+
+export interface PrivacyConsent {
+  id: number;
+  consent_type: string;
+  consented: boolean;
+  consent_version: string;
+  consented_at: string | null;
+}
+
+export interface PrivacyDisclosure {
+  data_handling: string[];
+  ai_privacy: string[];
+  encryption: string[];
+  data_retention: string[];
 }

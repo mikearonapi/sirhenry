@@ -131,3 +131,10 @@ LIMIT_401K_CATCHUP = 31_000  # 50+
 LIMIT_401K_TOTAL = 70_000   # including employer + after-tax (Section 415(c) 2025)
 HSA_LIMIT: dict[str, float] = {"individual": 4_300, "family": 8_550}
 DEP_CARE_FSA_LIMIT = 5_000
+
+# ---------------------------------------------------------------------------
+# QBI / Section 199A
+# ---------------------------------------------------------------------------
+QBI_DEDUCTION_RATE = 0.20
+QBI_PHASEOUT_START: dict[str, float] = {"mfj": 383_900, "single": 191_950, "mfs": 191_950, "hoh": 191_950}
+QBI_PHASEOUT_RANGE: dict[str, float] = {"mfj": 100_000, "single": 50_000, "mfs": 50_000, "hoh": 50_000}

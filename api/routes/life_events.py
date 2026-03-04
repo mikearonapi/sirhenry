@@ -5,11 +5,11 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.database import get_session
+from api.models.schemas import ActionItemUpdate, LifeEventIn, LifeEventOut, LifeEventUpdateIn
 from pipeline.db import LifeEvent
 
 logger = logging.getLogger(__name__)
@@ -153,47 +153,6 @@ def _get_action_items(event_type: str, event_subtype: Optional[str]) -> list[dic
 
 
 # ---------------------------------------------------------------------------
-# Pydantic models
-# ---------------------------------------------------------------------------
-
-class LifeEventIn(BaseModel):
-    household_id: Optional[int] = None
-    event_type: str
-    event_subtype: Optional[str] = None
-    title: str
-    event_date: Optional[str] = None
-    tax_year: Optional[int] = None
-    amounts_json: Optional[str] = None
-    status: str = "completed"
-    action_items_json: Optional[str] = None
-    document_ids_json: Optional[str] = None
-    notes: Optional[str] = None
-
-
-class ActionItemUpdate(BaseModel):
-    index: int
-    completed: bool
-
-
-class LifeEventOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    id: int
-    household_id: Optional[int]
-    event_type: str
-    event_subtype: Optional[str]
-    title: str
-    event_date: Optional[str] = None
-    tax_year: Optional[int]
-    amounts_json: Optional[str]
-    status: str
-    action_items_json: Optional[str]
-    document_ids_json: Optional[str]
-    notes: Optional[str]
-    created_at: datetime
-    updated_at: datetime
-
-
-# ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
 
@@ -218,6 +177,10 @@ async def list_events(
 @router.post("/", response_model=LifeEventOut, status_code=201)
 async def create_event(body: LifeEventIn, session: AsyncSession = Depends(get_session)):
     data = body.model_dump()
+    # Convert date string to Python date for ORM Date column
+    if data.get("event_date") and isinstance(data["event_date"], str):
+        from datetime import date as _date
+        data["event_date"] = _date.fromisoformat(data["event_date"])
     # Auto-generate action items if not provided
     if not data.get("action_items_json"):
         items = _get_action_items(body.event_type, body.event_subtype)
@@ -241,12 +204,17 @@ async def get_event(event_id: int, session: AsyncSession = Depends(get_session))
 
 
 @router.patch("/{event_id}", response_model=LifeEventOut)
-async def update_event(event_id: int, body: LifeEventIn, session: AsyncSession = Depends(get_session)):
+async def update_event(event_id: int, body: LifeEventUpdateIn, session: AsyncSession = Depends(get_session)):
     result = await session.execute(select(LifeEvent).where(LifeEvent.id == event_id))
     event = result.scalar_one_or_none()
     if not event:
         raise HTTPException(404, "Life event not found")
-    for k, v in body.model_dump(exclude_unset=True).items():
+    updates = body.model_dump(exclude_unset=True)
+    # Convert date string to Python date for ORM Date column
+    if "event_date" in updates and isinstance(updates["event_date"], str):
+        from datetime import date as _date
+        updates["event_date"] = _date.fromisoformat(updates["event_date"])
+    for k, v in updates.items():
         setattr(event, k, v)
     event.updated_at = datetime.now(timezone.utc)
     await session.flush()

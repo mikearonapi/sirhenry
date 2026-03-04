@@ -2,7 +2,8 @@
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,7 +21,7 @@ from pipeline.db import (
     get_tax_strategies,
     get_tax_summary,
 )
-from pipeline.db.schema import Document, HouseholdProfile, LifeEvent, TaxItem, TaxStrategy, Transaction
+from pipeline.db.schema import BenefitPackage, Document, HouseholdProfile, LifeEvent, TaxItem, TaxStrategy, Transaction
 
 router = APIRouter(tags=["tax"])
 
@@ -30,7 +31,47 @@ async def get_tax_year_summary(
     tax_year: int = Query(default_factory=lambda: datetime.now(timezone.utc).year - 1),
     session: AsyncSession = Depends(get_session),
 ):
+    import json as _json
     summary = await get_tax_summary(session, tax_year)
+
+    # Check if document-sourced data exists
+    has_doc_income = any(summary.get(k, 0) != 0 for k in (
+        "w2_total_wages", "nec_total", "div_ordinary", "capital_gains_long",
+        "capital_gains_short", "interest_income",
+        "k1_ordinary_income", "k1_guaranteed_payments", "k1_rental_income",
+    ))
+
+    if has_doc_income:
+        summary["data_source"] = "documents"
+    else:
+        # Fallback to household profile income
+        household_result = await session.execute(
+            select(HouseholdProfile).where(HouseholdProfile.is_primary == True).limit(1)
+        )
+        household = household_result.scalar_one_or_none()
+        total_hh = (household.spouse_a_income or 0) + (household.spouse_b_income or 0) if household else 0
+        if household and total_hh + (household.other_income_annual or 0) > 0:
+            summary["data_source"] = "setup_profile"
+            summary["w2_total_wages"] = total_hh
+            if household.other_income_sources_json:
+                try:
+                    other_sources = _json.loads(household.other_income_sources_json)
+                    for src in other_sources:
+                        amt = float(src.get("amount", 0) or 0)
+                        src_type = src.get("type", "")
+                        if src_type in ("business_1099", "partnership_k1", "scorp_k1", "trust_k1"):
+                            summary["nec_total"] = summary.get("nec_total", 0) + amt
+                        elif src_type == "dividends_1099":
+                            summary["div_ordinary"] = summary.get("div_ordinary", 0) + amt
+                        elif src_type in ("rental", "other"):
+                            summary["interest_income"] = summary.get("interest_income", 0) + amt
+                except (ValueError, TypeError):
+                    summary["interest_income"] = summary.get("interest_income", 0) + (household.other_income_annual or 0)
+            elif household.other_income_annual:
+                summary["interest_income"] = summary.get("interest_income", 0) + household.other_income_annual
+        else:
+            summary["data_source"] = "none"
+
     return TaxSummaryOut(**summary)
 
 
@@ -65,6 +106,44 @@ async def _compute_tax_estimate(session: AsyncSession, tax_year: int) -> dict:
     )
     household = household_result.scalar_one_or_none()
     filing_status = household.filing_status if household else "mfj"
+
+    # Determine data source and fall back to HouseholdProfile income if no documents
+    has_document_income = (
+        summary["w2_total_wages"] > 0
+        or summary["nec_total"] > 0
+        or summary["div_ordinary"] > 0
+        or summary["capital_gains_long"] > 0
+        or summary["capital_gains_short"] > 0
+        or summary["interest_income"] > 0
+        or summary.get("k1_ordinary_income", 0) != 0
+        or summary.get("k1_guaranteed_payments", 0) != 0
+    )
+    if has_document_income:
+        data_source = "documents"
+    elif household and ((household.spouse_a_income or 0) + (household.spouse_b_income or 0) + (household.other_income_annual or 0)) > 0:
+        data_source = "setup_profile"
+        # Use Setup income as fallback
+        summary["w2_total_wages"] = (household.spouse_a_income or 0) + (household.spouse_b_income or 0)
+        # Parse other_income_sources_json for income type breakdown
+        if household.other_income_sources_json:
+            try:
+                other_sources = json.loads(household.other_income_sources_json)
+                for src in other_sources:
+                    amt = float(src.get("amount", 0) or 0)
+                    src_type = src.get("type", "")
+                    if src_type in ("business_1099", "partnership_k1", "scorp_k1", "trust_k1"):
+                        summary["nec_total"] += amt
+                    elif src_type == "dividends_1099":
+                        summary["div_ordinary"] += amt
+                    elif src_type in ("rental", "other"):
+                        summary["interest_income"] += amt
+            except (ValueError, TypeError):
+                # Fallback: put all other income into interest as catch-all
+                summary["interest_income"] += household.other_income_annual or 0
+        elif household.other_income_annual:
+            summary["interest_income"] += household.other_income_annual
+    else:
+        data_source = "none"
 
     # Fold in life event amounts for the tax year (capital gains, bonuses, etc.)
     life_event_cap_gains_long: float = 0.0
@@ -106,14 +185,51 @@ async def _compute_tax_estimate(session: AsyncSession, tax_year: int) -> dict:
     cg_short = summary["capital_gains_short"] + life_event_cap_gains_short
     interest = summary["interest_income"]
 
-    unqualified_div = ord_div - qual_div
-    ordinary_income = w2_wages + nec_income + cg_short + unqualified_div + interest
+    # K-1 income components
+    k1_ordinary = summary.get("k1_ordinary_income", 0)
+    k1_guaranteed = summary.get("k1_guaranteed_payments", 0)
+    k1_rental = summary.get("k1_rental_income", 0)
+    k1_interest = summary.get("k1_interest_income", 0)
+    k1_dividends = summary.get("k1_dividends", 0)
+    k1_cap_gains = summary.get("k1_capital_gains", 0)
 
-    se_tax_amt = calc_se_tax(nec_income, filing_status) if nec_income > 0 else 0
+    # 1099-R retirement distributions (taxable portion is ordinary income)
+    retirement_taxable = summary.get("retirement_taxable", 0)
+
+    # 1099-G (unemployment = ordinary income; state tax refund = ordinary if itemized prior year)
+    unemployment = summary.get("unemployment_income", 0)
+    state_refund = summary.get("state_tax_refund", 0)
+
+    # 1099-K (payment platform income — treated as self-employment unless W-2 employer)
+    platform_income = summary.get("payment_platform_income", 0)
+
+    # 1098 deductions (mortgage interest + property tax)
+    mortgage_deduction = summary.get("mortgage_interest_deduction", 0)
+    property_tax_ded = summary.get("property_tax_deduction", 0)
+
+    # K-1 interest/dividends/cap gains add to their respective buckets
+    interest += k1_interest
+    ord_div += k1_dividends
+    cg_long += k1_cap_gains
+
+    unqualified_div = ord_div - qual_div
+    ordinary_income = (
+        w2_wages + nec_income + cg_short + unqualified_div + interest
+        + k1_ordinary + k1_guaranteed + k1_rental
+        + retirement_taxable + unemployment + state_refund + platform_income
+    )
+
+    # SE tax applies to NEC + K-1 guaranteed payments + 1099-K platform income
+    se_eligible = nec_income + k1_guaranteed + platform_income
+    se_tax_amt = calc_se_tax(se_eligible, filing_status) if se_eligible > 0 else 0
     se_deduction = se_tax_amt * 0.5
 
     agi = ordinary_income + qual_div + cg_long - se_deduction
-    deduction = std_deduction(filing_status)
+
+    # Use itemized deduction if mortgage + property tax + state tax exceeds standard
+    std_ded = std_deduction(filing_status)
+    itemized = mortgage_deduction + min(property_tax_ded, 10000)  # SALT cap $10K
+    deduction = max(std_ded, itemized)
 
     taxable_income = max(0, agi - deduction)
 
@@ -147,6 +263,7 @@ async def _compute_tax_estimate(session: AsyncSession, tax_year: int) -> dict:
         "marginal_rate": round(mrate * 100, 1),
         "w2_federal_already_withheld": round(summary["w2_federal_withheld"], 2),
         "estimated_balance_due": round(total_tax - summary["w2_federal_withheld"], 2),
+        "data_source": data_source,
         "disclaimer": "This is a rough estimate only. Consult a CPA for official tax advice.",
     }
 
@@ -175,6 +292,11 @@ async def get_tax_checklist(
         ("import_1099_div", "Import 1099-DIV Documents", "Upload 1099-DIV forms for dividend income", "1099_div"),
         ("import_1099_b", "Import 1099-B Documents", "Upload 1099-B forms for capital gains/losses", "1099_b"),
         ("import_1099_int", "Import 1099-INT Documents", "Upload 1099-INT forms for interest income", "1099_int"),
+        ("import_k1", "Import K-1 Documents", "Upload K-1 forms for partnership/S-corp income", "k1"),
+        ("import_1099_r", "Import 1099-R Documents", "Upload 1099-R forms for retirement distributions", "1099_r"),
+        ("import_1099_g", "Import 1099-G Documents", "Upload 1099-G forms for government payments", "1099_g"),
+        ("import_1099_k", "Import 1099-K Documents", "Upload 1099-K forms for payment platform income", "1099_k"),
+        ("import_1098", "Import 1098 Documents", "Upload 1098 forms for mortgage interest", "1098"),
     ]
     for check_id, label, desc, form in doc_checks:
         count = form_counts.get(form, 0)
@@ -322,12 +444,29 @@ async def get_deduction_opportunities(
     your tax bill. Frames it as 'money leaves your account either way — IRS
     or as a business asset/deduction.'
     """
+    from pipeline.tax import LIMIT_401K as _LIMIT_401K
+    from pipeline.tax.constants import HSA_LIMIT as _HSA_LIMIT
+
     estimate = await _compute_tax_estimate(session, tax_year)
     balance_due = estimate["estimated_balance_due"]
     marginal_rate = estimate["marginal_rate"]
     effective_rate = estimate["effective_rate"]
     agi = estimate["estimated_agi"]
     se_income = estimate["self_employment_income"]
+    est_data_source = estimate.get("data_source", "documents")
+
+    # Check HSA eligibility from BenefitPackage
+    household_result = await session.execute(
+        select(HouseholdProfile).where(HouseholdProfile.is_primary == True).limit(1)
+    )
+    household = household_result.scalar_one_or_none()
+    has_hsa_eligible = False
+    if household:
+        benefits_result = await session.execute(
+            select(BenefitPackage).where(BenefitPackage.household_id == household.id)
+        )
+        benefits = benefits_result.scalars().all()
+        has_hsa_eligible = any(getattr(b, "has_hsa", False) for b in benefits)
 
     # Get existing business expenses to understand current deduction picture
     biz_expense_result = await session.execute(
@@ -405,8 +544,6 @@ async def get_deduction_opportunities(
 
     # --- Retirement: SEP-IRA ---
     if se_income > 0:
-        from pipeline.tax import LIMIT_401K as _LIMIT_401K
-        from pipeline.tax.constants import HSA_LIMIT as _HSA_LIMIT
         sep_limit = min(se_income * 0.25, 70000)
         sep_savings_low = round(sep_limit * 0.5 * mrate, 2)
         sep_savings_high = round(sep_limit * mrate, 2)
@@ -458,13 +595,14 @@ async def get_deduction_opportunities(
     # --- HSA ---
     hsa_family_limit = _HSA_LIMIT["family"]
     hsa_savings = round(hsa_family_limit * mrate, 2)
+    hsa_note = "" if has_hsa_eligible else " Note: No HDHP found in your benefits — update your benefits in Setup if you have one."
     opportunities.append(DeductionOpportunityOut(
         id="hsa_contribution",
-        title="HSA Contribution (if HDHP enrolled)",
+        title="HSA Contribution" + (" (HDHP enrolled)" if has_hsa_eligible else " (requires HDHP)"),
         description=(
             "If enrolled in a High Deductible Health Plan, you can contribute up to "
             f"$8,550 (family, 2025) to an HSA. Triple tax advantage: deductible going in, "
-            f"tax-free growth, tax-free withdrawals for medical expenses."
+            f"tax-free growth, tax-free withdrawals for medical expenses.{hsa_note}"
         ),
         category="other",
         estimated_tax_savings_low=round(hsa_savings * 0.5, 2),
@@ -475,6 +613,7 @@ async def get_deduction_opportunities(
         ),
         urgency="medium",
         deadline=f"Apr 15, {tax_year + 1}",
+        applicable=has_hsa_eligible,
     ))
 
     # --- Home Office ---
@@ -596,4 +735,66 @@ async def get_deduction_opportunities(
         marginal_rate=marginal_rate,
         opportunities=opportunities,
         summary=summary_text,
+        data_source=est_data_source,
     )
+
+
+# ---------------------------------------------------------------------------
+# PATCH /tax/items/{item_id} — Inline editing of OCR-extracted tax item fields
+# ---------------------------------------------------------------------------
+
+class TaxItemUpdate(BaseModel):
+    """Partial update for a tax item. All fields optional."""
+    payer_name: Optional[str] = None
+    payer_ein: Optional[str] = None
+    w2_wages: Optional[float] = None
+    w2_federal_tax_withheld: Optional[float] = None
+    w2_state: Optional[str] = None
+    w2_state_wages: Optional[float] = None
+    w2_state_income_tax: Optional[float] = None
+    nec_nonemployee_compensation: Optional[float] = None
+    nec_federal_tax_withheld: Optional[float] = None
+    div_total_ordinary: Optional[float] = None
+    div_qualified: Optional[float] = None
+    div_total_capital_gain: Optional[float] = None
+    b_proceeds: Optional[float] = None
+    b_cost_basis: Optional[float] = None
+    b_gain_loss: Optional[float] = None
+    int_interest: Optional[float] = None
+    k1_ordinary_income: Optional[float] = None
+    k1_rental_income: Optional[float] = None
+    k1_guaranteed_payments: Optional[float] = None
+    k1_interest_income: Optional[float] = None
+    k1_dividends: Optional[float] = None
+    k1_short_term_capital_gain: Optional[float] = None
+    k1_long_term_capital_gain: Optional[float] = None
+    k1_section_179: Optional[float] = None
+    k1_distributions: Optional[float] = None
+    r_gross_distribution: Optional[float] = None
+    r_taxable_amount: Optional[float] = None
+    m_mortgage_interest: Optional[float] = None
+    m_points_paid: Optional[float] = None
+    m_property_tax: Optional[float] = None
+
+
+@router.patch("/items/{item_id}")
+async def update_tax_item(
+    item_id: int,
+    body: TaxItemUpdate,
+    session: AsyncSession = Depends(get_session),
+):
+    """Update individual fields on a tax item (e.g., correcting OCR misreads)."""
+    result = await session.execute(select(TaxItem).where(TaxItem.id == item_id))
+    item = result.scalar_one_or_none()
+    if not item:
+        raise HTTPException(status_code=404, detail="Tax item not found")
+
+    updates = body.model_dump(exclude_unset=True)
+    if not updates:
+        raise HTTPException(status_code=400, detail="No fields to update")
+
+    for field, value in updates.items():
+        setattr(item, field, value)
+
+    await session.flush()
+    return {"id": item.id, "updated_fields": list(updates.keys())}

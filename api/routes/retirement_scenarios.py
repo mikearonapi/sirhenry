@@ -218,6 +218,21 @@ async def get_trajectory(profile_id: int, session: AsyncSession = Depends(get_se
     }
 
 
+@router.post("/monte-carlo")
+async def monte_carlo_simulation(body: RetirementProfileIn):
+    """
+    Run Monte Carlo simulation (1000 trials) to assess retirement probability.
+    Varies annual returns (sigma=15%) and inflation (sigma=1.5%) around base assumptions.
+    """
+    data = body.model_dump()
+    debt_payoffs_raw = data.pop("debt_payoffs", [])
+    calc_data = {k: v for k, v in data.items() if k in RetirementInputs.__dataclass_fields__}
+    calc_data["debt_payoffs"] = debt_payoffs_raw
+    inputs = RetirementInputs(**calc_data)
+    mc = RetirementCalculator.monte_carlo(inputs, num_simulations=1000)
+    return mc
+
+
 @router.get("/budget-snapshot", response_model=BudgetSnapshotOut)
 async def budget_snapshot(session: AsyncSession = Depends(get_session)):
     """

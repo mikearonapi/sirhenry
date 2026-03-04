@@ -20,11 +20,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from pipeline.ai.categories import EXPENSE_CATEGORIES, TAX_CATEGORIES
+from pipeline.ai.privacy import PIISanitizer, sanitize_entity_list, log_ai_privacy_audit
 from pipeline.db import get_transactions
 from pipeline.db.schema import HouseholdProfile
 from pipeline.utils import CLAUDE_MODEL, strip_json_fences, get_claude_client, call_claude_with_retry
 
-load_dotenv()
+load_dotenv(override=True)
 logger = logging.getLogger(__name__)
 
 
@@ -91,7 +92,11 @@ Transactions:
 
 
 async def _build_household_context(session: AsyncSession) -> str:
-    """Build a household context string from DB data — no hardcoded names."""
+    """Build a minimal household context for categorization — no names or employers.
+
+    The categorizer only needs filing status to make segment/category decisions.
+    Names and employers are PII that Claude doesn't need for transaction categorization.
+    """
     result = await session.execute(
         select(HouseholdProfile).where(HouseholdProfile.is_primary == True).limit(1)
     )
@@ -101,18 +106,10 @@ async def _build_household_context(session: AsyncSession) -> str:
     if household:
         filing = household.filing_status or "unknown"
         lines.append(f"- Filing status: {filing.upper()}")
-        if household.spouse_a_name and household.spouse_a_employer:
-            lines.append(
-                f"- {household.spouse_a_name}: W-2 income from {household.spouse_a_employer}"
-            )
-        elif household.spouse_a_name:
-            lines.append(f"- Primary earner: {household.spouse_a_name}")
-        if household.spouse_b_name and household.spouse_b_employer:
-            lines.append(
-                f"- {household.spouse_b_name}: income from {household.spouse_b_employer}"
-            )
-        elif household.spouse_b_name:
-            lines.append(f"- Spouse/partner: {household.spouse_b_name}")
+        if household.spouse_a_income:
+            lines.append("- Primary earner: W-2 employee")
+        if household.spouse_b_income:
+            lines.append("- Secondary earner: has income")
 
     return "\n".join(lines) if lines else "- No household profile configured"
 
@@ -135,20 +132,27 @@ async def categorize_transactions(
     from pipeline.db import get_all_business_entities, get_business_entity_by_name
 
     entities = await get_all_business_entities(session, include_inactive=True)
-    entity_dicts = [
-        {
-            "name": e.name,
-            "entity_type": e.entity_type,
-            "tax_treatment": e.tax_treatment,
-            "owner": e.owner,
-            "is_active": e.is_active,
-            "is_provisional": e.is_provisional,
-        }
-        for e in entities
-    ]
+
+    # Build sanitizer to anonymize entity names for Claude
+    sanitizer = PIISanitizer()
+    # Load household just for sanitizer registration (names/employers)
+    hh_result = await session.execute(
+        select(HouseholdProfile).where(HouseholdProfile.is_primary == True).limit(1)
+    )
+    hh = hh_result.scalar_one_or_none()
+    sanitizer.register_household(hh, entities)
+
+    # Build sanitized entity list for the prompt
+    entity_dicts = sanitize_entity_list(entities, sanitizer)
+    # Map: sanitized_name -> entity ID (for mapping Claude's response back)
+    sanitized_name_to_id = {
+        sanitizer.sanitize_text(e.name).lower(): e.id for e in entities
+    }
+    # Also keep original name mapping for fallback
     entity_name_to_id = {e.name.lower(): e.id for e in entities}
 
     household_context = await _build_household_context(session)
+    log_ai_privacy_audit("categorize", ["transactions", "entities"], sanitized=True)
 
     page_size = 500
     max_iterations = 20
@@ -224,7 +228,8 @@ async def categorize_transactions(
 
                         entity_name = r.get("business_entity")
                         if entity_name:
-                            eid = entity_name_to_id.get(entity_name.lower())
+                            # Try sanitized name first (Claude may return labels), then original
+                            eid = sanitized_name_to_id.get(entity_name.lower()) or entity_name_to_id.get(entity_name.lower())
                             if eid:
                                 values["business_entity_id"] = eid
                                 values["effective_business_entity_id"] = eid
@@ -245,6 +250,13 @@ async def categorize_transactions(
                 logger.error(f"Anthropic API error: {e}")
                 total_errors += len(batch)
 
+    # Audit log
+    try:
+        from pipeline.security.audit import log_audit
+        await log_audit(session, "ai_categorize", "transactions", f"count={total_categorized},errors={total_errors}")
+    except Exception:
+        pass
+
     return {
         "categorized": total_categorized,
         "skipped": total_skipped,
@@ -253,81 +265,107 @@ async def categorize_transactions(
 
 
 async def extract_tax_fields_with_claude(
-    form_type: str,
     text: str,
     tax_year: int,
+    images: list[bytes] | None = None,
+    form_type: str | None = None,
 ) -> dict[str, Any]:
     """
-    Use Claude to extract structured fields from a tax document's text.
-    Returns a dict of field name → value.
-    Used as fallback when heuristic extraction misses key fields.
+    Use Claude to auto-detect form type AND extract all fields from a tax document.
+    Returns a dict with '_form_type' plus all extracted field values.
+    Accepts text, images (vision), or both.
     """
+    import base64
+
     client = get_claude_client()
 
-    field_schema = {
-        "w2": {
-            "payer_name": "string — employer name",
-            "payer_ein": "string — XX-XXXXXXX format",
-            "w2_wages": "float — Box 1",
-            "w2_federal_tax_withheld": "float — Box 2",
-            "w2_ss_wages": "float — Box 3",
-            "w2_ss_tax_withheld": "float — Box 4",
-            "w2_medicare_wages": "float — Box 5",
-            "w2_medicare_tax_withheld": "float — Box 6",
-            "w2_state_allocations": "JSON array of {state, wages, tax} for each state in boxes 15-17",
-        },
-        "1099_nec": {
-            "payer_name": "string",
-            "payer_ein": "string — XX-XXXXXXX format",
-            "nec_nonemployee_compensation": "float — Box 1",
-            "nec_federal_tax_withheld": "float — Box 4 (or 0 if blank)",
-        },
-        "1099_div": {
-            "payer_name": "string",
-            "div_total_ordinary": "float — Box 1a",
-            "div_qualified": "float — Box 1b",
-            "div_total_capital_gain": "float — Box 2a",
-            "div_federal_tax_withheld": "float — Box 4",
-        },
-        "1099_b": {
-            "payer_name": "string — brokerage name",
-            "entries": "array of {description, proceeds, cost_basis, gain_loss, term: short|long}",
-        },
-        "brokerage_statement": {
-            "payer_name": "string — brokerage name",
-            "total_dividends": "float",
-            "total_interest": "float",
-            "realized_gains_short": "float",
-            "realized_gains_long": "float",
-        },
-        "other": {
-            "summary": "string — brief description of document contents",
-            "amounts": "array of {label, amount}",
-        },
-    }
+    prompt = f"""You are a professional CPA extracting data from a tax document (tax year {tax_year}).
 
-    schema = field_schema.get(form_type, field_schema["other"])
+STEP 1: Identify the document type. Set "_form_type" to one of:
+  w2, 1099_nec, 1099_div, 1099_b, 1099_int, 1099_r, 1099_g, 1099_k, k1, 1098, schedule_h, other
 
-    prompt = f"""You are a professional CPA and tax document reader.
+STEP 2: Extract ALL relevant fields based on the form type.
 
-Extract the following fields from this {form_type.upper()} tax document for tax year {tax_year}.
+For W-2: payer_name, payer_ein, w2_wages (Box 1), w2_federal_tax_withheld (Box 2),
+  w2_ss_wages (Box 3), w2_ss_tax_withheld (Box 4), w2_medicare_wages (Box 5),
+  w2_medicare_tax_withheld (Box 6), w2_state_allocations (array of {{state, wages, tax}} for EACH state in boxes 15-17)
 
-Required fields:
-{json.dumps(schema, indent=2)}
+For 1099-NEC: payer_name, payer_ein, nec_nonemployee_compensation (Box 1), nec_federal_tax_withheld (Box 4)
 
-Return ONLY a JSON object with the field names as keys. Use null for missing fields.
-Do NOT include any explanatory text outside the JSON.
+For 1099-DIV: payer_name, div_total_ordinary (1a), div_qualified (1b), div_total_capital_gain (2a), div_federal_tax_withheld (4)
+
+For 1099-B: payer_name, b_proceeds, b_cost_basis, b_gain_loss, b_term (short or long), b_wash_sale_loss
+
+For 1099-INT: payer_name, int_interest (Box 1), int_federal_tax_withheld (Box 4)
+
+For 1099-R (retirement distributions — pensions, IRAs, 401k):
+  payer_name, payer_ein,
+  r_gross_distribution (Box 1), r_taxable_amount (Box 2a),
+  r_federal_tax_withheld (Box 4), r_distribution_code (Box 7 — e.g. "1","7","G"),
+  r_state_tax_withheld (Box 12), r_state (Box 13)
+
+For 1099-G (government payments — unemployment, state tax refunds):
+  payer_name, payer_ein,
+  g_unemployment_compensation (Box 1), g_state_tax_refund (Box 2),
+  g_federal_tax_withheld (Box 4), g_state (Box 10a)
+
+For 1099-K (payment card/third-party network — Stripe, PayPal, Square):
+  payer_name, payer_ein,
+  k_gross_amount (Box 1a), k_federal_tax_withheld (Box 4), k_state (Box 7)
+
+For 1098 (mortgage interest statement):
+  payer_name, payer_ein,
+  m_mortgage_interest (Box 1), m_points_paid (Box 6), m_property_tax (Box 10)
+
+For K-1 (Schedule K-1 — partnerships, S-corps, trusts/estates):
+  payer_name, payer_ein,
+  k1_ordinary_income (Box 1 — ordinary business income or loss),
+  k1_rental_income (Box 2 — net rental real estate income/loss),
+  k1_other_rental_income (Box 3 — other net rental income/loss),
+  k1_guaranteed_payments (Box 4 — guaranteed payments),
+  k1_interest_income (Box 5 — interest income),
+  k1_dividends (Box 6a — ordinary dividends),
+  k1_qualified_dividends (Box 6b — qualified dividends),
+  k1_short_term_capital_gain (Box 8 — net short-term capital gain/loss),
+  k1_long_term_capital_gain (Box 9a — net long-term capital gain/loss),
+  k1_section_179 (Box 12 — section 179 deduction),
+  k1_distributions (Box 19 — distributions)
+
+For Schedule H (household employment taxes): payer_name, payer_ein
+
+For all others: payer_name
+
+IMPORTANT:
+- Multi-state W-2s: include ALL states in w2_state_allocations array
+- Use numeric values (no $ or commas). Use null for missing fields.
+- payer_ein format: XX-XXXXXXX
+- If a composite statement contains multiple form types (e.g. 1099-DIV + 1099-INT + 1099-B), extract ALL fields from ALL sections
+
+Return ONLY a JSON object. No explanatory text.
 
 Document text:
 ---
-{text[:6000]}
+{text[:8000]}
 ---"""
+
+    content: list[dict[str, Any]] = []
+    if images:
+        for img_bytes in images:
+            content.append({
+                "type": "image",
+                "source": {
+                    "type": "base64",
+                    "media_type": "image/png",
+                    "data": base64.b64encode(img_bytes).decode(),
+                },
+            })
+    content.append({"type": "text", "text": prompt})
 
     response = call_claude_with_retry(
         client,
         model=CLAUDE_MODEL,
         max_tokens=2048,
-        messages=[{"role": "user", "content": prompt}],
+        messages=[{"role": "user", "content": content}],
     )
 
     raw = strip_json_fences(response.content[0].text)

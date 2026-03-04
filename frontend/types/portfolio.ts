@@ -39,6 +39,7 @@ export interface ManualAsset {
   annual_return_pct: number | null;
   allocation_json: string | null;
   beneficiary: string | null;
+  linked_account_id: number | null;
 }
 
 export interface ManualAssetCreateIn {
@@ -155,12 +156,16 @@ export interface PortfolioSummary {
   total_cost_basis: number;
   total_gain_loss: number;
   total_gain_loss_pct: number;
+  has_cost_basis: boolean;
+  weighted_avg_return: number | null;
   stock_value: number;
   etf_value: number;
   crypto_value: number;
   other_value: number;
+  manual_investment_value?: number;
   holdings_count: number;
-  top_holdings: Array<{ ticker: string; name: string | null; value: number; gain_loss_pct: number }>;
+  accounts_count?: number;
+  top_holdings: Array<{ ticker: string; name: string | null; value: number; gain_loss_pct: number; is_annual_return?: boolean }>;
   sector_allocation: Record<string, number>;
   asset_class_allocation: Record<string, number>;
 }

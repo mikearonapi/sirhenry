@@ -1,4 +1,6 @@
+import hashlib
 import logging
+from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -6,10 +8,12 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.database import get_session
-from api.models.schemas import TransactionListOut, TransactionOut, TransactionUpdateIn
+from api.models.schemas import TransactionCreateIn, TransactionListOut, TransactionOut, TransactionUpdateIn
 from pipeline.db import (
     count_transactions,
+    get_account,
     get_transactions,
+    apply_entity_rules,
     update_transaction_category,
     update_transaction_entity,
 )
@@ -185,3 +189,47 @@ async def update_transaction(
     )
     tx_updated = result2.scalar_one()
     return TransactionOut.model_validate(tx_updated)
+
+
+@router.post("", response_model=TransactionOut, status_code=201)
+async def create_manual_transaction(
+    body: TransactionCreateIn,
+    session: AsyncSession = Depends(get_session),
+):
+    """Create a single manual transaction."""
+    account = await get_account(session, body.account_id)
+    if not account:
+        raise HTTPException(404, f"Account {body.account_id} not found")
+
+    tx = Transaction(
+        account_id=body.account_id,
+        date=body.date,
+        description=body.description,
+        amount=body.amount,
+        currency=body.currency,
+        segment=body.segment,
+        effective_segment=body.segment,
+        category=body.category,
+        effective_category=body.category,
+        tax_category=body.tax_category,
+        effective_tax_category=body.tax_category,
+        period_month=body.date.month,
+        period_year=body.date.year,
+        notes=body.notes,
+        data_source="manual",
+    )
+    session.add(tx)
+    await session.flush()
+
+    # Generate hash using the auto-incremented ID
+    tx.transaction_hash = hashlib.sha256(f"manual|{tx.id}".encode()).hexdigest()
+
+    # Apply entity rules
+    await apply_entity_rules(session, transaction_id=tx.id)
+    await session.flush()
+
+    # Re-fetch to get updated fields
+    result = await session.execute(
+        select(Transaction).where(Transaction.id == tx.id)
+    )
+    return TransactionOut.model_validate(result.scalar_one())
