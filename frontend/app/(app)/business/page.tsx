@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -170,6 +170,14 @@ const GUIDANCE_CARDS: GuidanceCard[] = [
 // ---------------------------------------------------------------------------
 
 export default function BusinessPage() {
+  return (
+    <Suspense>
+      <BusinessPageContent />
+    </Suspense>
+  );
+}
+
+function BusinessPageContent() {
   const searchParams = useSearchParams();
   const [entities, setEntities] = useState<BusinessEntity[]>([]);
   const [loading, setLoading] = useState(true);
