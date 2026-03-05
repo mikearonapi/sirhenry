@@ -13,10 +13,13 @@ export function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
+  // Allow landing page, Next.js internals, and static assets from /public
   if (
     pathname === "/" ||
     pathname.startsWith("/_next") ||
-    pathname === "/favicon.ico"
+    pathname === "/favicon.ico" ||
+    pathname.startsWith("/screenshots/") ||
+    /\.(png|jpg|jpeg|gif|svg|ico|webp|avif|woff|woff2|ttf|eot|css|js)$/.test(pathname)
   ) {
     return NextResponse.next();
   }

@@ -103,8 +103,9 @@ export default function HeroSection() {
                 alt="SirHENRY Dashboard — your financial command center"
                 width={1280}
                 height={800}
+                sizes="(max-width: 768px) 100vw, (max-width: 1024px) 90vw, 896px"
                 className="w-full h-auto"
-                quality={90}
+                quality={85}
                 priority
               />
             </div>

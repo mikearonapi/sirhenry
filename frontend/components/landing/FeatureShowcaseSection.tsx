@@ -199,9 +199,10 @@ function ScreenshotFrame({ src, alt, dark }: { src: string; alt: string; dark: b
         alt={alt}
         width={1280}
         height={800}
+        sizes="(max-width: 768px) 100vw, (max-width: 1024px) 90vw, 1024px"
         className="w-full h-auto"
-        quality={90}
-        priority={false}
+        quality={80}
+        loading="lazy"
       />
     </div>
   );
