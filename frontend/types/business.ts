@@ -10,6 +10,8 @@ export interface BusinessEntity {
   active_from: string | null;
   active_to: string | null;
   notes: string | null;
+  description: string | null;
+  expected_expenses: string | null;
   created_at: string;
 }
 
@@ -23,6 +25,32 @@ export interface BusinessEntityCreateIn {
   active_from?: string | null;
   active_to?: string | null;
   notes?: string | null;
+  description?: string | null;
+  expected_expenses?: string | null;
+}
+
+export interface EntityMonthlyTotal {
+  month: number;
+  month_name: string;
+  total_expenses: number;
+  transaction_count: number;
+}
+
+export interface EntityCategoryBreakdown {
+  category: string;
+  total: number;
+  percentage: number;
+}
+
+export interface EntityExpenseReport {
+  entity_id: number;
+  entity_name: string;
+  year: number;
+  monthly_totals: EntityMonthlyTotal[];
+  category_breakdown: EntityCategoryBreakdown[];
+  year_total_expenses: number;
+  prior_year_total_expenses: number | null;
+  year_over_year_change_pct: number | null;
 }
 
 export interface VendorEntityRule {

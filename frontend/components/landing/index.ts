@@ -1,8 +1,7 @@
 export { default as HeroSection } from "./HeroSection";
 export { default as HenryParadoxSection } from "./HenryParadoxSection";
 export { default as ProblemsSection } from "./ProblemsSection";
-export { default as CapabilitiesSection } from "./CapabilitiesSection";
-export { default as SirHenryAISection } from "./SirHenryAISection";
+export { default as FeatureShowcaseSection } from "./FeatureShowcaseSection";
 export { default as ComparisonTable } from "./ComparisonTable";
 export { default as VoicesSection } from "./VoicesSection";
 export { default as WaitlistSection } from "./WaitlistSection";

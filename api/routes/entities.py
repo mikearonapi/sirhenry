@@ -1,9 +1,12 @@
 """
-Business entity and vendor rule CRUD endpoints.
+Business entity and vendor rule CRUD endpoints, plus expense reporting.
 """
+import csv
+import io
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.database import get_session
@@ -11,6 +14,7 @@ from api.models.schemas import (
     BusinessEntityCreateIn,
     BusinessEntityOut,
     BusinessEntityUpdateIn,
+    EntityExpenseReportOut,
     EntityReassignIn,
     VendorEntityRuleCreateIn,
     VendorEntityRuleOut,
@@ -170,3 +174,57 @@ async def set_transaction_entity(
     """Manually set the business entity for a single transaction."""
     await update_transaction_entity(session, transaction_id, business_entity_id)
     return {"status": "ok"}
+
+
+# ---------------------------------------------------------------------------
+# Expense Reporting
+# ---------------------------------------------------------------------------
+
+@router.get("/{entity_id}/expenses", response_model=EntityExpenseReportOut)
+async def get_entity_expenses(
+    entity_id: int,
+    year: int = Query(...),
+    session: AsyncSession = Depends(get_session),
+):
+    """Get monthly expense breakdown for a business entity."""
+    from pipeline.planning.business_reports import compute_entity_expense_report
+    result = await compute_entity_expense_report(session, entity_id, year)
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
+
+
+@router.get("/{entity_id}/expenses/csv")
+async def export_entity_expenses_csv(
+    entity_id: int,
+    year: int = Query(...),
+    month: Optional[int] = Query(None),
+    session: AsyncSession = Depends(get_session),
+):
+    """Download business entity transactions as CSV."""
+    from pipeline.planning.business_reports import get_entity_transactions
+    entity = await get_business_entity(session, entity_id)
+    if not entity:
+        raise HTTPException(status_code=404, detail="Business entity not found")
+
+    transactions = await get_entity_transactions(session, entity_id, year, month)
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Date", "Description", "Amount", "Category", "Tax Category", "Account", "Segment", "Notes"])
+    for tx in transactions:
+        writer.writerow([
+            tx["date"], tx["description"], tx["amount"],
+            tx["category"], tx["tax_category"], tx["account"],
+            tx["segment"], tx["notes"],
+        ])
+
+    output.seek(0)
+    period = f"{year}-{month:02d}" if month else str(year)
+    filename = f"{entity.name.replace(' ', '-')}-{period}-expenses.csv"
+
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

@@ -135,8 +135,17 @@ def build_sanitized_household_context(household, sanitizer: PIISanitizer) -> str
     return "\n".join(lines)
 
 
-def sanitize_entity_list(entities, sanitizer: PIISanitizer) -> list[dict[str, Any]]:
-    """Return entity dicts with names replaced by labels."""
+def sanitize_entity_list(
+    entities,
+    sanitizer: PIISanitizer,
+    accounts_map: dict[int, list[str]] | None = None,
+    rules_map: dict[int, list[str]] | None = None,
+) -> list[dict[str, Any]]:
+    """Return entity dicts with names replaced by labels.
+
+    Optional enrichment maps add assigned account names and vendor patterns
+    for richer AI categorization context. These fields are not PII.
+    """
     result = []
     for e in entities:
         name = e.name if hasattr(e, "name") else e.get("name", "")
@@ -146,14 +155,30 @@ def sanitize_entity_list(entities, sanitizer: PIISanitizer) -> list[dict[str, An
         is_active = e.is_active if hasattr(e, "is_active") else e.get("is_active", True)
         is_provisional = e.is_provisional if hasattr(e, "is_provisional") else e.get("is_provisional", False)
 
-        result.append({
+        entry: dict[str, Any] = {
             "name": sanitizer.sanitize_text(name),
             "entity_type": entity_type,
             "tax_treatment": tax_treatment,
             "owner": sanitizer.sanitize_text(owner) if owner else owner,
             "is_active": is_active,
             "is_provisional": is_provisional,
-        })
+        }
+
+        # Enrichment fields — not PII, pass through as-is
+        description = e.description if hasattr(e, "description") else e.get("description")
+        expected_expenses = e.expected_expenses if hasattr(e, "expected_expenses") else e.get("expected_expenses")
+        if description:
+            entry["description"] = description
+        if expected_expenses:
+            entry["expected_expenses"] = expected_expenses
+
+        eid = e.id if hasattr(e, "id") else e.get("id")
+        if accounts_map and eid and eid in accounts_map:
+            entry["assigned_accounts"] = accounts_map[eid]
+        if rules_map and eid and eid in rules_map:
+            entry["vendor_patterns"] = rules_map[eid]
+
+        result.append(entry)
     return result
 
 

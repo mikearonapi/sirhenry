@@ -29,6 +29,8 @@ export interface Transaction {
   notes: string | null;
   data_source: "plaid" | "csv" | "manual" | "monarch";
   is_excluded: boolean;
+  merchant_name: string | null;
+  merchant_logo_url: string | null;
   created_at: string;
 }
 

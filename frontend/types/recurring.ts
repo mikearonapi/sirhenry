@@ -9,6 +9,7 @@ export interface RecurringItem {
   last_seen_date: string | null;
   next_expected_date: string | null;
   is_auto_detected: boolean;
+  notes: string | null;
   annual_cost: number;
 }
 

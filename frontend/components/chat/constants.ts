@@ -12,6 +12,8 @@ import {
   PieChart,
   Landmark,
   Compass,
+  RefreshCw,
+  Activity,
 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -33,6 +35,12 @@ export const TOOL_ICONS: Record<string, typeof Search> = {
   get_portfolio_overview: PieChart,
   get_retirement_status: Landmark,
   get_life_scenarios: Compass,
+  list_manual_assets: Wallet,
+  update_asset_value: FileEdit,
+  get_stock_quote: TrendingUp,
+  trigger_plaid_sync: RefreshCw,
+  run_categorization: Sparkles,
+  get_data_health: Activity,
 };
 
 export const TOOL_LABELS: Record<string, string> = {
@@ -50,6 +58,12 @@ export const TOOL_LABELS: Record<string, string> = {
   get_portfolio_overview: "Analyzing portfolio",
   get_retirement_status: "Checking retirement readiness",
   get_life_scenarios: "Loading life scenarios",
+  list_manual_assets: "Loading assets",
+  update_asset_value: "Updating asset value",
+  get_stock_quote: "Fetching stock quote",
+  trigger_plaid_sync: "Syncing bank data",
+  run_categorization: "Categorizing transactions",
+  get_data_health: "Running data health check",
 };
 
 export const TOOL_DONE_LABELS: Record<string, string> = {
@@ -67,6 +81,12 @@ export const TOOL_DONE_LABELS: Record<string, string> = {
   get_portfolio_overview: "Portfolio analyzed",
   get_retirement_status: "Retirement status loaded",
   get_life_scenarios: "Scenarios loaded",
+  list_manual_assets: "Assets loaded",
+  update_asset_value: "Asset updated",
+  get_stock_quote: "Quote fetched",
+  trigger_plaid_sync: "Bank data synced",
+  run_categorization: "Categorization complete",
+  get_data_health: "Health check complete",
 };
 
 // ---------------------------------------------------------------------------
@@ -103,7 +123,7 @@ export const SUGGESTION_CATEGORIES: SuggestionCategory[] = [
       "What tax strategies should I focus on right now?",
       "Are there any business expenses I might be missing?",
       "How much have I spent on deductible categories this year?",
-      "Review my business expenses for AutoRev",
+      "What's my estimated tax liability this year?",
     ],
   },
   {
@@ -119,7 +139,7 @@ export const SUGGESTION_CATEGORIES: SuggestionCategory[] = [
     ],
   },
   {
-    label: "Goals & Planning",
+    label: "Goals",
     icon: Target,
     color: "text-purple-600",
     bgColor: "bg-purple-50 hover:bg-purple-100 border-purple-100",
@@ -131,7 +151,7 @@ export const SUGGESTION_CATEGORIES: SuggestionCategory[] = [
     ],
   },
   {
-    label: "Wealth Building",
+    label: "Wealth",
     icon: TrendingUp,
     color: "text-indigo-600",
     bgColor: "bg-indigo-50 hover:bg-indigo-100 border-indigo-100",
@@ -140,6 +160,30 @@ export const SUGGESTION_CATEGORIES: SuggestionCategory[] = [
       "How should I handle my RSU vesting and taxes?",
       "What's my net worth trajectory looking like?",
       "Help me optimize my 401k and retirement contributions",
+    ],
+  },
+  {
+    label: "Subscriptions",
+    icon: RotateCcw,
+    color: "text-teal-600",
+    bgColor: "bg-teal-50 hover:bg-teal-100 border-teal-100",
+    suggestions: [
+      "What subscriptions am I currently paying for?",
+      "Are there any subscriptions I should consider canceling?",
+      "How much am I spending on subscriptions per month?",
+      "Show me any recurring charges that have increased recently",
+    ],
+  },
+  {
+    label: "Manage",
+    icon: RefreshCw,
+    color: "text-rose-600",
+    bgColor: "bg-rose-50 hover:bg-rose-100 border-rose-100",
+    suggestions: [
+      "Run a data health check — what needs attention?",
+      "Sync my bank accounts and categorize new transactions",
+      "What are my manual assets worth? Any values need updating?",
+      "Look up the current price of ACN stock",
     ],
   },
 ];
@@ -164,6 +208,8 @@ export const SUGGESTION_CATEGORIES_DARK: SuggestionCategory[] = [
   { ...SUGGESTION_CATEGORIES[2], bgColor: "bg-amber-900/30 hover:bg-amber-900/50 border-amber-800/50", color: "text-amber-400" },
   { ...SUGGESTION_CATEGORIES[3], bgColor: "bg-purple-900/30 hover:bg-purple-900/50 border-purple-800/50", color: "text-purple-400" },
   { ...SUGGESTION_CATEGORIES[4], bgColor: "bg-indigo-900/30 hover:bg-indigo-900/50 border-indigo-800/50", color: "text-indigo-400" },
+  { ...SUGGESTION_CATEGORIES[5], bgColor: "bg-teal-900/30 hover:bg-teal-900/50 border-teal-800/50", color: "text-teal-400" },
+  { ...SUGGESTION_CATEGORIES[6], bgColor: "bg-rose-900/30 hover:bg-rose-900/50 border-rose-800/50", color: "text-rose-400" },
 ];
 
 export const SETUP_SUGGESTION_CATEGORY_DARK: SuggestionCategory = {

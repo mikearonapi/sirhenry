@@ -1,5 +1,6 @@
 "use client";
 import { useState, useRef, useEffect, useCallback } from "react";
+import { usePathname } from "next/navigation";
 import {
   X,
   Loader2,
@@ -9,21 +10,43 @@ import {
   Minimize2,
   ArrowRight,
 } from "lucide-react";
-import { sendChatMessage } from "@/lib/api";
+import { streamChatMessage, getConversations, getConversation } from "@/lib/api";
 import type { ChatMessage as ChatMessageType } from "@/types/api";
-import ChatMessage, { SirHenryAvatar, type DisplayMessage } from "./ChatMessage";
-import ChatToolCall from "./ChatToolCall";
+import ChatMessage, { SirHenryAvatar, renderMarkdown, renderStreamingMarkdown, type DisplayMessage } from "./ChatMessage";
 import ChatSuggestions from "./ChatSuggestions";
 import ConsentModal from "./ConsentModal";
+import { TOOL_ICONS, TOOL_LABELS, TOOL_DONE_LABELS } from "./constants";
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function derivePageContext(pathname: string): string | null {
+  const segment = pathname.split("/")[1];
+  const KNOWN = new Set([
+    "goals", "budget", "cashflow", "transactions", "recurring",
+    "portfolio", "retirement", "market", "equity-comp", "life-planner",
+    "tax-strategy", "tax-documents", "setup", "accounts", "household",
+    "life-events", "business", "insurance", "dashboard",
+  ]);
+  return KNOWN.has(segment) ? segment : null;
+}
 
 // ---------------------------------------------------------------------------
 // Main chat component
 // ---------------------------------------------------------------------------
 
 export default function ChatWindow() {
+  const pathname = usePathname();
+  const pageContext = derivePageContext(pathname);
+  const isSirHenryPage = pathname === "/sir-henry";
+
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
+  const [conversationId, setConversationId] = useState<number | null>(null);
+  const [streamingText, setStreamingText] = useState<string>("");
+  const [activeTools, setActiveTools] = useState<{ tool: string; label: string; done: boolean }[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,6 +54,7 @@ export default function ChatWindow() {
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   const scrollToBottom = useCallback(() => {
     requestAnimationFrame(() => {
@@ -42,7 +66,7 @@ export default function ChatWindow() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, loading, scrollToBottom]);
+  }, [messages, streamingText, loading, scrollToBottom]);
 
   useEffect(() => {
     if (open && inputRef.current) {
@@ -50,20 +74,55 @@ export default function ChatWindow() {
     }
   }, [open]);
 
-  // Listen for "ask-henry" events from setup steps and other pages
+  // Reset conversation when navigating to a different page
+  useEffect(() => {
+    abortRef.current?.abort();
+    setConversationId(null);
+    setMessages([]);
+    setStreamingText("");
+    setActiveTools([]);
+    setError(null);
+    setOpen(false);
+  }, [pathname]);
+
+  // Load last conversation for this page context when the widget opens
+  useEffect(() => {
+    if (!open) return;
+    if (messages.length > 0) return;
+
+    getConversations()
+      .then((convs) => {
+        const match = convs.find((c) => c.page_context === pageContext);
+        if (!match) return;
+        return getConversation(match.id).then((detail) => {
+          setConversationId(detail.id);
+          setMessages(
+            detail.messages.map((m) => ({
+              role: m.role as "user" | "assistant",
+              content: m.content,
+              actions: m.actions_json ? JSON.parse(m.actions_json) : undefined,
+              timestamp: new Date(m.created_at),
+            }))
+          );
+        });
+      })
+      .catch(() => {/* Silently ignore — backend may not be running */});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  // Listen for "ask-henry" events from other pages
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       if (detail?.message) {
         setOpen(true);
-        // Small delay to ensure panel is open before sending
         setTimeout(() => handleSend(detail.message), 300);
       }
     };
     window.addEventListener("ask-henry", handler);
     return () => window.removeEventListener("ask-henry", handler);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages]);
+  }, [messages, conversationId]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -79,6 +138,8 @@ export default function ChatWindow() {
 
     setInput("");
     setError(null);
+    setStreamingText("");
+    setActiveTools([]);
 
     const userMsg: DisplayMessage = {
       role: "user",
@@ -88,34 +149,83 @@ export default function ChatWindow() {
     setMessages((prev) => [...prev, userMsg]);
     setLoading(true);
 
+    const abort = new AbortController();
+    abortRef.current = abort;
+
+    const apiMessages: ChatMessageType[] = [
+      ...messages.map((m) => ({ role: m.role, content: m.content })),
+      { role: "user" as const, content: messageText },
+    ];
+
+    let accumulatedText = "";
+    let finalConvId = conversationId;
+
     try {
-      const apiMessages: ChatMessageType[] = [
-        ...messages.map((m) => ({ role: m.role, content: m.content })),
-        { role: "user" as const, content: messageText },
-      ];
+      await streamChatMessage(
+        apiMessages,
+        { conversationId: conversationId ?? undefined, pageContext },
+        (event) => {
+          if (event.type === "requires_consent") {
+            setPendingMessage(messageText);
+            setShowConsent(true);
+            setMessages((prev) => prev.slice(0, -1));
+            setLoading(false);
+            return;
+          }
+          if (event.type === "text_delta" && event.text) {
+            accumulatedText += event.text;
+            setStreamingText(accumulatedText);
+            scrollToBottom();
+          }
+          if (event.type === "tool_start" && event.tool) {
+            setActiveTools((prev) => [
+              ...prev,
+              { tool: event.tool!, label: event.label ?? event.tool!, done: false },
+            ]);
+          }
+          if (event.type === "tool_done" && event.tool) {
+            setActiveTools((prev) =>
+              prev.map((t) => (t.tool === event.tool ? { ...t, done: true, label: event.label ?? t.label } : t))
+            );
+          }
+          if (event.type === "done") {
+            if (event.conversation_id != null) {
+              finalConvId = event.conversation_id;
+              setConversationId(event.conversation_id);
+            }
+          }
+          if (event.type === "error") {
+            setError(event.message ?? "Something went wrong.");
+          }
+        },
+        abort.signal,
+      );
 
-      const result = await sendChatMessage(apiMessages);
-
-      if (result.requires_consent) {
-        setPendingMessage(messageText);
-        setShowConsent(true);
-        // Remove the user message we just added since we can't process it yet
-        setMessages((prev) => prev.slice(0, -1));
-        return;
+      // Commit the streamed response to messages state
+      if (accumulatedText) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: accumulatedText,
+            timestamp: new Date(),
+          },
+        ]);
       }
-
-      const assistantMsg: DisplayMessage = {
-        role: "assistant",
-        content: result.response ?? "",
-        actions: result.actions,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, assistantMsg]);
+      setStreamingText("");
+      setActiveTools([]);
     } catch (e: unknown) {
-      const errMsg = e instanceof Error ? e.message : "Something went wrong. Please try again.";
+      if (e instanceof Error && e.name === "AbortError") return;
+      let errMsg = "Something went wrong. Please try again.";
+      if (e instanceof TypeError && (e.message === "Failed to fetch" || e.message.includes("NetworkError"))) {
+        errMsg = "Can't reach the API server. Make sure the backend is running (docker compose up api).";
+      } else if (e instanceof Error) {
+        errMsg = e.message;
+      }
       setError(errMsg);
     } finally {
       setLoading(false);
+      setStreamingText("");
     }
   }
 
@@ -127,13 +237,20 @@ export default function ChatWindow() {
   }
 
   function handleClear() {
+    abortRef.current?.abort();
     setMessages([]);
+    setConversationId(null);
+    setStreamingText("");
+    setActiveTools([]);
     setError(null);
   }
 
-  const hasMessages = messages.length > 0;
+  // Hide on the Sir Henry full-page chat (after all hooks)
+  if (isSirHenryPage) return null;
 
-  // Panel sizing
+  const hasMessages = messages.length > 0;
+  const isStreaming = loading && (streamingText.length > 0 || activeTools.length > 0);
+
   const panelClasses = expanded
     ? "fixed inset-4 rounded-2xl"
     : "fixed bottom-6 right-6 w-[460px] h-[640px] rounded-2xl";
@@ -167,12 +284,8 @@ export default function ChatWindow() {
       {/* Chat panel */}
       {open && (
         <>
-          {/* Backdrop for expanded mode */}
           {expanded && (
-            <div
-              className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40"
-              onClick={() => setExpanded(false)}
-            />
+            <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40" onClick={() => setExpanded(false)} />
           )}
 
           <div className={`${panelClasses} bg-[#0a0a0b] shadow-2xl border border-zinc-800 flex flex-col z-50 overflow-hidden transition-all duration-300`}>
@@ -188,36 +301,21 @@ export default function ChatWindow() {
               </div>
               <div className="flex items-center gap-0.5">
                 {hasMessages && (
-                  <button
-                    onClick={handleClear}
-                    className="p-2 hover:bg-white/10 rounded-lg transition-colors text-stone-400 hover:text-white"
-                    title="New conversation"
-                  >
+                  <button onClick={handleClear} className="p-2 hover:bg-white/10 rounded-lg transition-colors text-stone-400 hover:text-white" title="New conversation">
                     <RefreshCw size={15} />
                   </button>
                 )}
-                <button
-                  onClick={() => setExpanded(!expanded)}
-                  className="p-2 hover:bg-white/10 rounded-lg transition-colors text-stone-400 hover:text-white"
-                  title={expanded ? "Collapse" : "Expand"}
-                >
+                <button onClick={() => setExpanded(!expanded)} className="p-2 hover:bg-white/10 rounded-lg transition-colors text-stone-400 hover:text-white" title={expanded ? "Collapse" : "Expand"}>
                   {expanded ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
                 </button>
-                <button
-                  onClick={() => { setOpen(false); setExpanded(false); }}
-                  className="p-2 hover:bg-white/10 rounded-lg transition-colors text-stone-400 hover:text-white"
-                >
+                <button onClick={() => { setOpen(false); setExpanded(false); }} className="p-2 hover:bg-white/10 rounded-lg transition-colors text-stone-400 hover:text-white">
                   <X size={15} />
                 </button>
               </div>
             </div>
 
             {/* Messages area */}
-            <div
-              ref={scrollRef}
-              className="flex-1 overflow-y-auto bg-[#0a0a0b]"
-              style={{ scrollBehavior: "smooth" }}
-            >
+            <div ref={scrollRef} className="flex-1 overflow-y-auto bg-[#0a0a0b]" style={{ scrollBehavior: "smooth" }}>
               {!hasMessages && !loading ? (
                 <ChatSuggestions onSend={handleSend} />
               ) : (
@@ -226,10 +324,55 @@ export default function ChatWindow() {
                     <ChatMessage key={i} message={msg} />
                   ))}
 
-                  {/* Loading / thinking state */}
-                  {loading && <ChatToolCall />}
+                  {/* Streaming: tool indicators */}
+                  {activeTools.length > 0 && (
+                    <div className="flex gap-3 items-start">
+                      <SirHenryAvatar size={8} />
+                      <div className="space-y-1.5">
+                        {activeTools.map((t, i) => {
+                          const Icon = TOOL_ICONS[t.tool as keyof typeof TOOL_ICONS];
+                          return (
+                            <div key={i} className={`flex items-center gap-2 text-[12px] px-3 py-1.5 rounded-lg ${t.done ? "bg-green-900/20 text-green-400" : "bg-zinc-800 text-zinc-400"}`}>
+                              {t.done
+                                ? <span className="w-3.5 h-3.5 rounded-full bg-green-500/20 flex items-center justify-center"><span className="w-1.5 h-1.5 rounded-full bg-green-400" /></span>
+                                : <Loader2 size={12} className="animate-spin" />
+                              }
+                              {Icon && <Icon size={12} />}
+                              <span>{t.label}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
 
-                  {/* Error display */}
+                  {/* Streaming: live text */}
+                  {streamingText && (
+                    <div className="flex gap-3 items-start">
+                      <SirHenryAvatar size={8} />
+                      <div className="flex-1 min-w-0 max-w-[90%]">
+                        <div
+                          className="prose-chat text-[13.5px] leading-relaxed text-zinc-300"
+                          dangerouslySetInnerHTML={{ __html: renderStreamingMarkdown(streamingText, true) }}
+                        />
+                        <span className="inline-block w-0.5 h-3.5 bg-green-400 animate-pulse" />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Thinking state (before any text) */}
+                  {loading && !isStreaming && (
+                    <div className="flex gap-3 items-start">
+                      <SirHenryAvatar size={8} />
+                      <div className="flex gap-1 pt-2">
+                        {[0, 1, 2].map((i) => (
+                          <span key={i} className="w-1.5 h-1.5 bg-zinc-500 rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Error */}
                   {error && (
                     <div className="flex gap-3 items-start">
                       <div className="w-8 h-8 rounded-full bg-red-900/30 flex items-center justify-center flex-shrink-0">
@@ -237,12 +380,7 @@ export default function ChatWindow() {
                       </div>
                       <div className="bg-red-900/20 text-red-400 text-[13px] rounded-xl px-4 py-2.5 border border-red-900/50">
                         {error}
-                        <button
-                          onClick={() => setError(null)}
-                          className="ml-2 text-red-500 hover:text-red-300 underline text-xs"
-                        >
-                          Dismiss
-                        </button>
+                        <button onClick={() => setError(null)} className="ml-2 text-red-500 hover:text-red-300 underline text-xs">Dismiss</button>
                       </div>
                     </div>
                   )}
@@ -253,17 +391,8 @@ export default function ChatWindow() {
             {/* Quick follow-up suggestions */}
             {hasMessages && !loading && (
               <div className="px-4 pt-2 pb-0 flex gap-1.5 overflow-x-auto scrollbar-hide bg-[#0a0a0b] border-t border-zinc-800">
-                {[
-                  "Tell me more",
-                  "Can you fix that?",
-                  "Show the details",
-                  "What else should I know?",
-                ].map((q) => (
-                  <button
-                    key={q}
-                    onClick={() => handleSend(q)}
-                    className="flex-shrink-0 text-[11px] px-3 py-1.5 rounded-full bg-zinc-900 text-zinc-500 border border-zinc-800 hover:bg-green-900/20 hover:text-green-400 hover:border-green-800/50 transition-all"
-                  >
+                {["Tell me more", "Can you fix that?", "Show the details", "What else should I know?"].map((q) => (
+                  <button key={q} onClick={() => handleSend(q)} className="flex-shrink-0 text-[11px] px-3 py-1.5 rounded-full bg-zinc-900 text-zinc-500 border border-zinc-800 hover:bg-green-900/20 hover:text-green-400 hover:border-green-800/50 transition-all">
                     {q}
                   </button>
                 ))}
@@ -293,34 +422,21 @@ export default function ChatWindow() {
                 </button>
               </div>
               <div className="flex items-center justify-between mt-1.5 px-1">
-                <p className="text-[10px] text-zinc-700">
-                  Shift + Enter for new line
-                </p>
-                <p className="text-[10px] text-zinc-700 flex items-center gap-1">
-                  <Sparkles size={9} />
-                  Sir Henry · Powered by Claude
-                </p>
+                <p className="text-[10px] text-zinc-700">Shift + Enter for new line</p>
+                <p className="text-[10px] text-zinc-700 flex items-center gap-1"><Sparkles size={9} /> Sir Henry · Powered by Claude</p>
               </div>
             </div>
           </div>
         </>
       )}
-      {/* Privacy consent modal */}
+
       {showConsent && (
         <ConsentModal
           onAccept={() => {
             setShowConsent(false);
-            // Retry the pending message now that consent is granted
-            if (pendingMessage) {
-              const msg = pendingMessage;
-              setPendingMessage(null);
-              handleSend(msg);
-            }
+            if (pendingMessage) { const msg = pendingMessage; setPendingMessage(null); handleSend(msg); }
           }}
-          onDecline={() => {
-            setShowConsent(false);
-            setPendingMessage(null);
-          }}
+          onDecline={() => { setShowConsent(false); setPendingMessage(null); }}
         />
       )}
     </>

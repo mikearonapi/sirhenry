@@ -40,7 +40,7 @@ async def suggest_goals(session: AsyncSession = Depends(get_session)):
     # Calculate income-based amounts
     annual_income = 200000  # default HENRY income
     if household:
-        income = (household.primary_w2_income or 0) + (household.spouse_w2_income or 0)
+        income = (household.spouse_a_income or 0) + (household.spouse_b_income or 0)
         if income > 0:
             annual_income = income
 

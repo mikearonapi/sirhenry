@@ -1,8 +1,9 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Loader2, AlertCircle } from "lucide-react";
-import { getTransactions, updateTransaction, getBusinessEntities, getBudgetCategories } from "@/lib/api";
+import { ChevronLeft, ChevronRight, Loader2, AlertCircle, Bot, Download, CheckSquare, X } from "lucide-react";
+import { getTransactions, updateTransaction, getBusinessEntities, getBudgetCategories, getTransactionAudit, runCategorization } from "@/lib/api";
 import type { BusinessEntity, Transaction, TransactionUpdateIn } from "@/types/api";
+import type { TransactionAudit } from "@/lib/api-transactions";
 import Card from "@/components/ui/Card";
 import PageHeader from "@/components/ui/PageHeader";
 import { getErrorMessage } from "@/lib/errors";
@@ -32,6 +33,18 @@ export default function TransactionsPage() {
 
   const [detail, setDetail] = useState<DetailState | null>(null);
 
+  // AI categorization state
+  const [categorizing, setCategorizing] = useState(false);
+  const [catResult, setCatResult] = useState<{ categorized: number; skipped: number } | null>(null);
+  const [audit, setAudit] = useState<TransactionAudit | null>(null);
+
+  // Batch selection state
+  const [batchMode, setBatchMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+
+  // Export state
+  const [exporting, setExporting] = useState(false);
+
   const allCategories = useMemo(() => {
     const set = new Set([...BASE_CATEGORIES, ...dbCategories]);
     return Array.from(set).sort((a, b) => a.localeCompare(b));
@@ -40,6 +53,7 @@ export default function TransactionsPage() {
   useEffect(() => {
     getBusinessEntities(true).then(setEntities).catch(() => {});
     getBudgetCategories().then((meta) => setDbCategories(meta.map((m) => m.category))).catch(() => {});
+    getTransactionAudit().then(setAudit).catch(() => {});
   }, []);
 
   const entityMap = new Map(entities.map((e) => [e.id, e]));
@@ -86,19 +100,209 @@ export default function TransactionsPage() {
     setDetail({ tx: updated });
   }
 
+  async function handleCategorize() {
+    setCategorizing(true);
+    setCatResult(null);
+    try {
+      const result = await runCategorization(year, month);
+      setCatResult(result);
+      // Refresh transactions and audit
+      const controller = new AbortController();
+      await load(controller.signal);
+      getTransactionAudit().then(setAudit).catch(() => {});
+    } catch (e: unknown) {
+      setError(getErrorMessage(e));
+    } finally {
+      setCategorizing(false);
+    }
+  }
+
+  function toggleSelect(id: number) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function selectAll() {
+    setSelectedIds(new Set(transactions.map((t) => t.id)));
+  }
+
+  async function handleBatchUpdate(update: TransactionUpdateIn) {
+    const promises = Array.from(selectedIds).map((id) => updateTransaction(id, update));
+    await Promise.all(promises);
+    setSelectedIds(new Set());
+    setBatchMode(false);
+    const controller = new AbortController();
+    await load(controller.signal);
+  }
+
+  async function handleExportCsv() {
+    setExporting(true);
+    try {
+      const result = await getTransactions({
+        segment: segment || undefined,
+        business_entity_id: entityFilter,
+        category: categoryFilter || undefined,
+        year, month,
+        search: search.trim() || undefined,
+        limit: 10000,
+        offset: 0,
+      });
+      const rows = result.items;
+      const headers = ["Date", "Description", "Amount", "Category", "Tax Category", "Segment", "Entity", "Notes", "Source"];
+      const csvRows = rows.map((tx) => {
+        const eid = tx.effective_business_entity_id;
+        const eName = eid ? (entityMap.get(eid)?.name ?? "") : "";
+        return [
+          tx.date,
+          `"${(tx.description || "").replace(/"/g, '""')}"`,
+          tx.amount.toFixed(2),
+          tx.effective_category ?? "",
+          tx.effective_tax_category ?? "",
+          tx.effective_segment ?? tx.segment,
+          eName,
+          `"${(tx.notes || "").replace(/"/g, '""')}"`,
+          tx.data_source,
+        ].join(",");
+      });
+      const csv = [headers.join(","), ...csvRows].join("\n");
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `transactions${year ? `-${year}` : ""}${month ? `-${String(month).padStart(2, "0")}` : ""}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e: unknown) {
+      setError(getErrorMessage(e));
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  const uncategorizedCount = audit?.uncategorized ?? 0;
+
   return (
     <div className="space-y-4">
       <PageHeader
         title="Transactions"
         subtitle={`${total.toLocaleString()} transactions`}
         actions={
-          <FilterToggleButton
-            showFilters={showFilters}
-            onToggle={() => setShowFilters(!showFilters)}
-            activeFilterCount={activeFilterCount}
-          />
+          <div className="flex items-center gap-2">
+            {/* AI Categorize button */}
+            {uncategorizedCount > 0 && (
+              <button
+                onClick={handleCategorize}
+                disabled={categorizing}
+                className="flex items-center gap-1.5 bg-violet-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-violet-700 disabled:opacity-60 shadow-sm"
+              >
+                {categorizing ? <Loader2 size={12} className="animate-spin" /> : <Bot size={12} />}
+                {categorizing ? "Categorizing..." : `Categorize ${uncategorizedCount}`}
+              </button>
+            )}
+
+            {/* Batch mode toggle */}
+            <button
+              onClick={() => { setBatchMode(!batchMode); setSelectedIds(new Set()); }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border shadow-sm transition-colors ${
+                batchMode ? "bg-stone-800 text-white border-stone-800" : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50"
+              }`}
+            >
+              <CheckSquare size={12} />
+              {batchMode ? "Cancel" : "Select"}
+            </button>
+
+            {/* Export CSV */}
+            <button
+              onClick={handleExportCsv}
+              disabled={exporting || total === 0}
+              className="flex items-center gap-1.5 bg-white text-stone-600 px-3 py-1.5 rounded-lg text-xs font-medium border border-stone-200 hover:bg-stone-50 disabled:opacity-40 shadow-sm"
+            >
+              {exporting ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+              Export
+            </button>
+
+            <FilterToggleButton
+              showFilters={showFilters}
+              onToggle={() => setShowFilters(!showFilters)}
+              activeFilterCount={activeFilterCount}
+            />
+          </div>
         }
       />
+
+      {/* Categorization result banner */}
+      {catResult && (
+        <div className="bg-green-50 text-green-800 rounded-xl p-3 flex items-center justify-between border border-green-100">
+          <div className="flex items-center gap-2 text-sm">
+            <Bot size={16} />
+            <span>AI categorized <strong>{catResult.categorized}</strong> transactions ({catResult.skipped} already categorized)</span>
+          </div>
+          <button onClick={() => setCatResult(null)} className="text-green-600 hover:text-green-800">
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
+      {/* Batch action bar */}
+      {batchMode && selectedIds.size > 0 && (
+        <div className="bg-stone-800 text-white rounded-xl p-3 flex items-center justify-between">
+          <span className="text-sm font-medium">{selectedIds.size} selected</span>
+          <div className="flex items-center gap-2">
+            <button onClick={selectAll} className="text-xs text-stone-300 hover:text-white">Select all on page</button>
+            <select
+              onChange={(e) => {
+                if (e.target.value) handleBatchUpdate({ category_override: e.target.value });
+              }}
+              defaultValue=""
+              className="text-xs bg-stone-700 text-white border border-stone-600 rounded-lg px-2 py-1"
+            >
+              <option value="" disabled>Set category...</option>
+              {allCategories.slice(0, 30).map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <select
+              onChange={(e) => {
+                if (e.target.value) handleBatchUpdate({ segment_override: e.target.value });
+              }}
+              defaultValue=""
+              className="text-xs bg-stone-700 text-white border border-stone-600 rounded-lg px-2 py-1"
+            >
+              <option value="" disabled>Set segment...</option>
+              <option value="personal">Personal</option>
+              <option value="business">Business</option>
+              <option value="investment">Investment</option>
+              <option value="reimbursable">Reimbursable</option>
+            </select>
+            <button
+              onClick={() => handleBatchUpdate({ is_excluded: true })}
+              className="text-xs bg-red-600 text-white px-2 py-1 rounded-lg hover:bg-red-700"
+            >
+              Exclude
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Categorization quality indicator */}
+      {audit && audit.quality !== "good" && (
+        <div className={`rounded-xl p-3 flex items-center gap-2 text-sm border ${
+          audit.quality === "poor" ? "bg-red-50 text-red-700 border-red-100" : "bg-amber-50 text-amber-700 border-amber-100"
+        }`}>
+          <AlertCircle size={14} />
+          <span>{audit.categorization_rate}% categorized — {audit.uncategorized} transactions need categorization</span>
+          {!categorizing && (
+            <button
+              onClick={handleCategorize}
+              className="ml-auto text-xs font-medium underline hover:no-underline"
+            >
+              Run AI categorization
+            </button>
+          )}
+        </div>
+      )}
 
       <TransactionFilters
         search={search}
@@ -152,6 +356,8 @@ export default function TransactionsPage() {
                     tx={tx}
                     entityMap={entityMap}
                     onSelect={(t) => setDetail({ tx: t })}
+                    selected={batchMode ? selectedIds.has(tx.id) : undefined}
+                    onToggleSelect={batchMode ? toggleSelect : undefined}
                   />
                 ))}
               </div>

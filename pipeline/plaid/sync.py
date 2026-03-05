@@ -99,6 +99,10 @@ async def sync_item(
     """
     Sync a single PlaidItem. Returns (transactions_added, accounts_updated).
     """
+    if not item.access_token:
+        logger.warning(f"Skipping sync for {item.institution_name}: no access token")
+        return 0, 0
+
     logger.info(f"Syncing {item.institution_name}…")
 
     # 1. Refresh account balances

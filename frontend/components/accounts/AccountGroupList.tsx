@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, ChevronRight, Pencil, Trash2 } from "lucide-react";
+import { Building2, ChevronDown, ChevronRight, Pencil, Trash2 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import Card from "@/components/ui/Card";
 import type { UnifiedGroup } from "./accounts-types";
@@ -43,7 +43,15 @@ export default function AccountGroupList({ groups, collapsedGroups, onToggleGrou
                         {item.name.charAt(0)}
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-stone-800 truncate">{item.name}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-sm font-medium text-stone-800 truncate">{item.name}</p>
+                          {item.badge && (
+                            <span className="inline-flex items-center gap-0.5 text-[10px] font-medium bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded shrink-0">
+                              <Building2 size={9} />
+                              {item.badge}
+                            </span>
+                          )}
+                        </div>
                         <p className="text-xs text-stone-400 truncate capitalize">{item.subtitle}</p>
                       </div>
                     </div>

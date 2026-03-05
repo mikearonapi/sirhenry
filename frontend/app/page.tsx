@@ -2,8 +2,7 @@ import {
   HeroSection,
   HenryParadoxSection,
   ProblemsSection,
-  CapabilitiesSection,
-  SirHenryAISection,
+  FeatureShowcaseSection,
   ComparisonTable,
   VoicesSection,
   WaitlistSection,
@@ -16,8 +15,7 @@ export default function LandingPage() {
       <HeroSection />
       <HenryParadoxSection />
       <ProblemsSection />
-      <CapabilitiesSection />
-      <SirHenryAISection />
+      <FeatureShowcaseSection />
       <ComparisonTable />
       <VoicesSection />
       <WaitlistSection />

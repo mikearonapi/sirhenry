@@ -18,7 +18,7 @@ import {
 import { formatCurrency } from "@/lib/utils";
 import type {
   Account, PlaidItem, ManualAsset, ManualAssetType,
-  EquityDashboard,
+  EquityDashboard, BusinessEntity,
 } from "@/types/api";
 import PageHeader from "@/components/ui/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
@@ -68,21 +68,24 @@ function AccountsPageContent() {
   const [editingAsset, setEditingAsset] = useState<ManualAsset | null>(null);
   const [assetForm, setAssetForm] = useState<AssetFormState>(EMPTY_FORM);
   const [savingAsset, setSavingAsset] = useState(false);
+  const [bizEntities, setBizEntities] = useState<BusinessEntity[]>([]);
 
   async function load() {
     setLoading(true);
     setError(null);
     try {
-      const [items, allAccounts, assets, equity] = await Promise.all([
+      const [items, allAccounts, assets, equity, entities] = await Promise.all([
         getPlaidItems(),
         getAccounts(),
         getManualAssets(),
         getEquityDashboard().catch(() => null),
+        getBusinessEntities(true).catch(() => [] as BusinessEntity[]),
       ]);
       setPlaidItems(items);
       setAccounts(allAccounts);
       setManualAssets(assets);
       setEquityDashboard(equity);
+      setBizEntities(entities);
     } catch (e: unknown) {
       setError(getErrorMessage(e));
     } finally {
@@ -153,11 +156,19 @@ function AccountsPageContent() {
     sessionStorage.removeItem(LINK_TOKEN_KEY);
     sessionStorage.removeItem(INSTITUTION_KEY);
     try {
-      await exchangePlaidPublicToken(publicToken, institutionName);
-      setSuccessMsg(`Connected to ${institutionName}! Fetching accounts...`);
+      const result = await exchangePlaidPublicToken(publicToken, institutionName);
+      const matchMsg = result.accounts_matched
+        ? ` (${result.accounts_matched} existing account${result.accounts_matched > 1 ? "s" : ""} linked)`
+        : "";
+      setSuccessMsg(`Connected to ${institutionName}!${matchMsg} Syncing transactions...`);
       setLinkToken(null);
       await load();
-      setTimeout(() => setSuccessMsg(null), 5000);
+      // Second reload after background sync likely completes
+      setTimeout(async () => {
+        await load();
+        setSuccessMsg(`${institutionName} synced — transactions imported.`);
+        setTimeout(() => setSuccessMsg(null), 5000);
+      }, 10000);
     } catch (e: unknown) {
       setError(`Failed to connect ${institutionName}: ${getErrorMessage(e)}`);
     }
@@ -301,6 +312,10 @@ function AccountsPageContent() {
     }
   }
 
+  // Build entity name lookup for badge display
+  const entityNameMap = new Map<number, string>();
+  bizEntities.forEach((e) => entityNameMap.set(e.id, e.name));
+
   const groupMap = new Map<string, UnifiedGroup>();
   function ensureGroup(key: string): UnifiedGroup {
     let g = groupMap.get(key);
@@ -348,12 +363,17 @@ function AccountsPageContent() {
       detail = detail ? `${detail} · ${txnLabel}` : txnLabel;
     }
 
+    const entityBadge = acct.default_business_entity_id
+      ? entityNameMap.get(acct.default_business_entity_id)
+      : undefined;
+
     g.items.push({
       id: `account-${acct.id}`,
       name: displayName,
       subtitle: subtitleParts.join(" · ") || acct.account_type,
       value: val,
       detail,
+      badge: entityBadge,
     });
   });
 

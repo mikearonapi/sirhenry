@@ -1,8 +1,38 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { X, Check, Loader2, Eye, EyeOff, Building2 } from "lucide-react";
+import { X, Check, Loader2, Eye, EyeOff, Building2, Bot } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { BusinessEntity, Transaction, TransactionUpdateIn } from "@/types/api";
+
+const TAX_CATEGORIES = [
+  "Schedule A — Medical Expenses",
+  "Schedule A — State & Local Taxes (SALT)",
+  "Schedule A — Mortgage Interest",
+  "Schedule A — Charitable Contributions",
+  "Schedule C — Advertising",
+  "Schedule C — Car & Truck Expenses",
+  "Schedule C — Commissions & Fees",
+  "Schedule C — Contract Labor",
+  "Schedule C — Depreciation",
+  "Schedule C — Employee Benefit Programs",
+  "Schedule C — Insurance (Business)",
+  "Schedule C — Interest (Business)",
+  "Schedule C — Legal & Professional",
+  "Schedule C — Office Expense",
+  "Schedule C — Pension & Profit Sharing",
+  "Schedule C — Rent or Lease",
+  "Schedule C — Repairs & Maintenance",
+  "Schedule C — Supplies",
+  "Schedule C — Taxes & Licenses",
+  "Schedule C — Travel",
+  "Schedule C — Meals (50%)",
+  "Schedule C — Utilities",
+  "Schedule C — Wages",
+  "Schedule C — Other Expenses",
+  "Form 2106 — Unreimbursed Employee Expenses",
+  "Not Deductible",
+  "Personal Expense",
+];
 
 interface Props {
   tx: Transaction;
@@ -17,6 +47,7 @@ export default function TransactionDetailPanel({
   tx, entities, entityMap, allCategories, onClose, onSave,
 }: Props) {
   const [category, setCategory] = useState(tx.effective_category ?? "");
+  const [taxCategory, setTaxCategory] = useState(tx.effective_tax_category ?? "");
   const [segment, setSegment] = useState(tx.effective_segment ?? tx.segment);
   const [entityId, setEntityId] = useState<number | null>(
     tx.business_entity_override ?? tx.effective_business_entity_id ?? null
@@ -27,6 +58,7 @@ export default function TransactionDetailPanel({
 
   useEffect(() => {
     setCategory(tx.effective_category ?? "");
+    setTaxCategory(tx.effective_tax_category ?? "");
     setSegment(tx.effective_segment ?? tx.segment);
     setEntityId(tx.business_entity_override ?? tx.effective_business_entity_id ?? null);
     setNotes(tx.notes ?? "");
@@ -46,7 +78,15 @@ export default function TransactionDetailPanel({
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [allCategories, tx.effective_category, tx.category]);
 
+  const dropdownTaxCategories = useMemo(() => {
+    const set = new Set(TAX_CATEGORIES);
+    if (tx.effective_tax_category) set.add(tx.effective_tax_category);
+    if (tx.tax_category) set.add(tx.tax_category);
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [tx.effective_tax_category, tx.tax_category]);
+
   const hasChanges = category !== (tx.effective_category ?? "")
+    || taxCategory !== (tx.effective_tax_category ?? "")
     || segment !== (tx.effective_segment ?? tx.segment)
     || notes !== (tx.notes ?? "")
     || isExcluded !== tx.is_excluded
@@ -56,6 +96,7 @@ export default function TransactionDetailPanel({
     setSaving(true);
     const update: TransactionUpdateIn = {};
     if (category !== (tx.effective_category ?? "")) update.category_override = category;
+    if (taxCategory !== (tx.effective_tax_category ?? "")) update.tax_category_override = taxCategory;
     if (segment !== (tx.effective_segment ?? tx.segment)) update.segment_override = segment;
     if (notes !== (tx.notes ?? "")) update.notes = notes;
     if (isExcluded !== tx.is_excluded) update.is_excluded = isExcluded;
@@ -67,6 +108,11 @@ export default function TransactionDetailPanel({
       setSaving(false);
     }
   }
+
+  const confidencePct = tx.ai_confidence !== null ? Math.round(tx.ai_confidence * 100) : null;
+  const confidenceColor = confidencePct !== null
+    ? confidencePct >= 80 ? "text-green-600" : confidencePct >= 60 ? "text-amber-600" : "text-red-600"
+    : "";
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -85,6 +131,9 @@ export default function TransactionDetailPanel({
               {tx.amount >= 0 ? "+" : ""}{formatCurrency(tx.amount)}
             </p>
             <p className="text-sm text-stone-600 mt-1 font-medium">{tx.description}</p>
+            {tx.merchant_name && tx.merchant_name !== tx.description && (
+              <p className="text-xs text-stone-400 mt-0.5">{tx.merchant_name}</p>
+            )}
             <p className="text-xs text-stone-400 mt-0.5">{formatDate(tx.date)}</p>
           </div>
 
@@ -103,10 +152,16 @@ export default function TransactionDetailPanel({
                   <span className="text-violet-600 font-medium">{tx.category_override}</span>
                 </div>
               )}
-              {tx.ai_confidence !== null && (
+              {confidencePct !== null && (
+                <div className="flex justify-between items-center">
+                  <span className="text-stone-500 flex items-center gap-1"><Bot size={10} /> AI confidence</span>
+                  <span className={`font-medium ${confidenceColor}`}>{confidencePct}%</span>
+                </div>
+              )}
+              {tx.data_source && (
                 <div className="flex justify-between">
-                  <span className="text-stone-500">AI confidence</span>
-                  <span className="text-stone-700 font-medium">{(tx.ai_confidence * 100).toFixed(0)}%</span>
+                  <span className="text-stone-500">Source</span>
+                  <span className="text-stone-700 font-medium capitalize">{tx.data_source}</span>
                 </div>
               )}
             </div>
@@ -128,7 +183,14 @@ export default function TransactionDetailPanel({
 
           <div>
             <label className="block text-xs font-medium text-stone-500 mb-1">Tax Category</label>
-            <p className="text-sm text-stone-600">{tx.effective_tax_category ?? <span className="text-stone-300 italic">None</span>}</p>
+            <select
+              value={taxCategory}
+              onChange={(e) => setTaxCategory(e.target.value)}
+              className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A] bg-white"
+            >
+              <option value="">-- None --</option>
+              {dropdownTaxCategories.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

@@ -1,5 +1,7 @@
 """Plaid Link flow, sync, item management, and update mode endpoints."""
+import asyncio
 import logging
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
@@ -18,6 +20,121 @@ from pipeline.plaid.client import (
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/plaid", tags=["plaid"])
+
+
+async def _find_matching_account(
+    session: AsyncSession,
+    acct_data: dict[str, Any],
+    institution_name: str,
+) -> Account | None:
+    """Multi-strategy account matcher for Plaid linking.
+
+    Tries in order of confidence:
+    1. last_four + institution (exact)
+    2. name/official_name + institution (fuzzy substring)
+    3. subtype + institution (unique match only)
+    """
+    # Strategy 1: last_four + institution (highest confidence)
+    mask = acct_data.get("mask")
+    if mask:
+        result = await session.execute(
+            select(Account).where(
+                Account.is_active.is_(True),
+                Account.last_four == mask,
+                Account.institution.ilike(f"%{institution_name}%"),
+                Account.data_source != "plaid",
+            )
+        )
+        match = result.scalar_one_or_none()
+        if match:
+            return match
+
+    # Strategy 2: name similarity + institution
+    plaid_name = (acct_data.get("name") or "").lower().strip()
+    plaid_official = (acct_data.get("official_name") or "").lower().strip()
+    if plaid_name and institution_name:
+        result = await session.execute(
+            select(Account).where(
+                Account.is_active.is_(True),
+                Account.institution.ilike(f"%{institution_name}%"),
+                Account.data_source != "plaid",
+            )
+        )
+        candidates = list(result.scalars().all())
+        for candidate in candidates:
+            c_name = candidate.name.lower().strip()
+            if (c_name == plaid_name
+                    or c_name in plaid_name or plaid_name in c_name
+                    or (plaid_official and (c_name == plaid_official or c_name in plaid_official))):
+                return candidate
+
+    # Strategy 3: only-account-of-subtype at institution
+    plaid_subtype = acct_data.get("subtype", "")
+    if institution_name and plaid_subtype:
+        result = await session.execute(
+            select(Account).where(
+                Account.is_active.is_(True),
+                Account.institution.ilike(f"%{institution_name}%"),
+                Account.subtype == plaid_subtype,
+                Account.data_source != "plaid",
+            )
+        )
+        candidates = list(result.scalars().all())
+        if len(candidates) == 1:
+            return candidates[0]
+
+    return None
+
+
+async def _initial_sync_and_dedup(item_id: int, merged_account_ids: list[int]) -> None:
+    """Background task: sync the new item's transactions, then dedup merged accounts."""
+    async with AsyncSessionLocal() as s:
+        async with s.begin():
+            result = await s.execute(
+                select(PlaidItem).where(PlaidItem.id == item_id)
+            )
+            item = result.scalar_one_or_none()
+            if not item or not item.access_token:
+                return
+
+            try:
+                from pipeline.plaid.sync import sync_item, snapshot_net_worth
+                added, updated = await sync_item(s, item)
+                item.last_synced_at = datetime.now(timezone.utc)
+                item.status = "active"
+                logger.info(
+                    f"Initial sync for {item.institution_name}: "
+                    f"{added} transactions, {updated} accounts"
+                )
+            except Exception as e:
+                logger.error(f"Initial sync failed for {item.institution_name}: {e}")
+                item.status = "error"
+                item.error_code = str(e)[:100]
+                return
+
+            # AI categorization for new transactions
+            if added > 0:
+                try:
+                    from pipeline.ai.categorizer import categorize_transactions
+                    await asyncio.wait_for(categorize_transactions(s), timeout=120)
+                except Exception as e:
+                    logger.warning(f"Post-link categorization failed: {e}")
+
+            # Auto-dedup merged accounts (Plaid vs CSV overlapping transactions)
+            if merged_account_ids:
+                from pipeline.dedup.cross_source import auto_resolve_duplicates
+                for account_id in merged_account_ids:
+                    try:
+                        dedup_result = await auto_resolve_duplicates(s, account_id, min_confidence=0.8)
+                        logger.info(f"Post-link dedup for account {account_id}: {dedup_result}")
+                    except Exception as e:
+                        logger.warning(f"Post-link dedup failed for account {account_id}: {e}")
+
+            # Net worth snapshot
+            try:
+                await asyncio.wait_for(snapshot_net_worth(s), timeout=30)
+            except Exception as e:
+                logger.warning(f"Post-link net worth snapshot failed: {e}")
 
 
 @router.get("/link-token")
@@ -54,9 +171,14 @@ async def get_update_link_token(
 @router.post("/exchange-token")
 async def exchange_token(
     body: ExchangeTokenIn,
+    background_tasks: BackgroundTasks,
     session: AsyncSession = Depends(get_session),
 ):
-    """Exchange a public token from Plaid Link for a permanent access token."""
+    """Exchange a public token from Plaid Link for a permanent access token.
+
+    After linking, schedules a background sync to immediately pull transactions
+    and auto-dedup any accounts that were merged with existing CSV/manual accounts.
+    """
     # S-5: Duplicate Item prevention — reject if institution already linked
     existing = await session.execute(
         select(PlaidItem).where(
@@ -85,29 +207,25 @@ async def exchange_token(
     session.add(item)
     await session.flush()
 
+    merged_account_ids: list[int] = []
+    accounts_created = 0
+
     try:
         accounts = get_accounts(result["access_token"])
         from pipeline.db import upsert_account
         for acct_data in accounts:
-            # Smart linking: check for existing account with matching last_four
-            existing_match = None
-            mask = acct_data.get("mask")
-            if mask:
-                match_q = await session.execute(
-                    select(Account).where(
-                        Account.is_active.is_(True),
-                        Account.last_four == mask,
-                        Account.institution.ilike(f"%{body.institution_name}%"),
-                        Account.data_source != "plaid",
-                    )
-                )
-                existing_match = match_q.scalar_one_or_none()
+            existing_match = await _find_matching_account(
+                session, acct_data, body.institution_name,
+            )
 
             if existing_match:
                 # Link Plaid to existing account, upgrade its source
                 existing_match.data_source = "plaid"
                 existing_match.institution = body.institution_name
+                if acct_data.get("mask") and not existing_match.last_four:
+                    existing_match.last_four = acct_data["mask"]
                 our_account = existing_match
+                merged_account_ids.append(our_account.id)
                 logger.info(
                     f"Smart-linked Plaid account to existing: "
                     f"{our_account.name} (id={our_account.id})"
@@ -118,9 +236,10 @@ async def exchange_token(
                     "account_type": "personal",
                     "subtype": acct_data["subtype"],
                     "institution": body.institution_name,
-                    "last_four": mask,
+                    "last_four": acct_data.get("mask"),
                     "data_source": "plaid",
                 })
+                accounts_created += 1
 
             pa = PlaidAccount(
                 plaid_item_id=item.id,
@@ -131,7 +250,16 @@ async def exchange_token(
     except Exception as e:
         logger.warning(f"Failed to fetch initial accounts: {e}")
 
-    return {"item_id": result["item_id"], "status": "connected"}
+    # Schedule background sync to pull transactions immediately
+    background_tasks.add_task(_initial_sync_and_dedup, item.id, merged_account_ids)
+
+    return {
+        "item_id": result["item_id"],
+        "status": "connected",
+        "sync_status": "started",
+        "accounts_matched": len(merged_account_ids),
+        "accounts_created": accounts_created,
+    }
 
 
 @router.get("/items", response_model=list[PlaidItemOut])

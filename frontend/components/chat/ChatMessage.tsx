@@ -18,7 +18,67 @@ export interface DisplayMessage {
 // Markdown renderer
 // ---------------------------------------------------------------------------
 
-export function renderMarkdown(text: string): string {
+/**
+ * Streaming-safe markdown renderer.
+ * Detects incomplete multi-line constructs (tables, code blocks) that are
+ * still being built token-by-token and replaces them with a subtle animated
+ * indicator rather than showing raw `| pipe |` or ``` syntax.
+ */
+export function renderStreamingMarkdown(text: string, dark = true): string {
+  const lines = text.split("\n");
+
+  // ── 1. Detect trailing incomplete table ──────────────────────────────────
+  // Walk backwards past blank lines to find the last non-blank line.
+  // If it starts with `|`, we're mid-table.
+  let tableStart = -1;
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const t = lines[i].trim();
+    if (t === "") continue;
+    if (t.startsWith("|")) {
+      tableStart = i;
+    } else {
+      break;
+    }
+  }
+
+  if (tableStart !== -1) {
+    const tableLines = lines.slice(tableStart).filter((l) => l.trim());
+    const hasSeparator = tableLines.some((l) => /^\|[\s\-|: ]+\|$/.test(l.trim()));
+    // A complete table needs header + separator + ≥1 data row (3 pipe-lines total)
+    const pipeLineCount = tableLines.filter((l) => l.trim().startsWith("|")).length;
+    const isComplete = hasSeparator && pipeLineCount >= 3;
+
+    if (!isComplete) {
+      const safeText = lines.slice(0, tableStart).join("\n");
+      const dotCls = dark ? "bg-zinc-500" : "bg-stone-400";
+      const lblCls = dark ? "text-zinc-500" : "text-stone-400";
+      const dots = [0, 150, 300]
+        .map((d) => `<span class="w-1 h-1 rounded-full ${dotCls} animate-bounce" style="animation-delay:${d}ms"></span>`)
+        .join("");
+      const indicator = `<div class="flex items-center gap-2 mt-2 ${lblCls} text-xs"><span class="flex gap-0.5">${dots}</span><span>Building table…</span></div>`;
+      return (safeText.trim() ? renderMarkdown(safeText, dark) : "") + indicator;
+    }
+  }
+
+  // ── 2. Detect unclosed fenced code block ─────────────────────────────────
+  const fenceCount = (text.match(/^```/gm) || []).length;
+  if (fenceCount % 2 !== 0) {
+    // Odd number of ``` fences — the last one is unclosed; render up to it
+    const lastFence = text.lastIndexOf("\n```");
+    const safeText = lastFence > 0 ? text.slice(0, lastFence) : text;
+    const dotCls = dark ? "bg-zinc-500" : "bg-stone-400";
+    const lblCls = dark ? "text-zinc-500" : "text-stone-400";
+    const dots = [0, 150, 300]
+      .map((d) => `<span class="w-1 h-1 rounded-full ${dotCls} animate-bounce" style="animation-delay:${d}ms"></span>`)
+      .join("");
+    const indicator = `<div class="flex items-center gap-2 mt-2 ${lblCls} text-xs"><span class="flex gap-0.5">${dots}</span><span>Loading…</span></div>`;
+    return (safeText.trim() ? renderMarkdown(safeText, dark) : "") + indicator;
+  }
+
+  return renderMarkdown(text, dark);
+}
+
+export function renderMarkdown(text: string, dark = true): string {
   // Escape HTML entities first to prevent XSS, but preserve markdown syntax
   let html = text
     .replace(/&/g, "&amp;")
@@ -65,14 +125,25 @@ export function renderMarkdown(text: string): string {
   html = html.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "<em>$1</em>");
 
   // Inline code
-  html = html.replace(/`([^`]+)`/g, '<code class="bg-zinc-800 text-green-400 px-1 py-0.5 rounded text-xs font-mono">$1</code>');
+  const codeClass = dark
+    ? "bg-zinc-800 text-green-400 px-1 py-0.5 rounded text-xs font-mono"
+    : "bg-stone-100 text-green-700 px-1 py-0.5 rounded text-xs font-mono";
+  html = html.replace(/`([^`]+)`/g, `<code class="${codeClass}">$1</code>`);
 
   // Bullet lists
-  html = html.replace(/^[•\-]\s+(.+)$/gm, '<li class="flex items-start gap-1.5 text-zinc-300"><span class="text-green-400 mt-0.5 flex-shrink-0">•</span><span>$1</span></li>');
+  const listText = dark ? "text-zinc-300" : "text-stone-700";
+  const bulletColor = dark ? "text-green-400" : "text-green-600";
+  html = html.replace(
+    /^[•\-]\s+(.+)$/gm,
+    `<li class="flex items-start gap-1.5 ${listText}"><span class="${bulletColor} mt-0.5 flex-shrink-0">•</span><span>$1</span></li>`
+  );
   html = html.replace(/((?:<li[^>]*>.*<\/li>\s*)+)/g, '<ul class="space-y-0.5 my-1.5">$1</ul>');
 
   // Numbered lists
-  html = html.replace(/^(\d+)\.\s+(.+)$/gm, '<li class="flex items-start gap-1.5 text-zinc-300"><span class="text-green-400 font-semibold flex-shrink-0 min-w-[1.2em]">$1.</span><span>$2</span></li>');
+  html = html.replace(
+    /^(\d+)\.\s+(.+)$/gm,
+    `<li class="flex items-start gap-1.5 ${listText}"><span class="${bulletColor} font-semibold flex-shrink-0 min-w-[1.2em]">$1.</span><span>$2</span></li>`
+  );
 
   // Line breaks
   html = html.replace(/\n\n/g, '</p><p class="my-1.5">');
@@ -151,26 +222,38 @@ function ActionCard({ action }: { action: ChatAction }) {
 
 export interface ChatMessageProps {
   message: DisplayMessage;
+  dark?: boolean;
 }
 
-export default function ChatMessage({ message }: ChatMessageProps) {
+export default function ChatMessage({ message, dark = true }: ChatMessageProps) {
   if (message.role === "user") {
+    const bubbleClass = dark
+      ? "bg-[#1C1C1F] border border-zinc-700 text-zinc-100"
+      : "bg-stone-100 border border-stone-200 text-stone-800";
+    const tsClass = dark ? "text-zinc-700" : "text-stone-400";
+    const avatarClass = dark
+      ? "bg-zinc-800 border-zinc-700 text-zinc-400"
+      : "bg-stone-200 border-stone-300 text-stone-500";
+
     return (
       <div className="flex gap-3 items-start justify-end">
         <div className="max-w-[80%]">
-          <div className="bg-[#1C1C1F] border border-zinc-700 text-zinc-100 px-4 py-2.5 rounded-2xl rounded-br-md text-[13.5px] leading-relaxed">
+          <div className={`${bubbleClass} px-4 py-2.5 rounded-2xl rounded-br-md text-[13.5px] leading-relaxed`}>
             {message.content}
           </div>
-          <p className="text-[10px] text-zinc-700 mt-1 text-right">
+          <p className={`text-[10px] ${tsClass} mt-1 text-right`}>
             {message.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
           </p>
         </div>
-        <div className="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center flex-shrink-0">
-          <User size={15} className="text-zinc-400" />
+        <div className={`w-8 h-8 rounded-full border flex items-center justify-center flex-shrink-0 ${avatarClass}`}>
+          <User size={15} />
         </div>
       </div>
     );
   }
+
+  const proseClass = dark ? "text-zinc-300" : "text-stone-700";
+  const tsClass = dark ? "text-zinc-700" : "text-stone-400";
 
   return (
     <div className="flex gap-3 items-start">
@@ -187,11 +270,11 @@ export default function ChatMessage({ message }: ChatMessageProps) {
 
         {/* Message content */}
         <div
-          className="prose-chat text-[13.5px] leading-relaxed text-zinc-300"
-          dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content) }}
+          className={`prose-chat text-[13.5px] leading-relaxed ${proseClass}`}
+          dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content, dark) }}
         />
 
-        <p className="text-[10px] text-zinc-700 mt-1.5">
+        <p className={`text-[10px] ${tsClass} mt-1.5`}>
           {message.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
         </p>
       </div>

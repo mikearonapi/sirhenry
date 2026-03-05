@@ -3,6 +3,8 @@ export { default as ChatWindow } from "./ChatWindow";
 export { default as ChatMessage } from "./ChatMessage";
 export { default as ChatToolCall } from "./ChatToolCall";
 export { default as ChatSuggestions } from "./ChatSuggestions";
+export { default as ConversationList } from "./ConversationList";
+export { default as ConversationItem } from "./ConversationItem";
 export type { DisplayMessage } from "./ChatMessage";
 export type { ChatMessageProps } from "./ChatMessage";
 export type { ChatToolCallProps } from "./ChatToolCall";

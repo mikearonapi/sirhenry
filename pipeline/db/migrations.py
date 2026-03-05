@@ -355,6 +355,54 @@ async def _015_target_allocations_table(session: AsyncSession) -> None:
     logger.info("Created target_allocations table.")
 
 
+async def _016_chat_tables(session: AsyncSession) -> None:
+    """Create chat_conversations and chat_messages tables for persistent history."""
+    d = _ddl(session)
+    await session.execute(text(f"""
+        CREATE TABLE IF NOT EXISTS chat_conversations (
+            id           {d['pk']},
+            title        VARCHAR(255) NOT NULL DEFAULT 'New Conversation',
+            page_context VARCHAR(50),
+            created_at   {d['ts_now']},
+            updated_at   {d['ts_now']}
+        )
+    """))
+    await session.execute(text(
+        "CREATE INDEX IF NOT EXISTS ix_chat_conv_context ON chat_conversations(page_context)"
+    ))
+    await session.execute(text(
+        "CREATE INDEX IF NOT EXISTS ix_chat_conv_updated ON chat_conversations(updated_at)"
+    ))
+    await session.execute(text(f"""
+        CREATE TABLE IF NOT EXISTS chat_messages (
+            id              {d['pk']},
+            conversation_id INTEGER NOT NULL REFERENCES chat_conversations(id) ON DELETE CASCADE,
+            role            VARCHAR(20) NOT NULL,
+            content         TEXT NOT NULL,
+            actions_json    TEXT,
+            created_at      {d['ts_now']}
+        )
+    """))
+    await session.execute(text(
+        "CREATE INDEX IF NOT EXISTS ix_chat_msg_conv ON chat_messages(conversation_id)"
+    ))
+    logger.info("Created chat_conversations and chat_messages tables.")
+
+
+async def _017_business_entity_enrichment(session: AsyncSession) -> None:
+    """Add description and expected_expenses to business_entities for AI categorization enrichment."""
+    cols = [
+        ("business_entities", "description", "TEXT"),
+        ("business_entities", "expected_expenses", "TEXT"),
+    ]
+    for table, col, col_type in cols:
+        try:
+            await session.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {col_type}"))
+        except Exception:
+            pass  # Column already exists
+    logger.info("Added description, expected_expenses to business_entities.")
+
+
 MIGRATIONS: list[tuple[str, callable]] = [
     ("001_family_members_table", _001_family_members_table),
     ("002_household_columns", _002_household_columns),
@@ -371,6 +419,8 @@ MIGRATIONS: list[tuple[str, callable]] = [
     ("013_tax_strategy_enhanced_columns", _013_tax_strategy_enhanced_columns),
     ("014_household_tax_strategy_profile", _014_household_tax_strategy_profile),
     ("015_target_allocations_table", _015_target_allocations_table),
+    ("016_chat_tables", _016_chat_tables),
+    ("017_business_entity_enrichment", _017_business_entity_enrichment),
 ]
 
 

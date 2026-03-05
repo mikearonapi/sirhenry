@@ -1,6 +1,9 @@
 "use client";
-import { Shield, GraduationCap, Home, Landmark, AlertTriangle, Briefcase, PiggyBank } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Shield, GraduationCap, Home, Landmark, AlertTriangle, Briefcase, PiggyBank, Sparkles, Loader2 } from "lucide-react";
 import type { ReactNode } from "react";
+import { getGoalSuggestions, type GoalSuggestion } from "@/lib/api-goals";
+import { formatCurrency } from "@/lib/utils";
 
 export interface GoalTemplate {
   name: string;
@@ -12,8 +15,42 @@ export interface GoalTemplate {
   color: string;
 }
 
-/** Pre-built goal templates designed for HENRYs (High Earners, Not Rich Yet) */
-export const HENRY_GOAL_TEMPLATES: GoalTemplate[] = [
+const ICON_MAP: Record<string, (color: string) => ReactNode> = {
+  emergency_fund: (c) => <Shield size={18} className={c} />,
+  debt_payoff: (c) => <GraduationCap size={18} className={c} />,
+  purchase: (c) => <Home size={18} className={c} />,
+  tax: (c) => <Landmark size={18} className={c} />,
+  investment: (c) => <PiggyBank size={18} className={c} />,
+  savings: (c) => <PiggyBank size={18} className={c} />,
+  other: (c) => <Briefcase size={18} className={c} />,
+};
+
+const COLOR_TO_TEXT: Record<string, string> = {
+  "#22c55e": "text-emerald-600",
+  "#6366f1": "text-indigo-600",
+  "#3b82f6": "text-blue-600",
+  "#f59e0b": "text-amber-600",
+  "#ef4444": "text-red-500",
+  "#8b5cf6": "text-purple-600",
+  "#06b6d4": "text-cyan-600",
+};
+
+function suggestionToTemplate(s: GoalSuggestion): GoalTemplate {
+  const textColor = COLOR_TO_TEXT[s.color] ?? "text-stone-600";
+  const iconFn = ICON_MAP[s.goal_type] ?? ICON_MAP.other;
+  return {
+    name: s.name,
+    goal_type: s.goal_type,
+    target_amount: s.target_amount,
+    monthly_contribution: s.monthly_contribution,
+    description: s.description,
+    icon: iconFn(textColor),
+    color: s.color,
+  };
+}
+
+/** Static fallback templates for when the API is unavailable */
+const FALLBACK_TEMPLATES: GoalTemplate[] = [
   {
     name: "Emergency Fund (6 months)",
     goal_type: "emergency_fund",
@@ -84,25 +121,58 @@ interface GoalTemplatesProps {
 }
 
 export default function GoalTemplates({ onSelect }: GoalTemplatesProps) {
+  const [templates, setTemplates] = useState<GoalTemplate[]>(FALLBACK_TEMPLATES);
+  const [personalized, setPersonalized] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await getGoalSuggestions();
+        if (!cancelled && data.suggestions.length > 0) {
+          setTemplates(data.suggestions.map(suggestionToTemplate));
+          setPersonalized(true);
+        }
+      } catch {
+        // Silently fall back to static templates
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-      {HENRY_GOAL_TEMPLATES.map((t, i) => (
-        <button
-          key={i}
-          onClick={() => onSelect(t)}
-          className="flex items-start gap-3 text-left p-4 rounded-xl border border-stone-100 bg-white hover:border-[#16A34A]/30 hover:bg-green-50/30 transition-all group"
-        >
-          <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-stone-50 group-hover:bg-green-50 flex items-center justify-center transition-colors">
-            {t.icon}
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-stone-700 group-hover:text-[#16A34A] transition-colors">
-              {t.name}
-            </p>
-            <p className="text-xs text-stone-400 mt-0.5 line-clamp-2">{t.description}</p>
-          </div>
-        </button>
-      ))}
+    <div>
+      {personalized && (
+        <div className="flex items-center gap-1.5 mb-2">
+          <Sparkles size={12} className="text-[#EAB308]" />
+          <span className="text-[11px] text-stone-400">Personalized based on your income and situation</span>
+        </div>
+      )}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+        {(loading ? FALLBACK_TEMPLATES : templates).map((t, i) => (
+          <button
+            key={i}
+            onClick={() => onSelect(t)}
+            className="flex items-start gap-3 text-left p-4 rounded-xl border border-stone-100 bg-white hover:border-[#16A34A]/30 hover:bg-green-50/30 transition-all group"
+          >
+            <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-stone-50 group-hover:bg-green-50 flex items-center justify-center transition-colors">
+              {t.icon}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-stone-700 group-hover:text-[#16A34A] transition-colors">
+                {t.name}
+              </p>
+              <p className="text-xs text-stone-400 mt-0.5 line-clamp-2">{t.description}</p>
+              <p className="text-xs text-stone-500 mt-1.5 font-mono tabular-nums">
+                {formatCurrency(t.target_amount, true)} target · {formatCurrency(t.monthly_contribution)}/mo
+              </p>
+            </div>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

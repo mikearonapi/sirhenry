@@ -32,3 +32,18 @@ export function createTransaction(body: TransactionCreateIn): Promise<Transactio
     body: JSON.stringify(body),
   });
 }
+
+export interface TransactionAudit {
+  total_transactions: number;
+  categorized: number;
+  uncategorized: number;
+  manually_reviewed: number;
+  categorization_rate: number;
+  quality: "good" | "needs_attention" | "poor";
+}
+
+export function getTransactionAudit(year?: number): Promise<TransactionAudit> {
+  const params = new URLSearchParams();
+  if (year) params.set("year", String(year));
+  return request(`/transactions/audit?${params}`);
+}

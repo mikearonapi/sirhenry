@@ -14,6 +14,7 @@ export interface UnifiedItem {
   subtitle: string;
   value: number;
   detail?: string;
+  badge?: string;          // e.g. business entity name
   canEdit?: boolean;
   onEdit?: () => void;
   onDelete?: () => void;

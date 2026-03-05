@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Plus, Loader2, Target, AlertCircle, Copy, ChevronDown, ChevronRight,
   Check, X, Eye, EyeOff, ChevronLeft,
-  DollarSign,
+  DollarSign, Bot, Sparkles,
 } from "lucide-react";
 import { formatCurrency, monthName } from "@/lib/utils";
 import {
@@ -147,6 +147,8 @@ export default function BudgetPage() {
   const [saving, setSaving] = useState(false);
 
   const [copying, setCopying] = useState(false);
+  const [segmentFilter, setSegmentFilter] = useState<"all" | "personal" | "business">("all");
+  const [suggestingBudget, setSuggestingBudget] = useState(false);
 
   // ── Data fetching ────────────────────────────────────────────────────────
 
@@ -243,6 +245,24 @@ export default function BudgetPage() {
     setSaving(false);
   }
 
+  async function handleSuggestBudget() {
+    setSuggestingBudget(true);
+    try {
+      // Use unbudgeted categories to auto-create budget lines from historical spending
+      const promises = unbudgeted.map((u) =>
+        createBudget({
+          year, month,
+          category: u.category,
+          segment: "personal",
+          budget_amount: Math.round(u.actual_amount / 10) * 10 || 50,
+        }).catch(() => {}) // Skip duplicates
+      );
+      await Promise.all(promises);
+      await load();
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : String(e)); }
+    setSuggestingBudget(false);
+  }
+
   function toggleGroup(group: string) {
     setCollapsedGroups((prev) => { const next = new Set(prev); if (next.has(group)) next.delete(group); else next.add(group); return next; });
   }
@@ -250,9 +270,10 @@ export default function BudgetPage() {
   // ── Derived data ─────────────────────────────────────────────────────────
 
   const classifyCategory = makeClassifier(categories);
-  const incomeItems = budgets.filter(b => classifyCategory(b.category) === "income");
-  const expenseItems = budgets.filter(b => classifyCategory(b.category) === "expense");
-  const goalItems = budgets.filter(b => classifyCategory(b.category) === "goal");
+  const filteredBudgets = segmentFilter === "all" ? budgets : budgets.filter(b => b.segment === segmentFilter);
+  const incomeItems = filteredBudgets.filter(b => classifyCategory(b.category) === "income");
+  const expenseItems = filteredBudgets.filter(b => classifyCategory(b.category) === "expense");
+  const goalItems = filteredBudgets.filter(b => classifyCategory(b.category) === "goal");
   const expenseGroups = groupExpenses(expenseItems);
 
   const totalIncomeBudget = incomeItems.reduce((s, b) => s + b.budget_amount, 0);
@@ -300,11 +321,28 @@ export default function BudgetPage() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <div className="lg:col-span-3 space-y-6">
           {/* Toolbar */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <button onClick={handleCopyPrevious} disabled={copying} className="flex items-center gap-1.5 text-xs border border-stone-200 rounded-lg px-3 py-2 text-stone-600 hover:bg-stone-50 disabled:opacity-50">
               {copying ? <Loader2 size={12} className="animate-spin" /> : <Copy size={12} />}
               Copy from {monthName(prev.month)}
             </button>
+            {unbudgeted.length > 0 && (
+              <button onClick={handleSuggestBudget} disabled={suggestingBudget} className="flex items-center gap-1.5 text-xs bg-violet-600 text-white rounded-lg px-3 py-2 hover:bg-violet-700 disabled:opacity-50 shadow-sm">
+                {suggestingBudget ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                Auto-budget {unbudgeted.length} categories
+              </button>
+            )}
+            <div className="flex bg-stone-100 rounded-lg p-0.5 ml-auto">
+              {(["all", "personal", "business"] as const).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setSegmentFilter(s)}
+                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${segmentFilter === s ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700"}`}
+                >
+                  {s === "all" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Add form */}

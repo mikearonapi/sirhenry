@@ -208,6 +208,8 @@ class BusinessEntity(Base):
     active_from = Column(Date, nullable=True)
     active_to = Column(Date, nullable=True)
     notes = Column(Text, nullable=True)
+    description = Column(Text, nullable=True)           # What the business does
+    expected_expenses = Column(Text, nullable=True)     # Common expense types
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -1257,6 +1259,47 @@ class AuditLog(Base):
     __table_args__ = (
         Index("ix_audit_timestamp", "timestamp"),
         Index("ix_audit_action", "action_type"),
+    )
+
+
+class ChatConversation(Base):
+    """A named conversation thread, optionally scoped to a page context."""
+    __tablename__ = "chat_conversations"
+
+    id           = Column(Integer, primary_key=True, autoincrement=True)
+    title        = Column(String(255), nullable=False, default="New Conversation")
+    page_context = Column(String(50), nullable=True)   # None = global; "goals", "budget", etc.
+    created_at   = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at   = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    messages = relationship(
+        "ChatMessage",
+        back_populates="conversation",
+        cascade="all, delete-orphan",
+        order_by="ChatMessage.created_at",
+    )
+
+    __table_args__ = (
+        Index("ix_chat_conv_context", "page_context"),
+        Index("ix_chat_conv_updated", "updated_at"),
+    )
+
+
+class ChatMessage(Base):
+    """A single message within a chat conversation."""
+    __tablename__ = "chat_messages"
+
+    id              = Column(Integer, primary_key=True, autoincrement=True)
+    conversation_id = Column(Integer, ForeignKey("chat_conversations.id", ondelete="CASCADE"), nullable=False)
+    role            = Column(String(20), nullable=False)   # "user" | "assistant"
+    content         = Column(Text, nullable=False)
+    actions_json    = Column(Text, nullable=True)          # JSON list of ChatAction dicts (assistant only)
+    created_at      = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    conversation = relationship("ChatConversation", back_populates="messages")
+
+    __table_args__ = (
+        Index("ix_chat_msg_conv", "conversation_id"),
     )
 
 

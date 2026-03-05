@@ -1,5 +1,5 @@
 "use client";
-import { ChevronRight, Tag, AlertTriangle, Building2 } from "lucide-react";
+import { ChevronRight, Tag, AlertTriangle, Building2, Bot } from "lucide-react";
 import { formatCurrency, segmentColor } from "@/lib/utils";
 import type { BusinessEntity, Transaction } from "@/types/api";
 import Badge from "@/components/ui/Badge";
@@ -9,25 +9,47 @@ interface Props {
   tx: Transaction;
   entityMap: Map<number, BusinessEntity>;
   onSelect: (tx: Transaction) => void;
+  selected?: boolean;
+  onToggleSelect?: (id: number) => void;
 }
 
-export default function TransactionRow({ tx, entityMap, onSelect }: Props) {
+export default function TransactionRow({ tx, entityMap, onSelect, selected, onToggleSelect }: Props) {
   const eid = tx.effective_business_entity_id ?? tx.business_entity_id;
   const entityName = eid ? (entityMap.get(eid)?.name ?? null) : null;
   const cat = tx.effective_category ?? "";
   const catIcon = CATEGORY_ICONS[cat] ?? "";
   const isUncategorized = !cat || cat === "Uncategorized";
+  const hasLowConfidence = tx.ai_confidence !== null && tx.ai_confidence < 0.7 && !tx.is_manually_reviewed;
+  const logoUrl = tx.merchant_logo_url;
 
   return (
     <button
       onClick={() => onSelect(tx)}
-      className={`flex items-center w-full text-left px-4 py-2 hover:bg-stone-50/70 transition-colors ${tx.is_excluded ? "opacity-40" : ""}`}
+      className={`flex items-center w-full text-left px-4 py-2 hover:bg-stone-50/70 transition-colors ${tx.is_excluded ? "opacity-40" : ""} ${selected ? "bg-green-50/50" : ""}`}
     >
-      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs shrink-0 mr-3 ${
-        tx.amount >= 0 ? "bg-green-50 text-green-600" : "bg-stone-100 text-stone-500"
-      }`}>
-        {catIcon || tx.description.charAt(0).toUpperCase()}
-      </div>
+      {onToggleSelect && (
+        <input
+          type="checkbox"
+          checked={selected ?? false}
+          onChange={(e) => { e.stopPropagation(); onToggleSelect(tx.id); }}
+          onClick={(e) => e.stopPropagation()}
+          className="mr-2 rounded border-stone-300 text-[#16A34A] focus:ring-[#16A34A]/20 shrink-0"
+        />
+      )}
+      {logoUrl ? (
+        <img
+          src={logoUrl}
+          alt=""
+          className="w-7 h-7 rounded-full shrink-0 mr-3 object-cover"
+          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+        />
+      ) : (
+        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs shrink-0 mr-3 ${
+          tx.amount >= 0 ? "bg-green-50 text-green-600" : "bg-stone-100 text-stone-500"
+        }`}>
+          {catIcon || tx.description.charAt(0).toUpperCase()}
+        </div>
+      )}
 
       <div className="flex-1 min-w-0 mr-3">
         <p className="text-[13px] font-medium text-stone-800 truncate leading-tight">
@@ -55,6 +77,14 @@ export default function TransactionRow({ tx, entityMap, onSelect }: Props) {
             <>
               <span className="text-stone-300">&middot;</span>
               <span className="text-[11px] text-violet-500">edited</span>
+            </>
+          )}
+          {hasLowConfidence && (
+            <>
+              <span className="text-stone-300">&middot;</span>
+              <span className="text-[11px] text-amber-500 flex items-center gap-0.5">
+                <Bot size={8} /> Low confidence
+              </span>
             </>
           )}
         </div>

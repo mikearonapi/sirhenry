@@ -1,16 +1,18 @@
 import { CheckCircle, Minus } from "lucide-react";
 
 const ROWS: [string, boolean, boolean, boolean][] = [
-  ["30-year trajectory projections", false, false, true],
-  ["Life decision modeling", false, false, true],
-  ["AI advisor (your numbers)", false, false, true],
+  ["Monte Carlo retirement simulation", false, false, true],
+  ["AI advisor (your actual numbers)", false, false, true],
   ["Equity comp + RSU guidance", false, false, true],
   ["Personalized tax strategy", false, false, true],
-  ["Priority waterfall engine", false, false, true],
-  ["No minimum balance", true, false, true],
-  ["No commissions", true, true, true],
+  ["Household dual-income optimization", false, false, true],
+  ["Budget forecasting & velocity", true, false, true],
+  ["Goal tracking with templates", true, false, true],
+  ["Subscription & recurring audit", true, false, true],
+  ["Bank sync (Plaid)", true, true, true],
   ["Spending / cash flow view", true, false, true],
   ["Investment portfolio view", false, true, true],
+  ["No minimums / No commissions", true, false, true],
 ];
 
 export default function ComparisonTable() {

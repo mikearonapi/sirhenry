@@ -45,6 +45,9 @@ from .schema import (
     # Privacy & Audit
     UserPrivacyConsent,
     AuditLog,
+    # Chat history
+    ChatConversation,
+    ChatMessage,
     # DB init
     init_db,
     init_extended_db,
@@ -116,6 +119,7 @@ __all__ = [
     "HouseholdProfile", "BenefitPackage", "HouseholdOptimization",
     "TaxProjection", "BenchmarkSnapshot", "LifeEvent", "InsurancePolicy",
     "FamilyMember",
+    "ChatConversation", "ChatMessage",
     "init_db", "init_extended_db", "DATABASE_URL",
     "get_account", "get_all_accounts", "upsert_account",
     "get_document_by_hash", "create_document", "update_document_status",

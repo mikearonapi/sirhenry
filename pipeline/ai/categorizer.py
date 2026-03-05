@@ -49,10 +49,20 @@ def _build_categorization_prompt(
         for e in entities:
             status = "active" if e.get("is_active") else "inactive"
             prov = " (provisional)" if e.get("is_provisional") else ""
-            entity_lines.append(
+            line = (
                 f"  - {e['name']} | type={e['entity_type']} | tax={e['tax_treatment']} "
                 f"| owner={e.get('owner', 'unknown')} | {status}{prov}"
             )
+            if e.get("description"):
+                line += f"\n    What it does: {e['description']}"
+            if e.get("expected_expenses"):
+                line += f"\n    Typical expenses: {e['expected_expenses']}"
+            if e.get("assigned_accounts"):
+                line += f"\n    Assigned accounts: {', '.join(e['assigned_accounts'])}"
+            if e.get("vendor_patterns"):
+                patterns = e["vendor_patterns"][:10]  # Limit to avoid prompt bloat
+                line += f"\n    Known vendors: {', '.join(patterns)}"
+            entity_lines.append(line)
         entity_context = "\nBusiness entities in this household:\n" + "\n".join(entity_lines)
 
     # household_context is built dynamically from DB — no hardcoded names here
@@ -130,6 +140,7 @@ async def categorize_transactions(
     client = get_claude_client()
 
     from pipeline.db import get_all_business_entities, get_business_entity_by_name
+    from pipeline.db.schema import Account, VendorEntityRule
 
     entities = await get_all_business_entities(session, include_inactive=True)
 
@@ -142,8 +153,28 @@ async def categorize_transactions(
     hh = hh_result.scalar_one_or_none()
     sanitizer.register_household(hh, entities)
 
-    # Build sanitized entity list for the prompt
-    entity_dicts = sanitize_entity_list(entities, sanitizer)
+    # Build enrichment maps for richer categorization context
+    acct_result = await session.execute(
+        select(Account).where(
+            Account.is_active == True,
+            Account.default_business_entity_id.isnot(None),
+        )
+    )
+    accounts_map: dict[int, list[str]] = {}
+    for acct in acct_result.scalars().all():
+        accounts_map.setdefault(acct.default_business_entity_id, []).append(acct.name)
+
+    rules_result = await session.execute(
+        select(VendorEntityRule).where(VendorEntityRule.is_active == True)
+    )
+    rules_map: dict[int, list[str]] = {}
+    for rule in rules_result.scalars().all():
+        rules_map.setdefault(rule.business_entity_id, []).append(rule.vendor_pattern)
+
+    # Build sanitized entity list for the prompt (with enrichment)
+    entity_dicts = sanitize_entity_list(
+        entities, sanitizer, accounts_map=accounts_map, rules_map=rules_map,
+    )
     # Map: sanitized_name -> entity ID (for mapping Claude's response back)
     sanitized_name_to_id = {
         sanitizer.sanitize_text(e.name).lower(): e.id for e in entities

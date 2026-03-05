@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, BarChart, Bar, Legend, Cell, ComposedChart, Line,
@@ -20,6 +20,34 @@ import Badge from "@/components/ui/Badge";
 import { useInsights } from "@/hooks/useInsights";
 import { CLASSIFICATION_STYLES, TREND_ICONS, SEASONAL_COLORS } from "@/components/insights/constants";
 import ExpenseOutlierReview from "@/components/insights/ExpenseOutlierReview";
+
+function SkeletonCard({ rows = 3 }: { rows?: number }) {
+  return (
+    <Card padding="lg">
+      <div className="animate-pulse space-y-3">
+        <div className="h-4 bg-stone-200 rounded w-1/3" />
+        {Array.from({ length: rows }).map((_, i) => (
+          <div key={i} className="h-3 bg-stone-100 rounded" style={{ width: `${80 - i * 10}%` }} />
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+function SkeletonChart() {
+  return (
+    <Card padding="lg">
+      <div className="animate-pulse">
+        <div className="h-4 bg-stone-200 rounded w-2/5 mb-4" />
+        <div className="h-[300px] bg-stone-50 rounded-lg flex items-end justify-around px-6 pb-4 gap-3">
+          {[60, 80, 45, 90, 55, 70, 40, 65, 50, 75, 60, 85].map((h, i) => (
+            <div key={i} className="bg-stone-200 rounded-t w-full" style={{ height: `${h}%` }} />
+          ))}
+        </div>
+      </div>
+    </Card>
+  );
+}
 
 const now = new Date();
 
@@ -99,25 +127,27 @@ export default function CashFlowPage() {
           Net: Math.round(p.net_cash_flow),
         }));
 
-  const allExpenseBreakdown: Record<string, number> = {};
-  monthly.forEach((p) => {
-    const breakdown = safeJsonParse<Record<string, number>>(p.expense_breakdown, {});
-    Object.entries(breakdown).forEach(([cat, amt]) => {
-      allExpenseBreakdown[cat] = (allExpenseBreakdown[cat] ?? 0) + amt;
+  const topExpenseCategories = useMemo(() => {
+    const all: Record<string, number> = {};
+    monthly.forEach((p) => {
+      const breakdown = safeJsonParse<Record<string, number>>(p.expense_breakdown, {});
+      Object.entries(breakdown).forEach(([cat, amt]) => {
+        all[cat] = (all[cat] ?? 0) + amt;
+      });
     });
-  });
-  const topExpenseCategories = Object.entries(allExpenseBreakdown)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 12);
+    return Object.entries(all).sort((a, b) => b[1] - a[1]).slice(0, 12);
+  }, [monthly]);
 
-  const allIncomeBreakdown: Record<string, number> = {};
-  monthly.forEach((p) => {
-    const breakdown = safeJsonParse<Record<string, number>>(p.income_breakdown, {});
-    Object.entries(breakdown).forEach(([cat, amt]) => {
-      allIncomeBreakdown[cat] = (allIncomeBreakdown[cat] ?? 0) + amt;
+  const incomeEntries = useMemo(() => {
+    const all: Record<string, number> = {};
+    monthly.forEach((p) => {
+      const breakdown = safeJsonParse<Record<string, number>>(p.income_breakdown, {});
+      Object.entries(breakdown).forEach(([cat, amt]) => {
+        all[cat] = (all[cat] ?? 0) + amt;
+      });
     });
-  });
-  const incomeEntries = Object.entries(allIncomeBreakdown).sort((a, b) => b[1] - a[1]);
+    return Object.entries(all).sort((a, b) => b[1] - a[1]);
+  }, [monthly]);
 
   const INCOME_COLORS = ["#16a34a", "#22c55e", "#4ade80", "#86efac", "#bbf7d0"];
 
@@ -350,6 +380,17 @@ export default function CashFlowPage() {
           </div>
 
           {/* ── Insights Sections ─────────────────────────────────── */}
+
+          {/* Insights loading state */}
+          {insights.loading && (
+            <div className="space-y-5">
+              <SkeletonChart />
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                <SkeletonCard rows={4} />
+                <SkeletonCard rows={4} />
+              </div>
+            </div>
+          )}
 
           {/* Expense Outlier Review */}
           {iData && (

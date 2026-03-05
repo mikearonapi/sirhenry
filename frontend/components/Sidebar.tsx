@@ -1,6 +1,5 @@
 "use client";
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, List, Upload,
@@ -9,14 +8,22 @@ import {
   PieChart, ChevronLeft, ChevronRight, Activity, X,
   Compass, FileText, BarChart3,
   Briefcase, Users, Settings, Zap, Landmark, Calendar, ShieldCheck,
-  ChevronUp, Sparkles,
+  ChevronUp, Sparkles, MessageCircle,
 } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { request } from "@/lib/api-client";
+
+interface FamilyMember {
+  id: number;
+  name: string;
+  relationship: string;
+}
 
 const NAV_SECTIONS = [
   {
     label: null,
     items: [
+      { href: "/sir-henry", label: "Chat with Sir Henry", icon: MessageCircle },
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     ],
   },
@@ -48,13 +55,18 @@ const NAV_SECTIONS = [
     ],
   },
   {
+    label: "Business",
+    items: [
+      { href: "/business", label: "My Businesses", icon: Briefcase },
+    ],
+  },
+  {
     label: "Setup",
     items: [
       { href: "/setup", label: "Setup Wizard", icon: Sparkles },
       { href: "/accounts", label: "Accounts", icon: Building2 },
       { href: "/household", label: "Household", icon: Users },
       { href: "/life-events", label: "Life Events", icon: Calendar },
-      { href: "/business", label: "Business", icon: Briefcase },
       { href: "/insurance", label: "Policies", icon: ShieldCheck },
     ],
   },
@@ -72,6 +84,19 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
   const [collapsed, setCollapsed] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const [userName, setUserName] = useState<string | null>(null);
+
+  const fetchUserName = useCallback(async () => {
+    try {
+      const members = await request<FamilyMember[]>("/family-members/");
+      const primary = members.find((m) => m.relationship === "self") ?? members[0];
+      if (primary) setUserName(primary.name);
+    } catch {
+      // silently fall back to default
+    }
+  }, []);
+
+  useEffect(() => { fetchUserName(); }, [fetchUserName]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -82,6 +107,9 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
     if (userMenuOpen) document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [userMenuOpen]);
+
+  const displayName = userName ?? "User";
+  const displayInitial = displayName.charAt(0).toUpperCase();
 
   return (
     <>
@@ -95,20 +123,13 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
       </button>
 
       {/* Logo */}
-      <div className={`flex items-center ${collapsed ? "justify-center" : "gap-2.5"} px-4 h-16 border-b border-zinc-800`}>
-        <Image
-          src="/henry-icon-1024.png"
-          alt="Henry"
-          width={32}
-          height={32}
-          className="rounded-lg shrink-0"
-          priority
-        />
-        {!collapsed && (
-          <div className="min-w-0">
-            <p className="text-white font-semibold text-sm leading-tight truncate" style={{ fontFamily: "var(--font-display, sans-serif)" }}>Henry</p>
-            <p className="text-zinc-500 text-[11px]">sirhenry.app</p>
-          </div>
+      <div className={`flex items-center ${collapsed ? "justify-center" : "px-5"} h-16 border-b border-zinc-800`}>
+        {collapsed ? (
+          <span className="text-white text-lg font-extrabold" style={{ fontFamily: "var(--font-display, sans-serif)" }}>H</span>
+        ) : (
+          <p className="text-white text-xl font-semibold tracking-tight" style={{ fontFamily: "var(--font-display, sans-serif)" }}>
+            Sir<span className="tracking-wide font-extrabold">HENRY</span>
+          </p>
         )}
       </div>
 
@@ -183,15 +204,15 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
         <button
           onClick={() => setUserMenuOpen(!userMenuOpen)}
           className={`w-full flex items-center ${collapsed ? "justify-center" : "gap-2.5"} rounded-lg hover:bg-zinc-800 transition-colors p-1.5 -mx-1.5`}
-          title={collapsed ? "Mike Aron" : undefined}
+          title={collapsed ? displayName : undefined}
         >
           <div className="w-8 h-8 rounded-full bg-[#EAB308] flex items-center justify-center text-[#0a0a0b] text-xs font-bold shrink-0" style={{ fontFamily: "var(--font-display, sans-serif)" }}>
-            M
+            {displayInitial}
           </div>
           {!collapsed && (
             <>
               <div className="flex-1 min-w-0 text-left">
-                <p className="text-zinc-200 text-xs font-medium truncate">Mike Aron</p>
+                <p className="text-zinc-200 text-xs font-medium truncate">{displayName}</p>
                 <p className="text-zinc-600 text-[11px]">Local &middot; Secure &middot; Private</p>
               </div>
               <ChevronUp size={14} className={`text-zinc-500 shrink-0 transition-transform ${userMenuOpen ? "rotate-180" : ""}`} />

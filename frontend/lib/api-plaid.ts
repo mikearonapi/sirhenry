@@ -17,7 +17,13 @@ export function getPlaidLinkToken(): Promise<{ link_token: string }> {
   return request("/plaid/link-token");
 }
 
-export function exchangePlaidPublicToken(publicToken: string, institution: string): Promise<{ item_id: string; status: string }> {
+export function exchangePlaidPublicToken(publicToken: string, institution: string): Promise<{
+  item_id: string;
+  status: string;
+  sync_status?: string;
+  accounts_matched?: number;
+  accounts_created?: number;
+}> {
   return request("/plaid/exchange-token", {
     method: "POST",
     body: JSON.stringify({ public_token: publicToken, institution_name: institution }),

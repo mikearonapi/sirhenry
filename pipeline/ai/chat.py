@@ -27,11 +27,65 @@ from pipeline.db.schema import (
 )
 from pipeline.db.schema_extended import Budget, RecurringTransaction
 from pipeline.utils import CLAUDE_MODEL
+from pipeline.ai.chat_tools import (
+    _tool_list_manual_assets,
+    _tool_update_asset_value,
+    _tool_get_stock_quote,
+    _tool_trigger_plaid_sync,
+    _tool_run_categorization,
+    _tool_get_data_health,
+)
 
 load_dotenv()
 logger = logging.getLogger(__name__)
 
 MAX_TOOL_ROUNDS = 8
+
+TOOL_LABELS: dict[str, str] = {
+    "search_transactions": "Searching transactions",
+    "get_transaction_detail": "Looking up transaction",
+    "recategorize_transaction": "Updating transaction",
+    "get_spending_summary": "Analyzing spending",
+    "get_account_balances": "Checking balances",
+    "get_tax_info": "Pulling tax data",
+    "get_budget_status": "Reviewing budget",
+    "get_recurring_expenses": "Checking subscriptions",
+    "get_setup_status": "Checking setup",
+    "get_household_summary": "Loading household data",
+    "get_goals_summary": "Checking goals",
+    "get_portfolio_overview": "Reviewing portfolio",
+    "get_retirement_status": "Analyzing retirement",
+    "get_life_scenarios": "Loading scenarios",
+    "list_manual_assets": "Loading assets",
+    "update_asset_value": "Updating asset value",
+    "get_stock_quote": "Fetching stock quote",
+    "trigger_plaid_sync": "Syncing bank data",
+    "run_categorization": "Categorizing transactions",
+    "get_data_health": "Running data health check",
+}
+
+TOOL_DONE_LABELS: dict[str, str] = {
+    "search_transactions": "Found transactions",
+    "get_transaction_detail": "Retrieved transaction",
+    "recategorize_transaction": "Updated transaction",
+    "get_spending_summary": "Spending analyzed",
+    "get_account_balances": "Balances loaded",
+    "get_tax_info": "Tax data loaded",
+    "get_budget_status": "Budget reviewed",
+    "get_recurring_expenses": "Subscriptions loaded",
+    "get_setup_status": "Setup checked",
+    "get_household_summary": "Household loaded",
+    "get_goals_summary": "Goals loaded",
+    "get_portfolio_overview": "Portfolio reviewed",
+    "get_retirement_status": "Retirement analyzed",
+    "get_life_scenarios": "Scenarios loaded",
+    "list_manual_assets": "Assets loaded",
+    "update_asset_value": "Asset updated",
+    "get_stock_quote": "Quote fetched",
+    "trigger_plaid_sync": "Sync complete",
+    "run_categorization": "Categorization complete",
+    "get_data_health": "Health check done",
+}
 
 _SYSTEM_PROMPT_BASE = """You are Sir Henry, a senior personal financial advisor and CPA assistant embedded in the SirHENRY platform. You have deep access to the household's complete financial data and can take real actions on their behalf.
 
@@ -47,6 +101,8 @@ You are the household's dedicated AI financial advisor. You know their financial
 6. **Budget Coaching** — Show budget vs. actual, highlight overspending, suggest adjustments.
 7. **Goal Tracking** — Help evaluate progress toward financial goals and whether spending habits support them.
 8. **Subscription Audit** — Review recurring charges, flag ones that may no longer be needed, calculate potential savings.
+9. **Manage Assets** — View and update manual asset values (home, vehicles, trusts, retirement accounts). Look up current stock prices to keep values current.
+10. **Sync & Maintain** — Trigger bank account syncs via Plaid, run AI categorization on new transactions, and run data health checks to identify gaps.
 
 ## How to Respond
 - **Be specific with numbers.** Always include dollar amounts, dates, percentages. Never be vague.
@@ -63,7 +119,11 @@ You are the household's dedicated AI financial advisor. You know their financial
 - Use markdown tables for comparisons (budget vs actual, month-over-month)
 - When listing transactions, format as: `date | description | $amount | category`
 - When you make a change, clearly state: what was changed, from what, to what
-- Keep responses focused but thorough — aim for the detail level of a professional financial review"""
+- Keep responses focused but thorough — aim for the detail level of a professional financial review
+
+## Data Interpretation Rules
+- **Credit Card Payments**: Transactions categorized as "Credit Card Payment" are debt repayments to credit card issuers — they are NOT expenses. The underlying spending is already captured as individual purchase transactions. ALWAYS exclude "Credit Card Payment" category transactions when analyzing: large transactions, unusual charges, spending totals, cash outflows, or any expense-based analysis. Never flag a credit card payment as a notable transaction.
+- **Transfers**: Inter-account transfers are also not expenses. Exclude them from spending analysis."""
 
 
 async def _build_system_prompt(session: AsyncSession) -> tuple[str, "PIISanitizer"]:
@@ -166,7 +226,7 @@ async def _build_system_prompt(session: AsyncSession) -> tuple[str, "PIISanitize
 TOOLS = [
     {
         "name": "search_transactions",
-        "description": "Search transactions by description keyword, date range, amount range, category, segment, or account. Returns up to 20 matching transactions.",
+        "description": "Search transactions by description keyword, date range, amount range, category, segment, or account. Returns up to 20 matching transactions. IMPORTANT: Credit Card Payment and Transfer transactions are automatically excluded (they are debt repayments/inter-account moves, not actual expenses). To search credit card payments specifically, pass category='Credit Card Payment'.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -335,6 +395,76 @@ TOOLS = [
             "required": [],
         },
     },
+    {
+        "name": "list_manual_assets",
+        "description": "List all manually tracked assets and liabilities (home, vehicles, trusts, retirement accounts not on Plaid). Shows current values and when they were last updated.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "asset_type": {
+                    "type": "string",
+                    "description": "Filter by type: real_estate, vehicle, investment, retirement, other",
+                },
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "update_asset_value",
+        "description": "Update the current value of a manual asset (home, vehicle, trust balance, etc.). Use after looking up current market values.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "asset_id": {"type": "integer", "description": "The manual asset ID to update"},
+                "new_value": {"type": "number", "description": "New current value in dollars"},
+                "notes": {"type": "string", "description": "Reason for update (e.g., 'Zillow estimate March 2026')"},
+            },
+            "required": ["asset_id", "new_value"],
+        },
+    },
+    {
+        "name": "get_stock_quote",
+        "description": "Get real-time stock quote for a ticker symbol. Useful for checking RSU values, portfolio holdings, or market conditions.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "ticker": {"type": "string", "description": "Stock ticker symbol (e.g., ACN, AAPL, SPY)"},
+            },
+            "required": ["ticker"],
+        },
+    },
+    {
+        "name": "trigger_plaid_sync",
+        "description": "Sync latest transactions and balances from connected bank accounts via Plaid. Can sync all institutions or a specific one.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "institution": {"type": "string", "description": "Sync only this institution (e.g., 'Bank of America'). Omit to sync all."},
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "run_categorization",
+        "description": "Run AI categorization on uncategorized transactions. Assigns expense category, tax category, segment, and business entity using Claude.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "year": {"type": "integer", "description": "Categorize only transactions from this year. Omit for all uncategorized."},
+                "month": {"type": "integer", "description": "Categorize only transactions from this month (1-12). Requires year."},
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "get_data_health",
+        "description": "Run a comprehensive data quality check across accounts, transactions, Plaid connections, and manual assets. Identifies gaps like uncategorized transactions, stale asset values, and failed syncs.",
+        "input_schema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    },
 ]
 
 
@@ -369,6 +499,18 @@ async def _exec_tool(session: AsyncSession, tool_name: str, tool_input: dict) ->
             return await _tool_get_retirement_status(session)
         elif tool_name == "get_life_scenarios":
             return await _tool_get_life_scenarios(session)
+        elif tool_name == "list_manual_assets":
+            return await _tool_list_manual_assets(session, tool_input)
+        elif tool_name == "update_asset_value":
+            return await _tool_update_asset_value(session, tool_input)
+        elif tool_name == "get_stock_quote":
+            return await _tool_get_stock_quote(session, tool_input)
+        elif tool_name == "trigger_plaid_sync":
+            return await _tool_trigger_plaid_sync(session, tool_input)
+        elif tool_name == "run_categorization":
+            return await _tool_run_categorization(session, tool_input)
+        elif tool_name == "get_data_health":
+            return await _tool_get_data_health(session, tool_input)
         else:
             return json.dumps({"error": f"Unknown tool: {tool_name}"})
     except Exception as e:
@@ -387,6 +529,13 @@ async def _tool_search_transactions(session: AsyncSession, params: dict) -> str:
     limit = min(params.get("limit", 20), 50)
 
     q = select(Transaction).where(Transaction.is_excluded == False)
+
+    # Auto-exclude credit card payments and transfers unless caller explicitly filters by category.
+    # These are debt repayments / inter-account moves — not actual expenses.
+    if not category:
+        EXCLUDED = ("Credit Card Payment", "Transfer", "Payment")
+        for excl in EXCLUDED:
+            q = q.where(Transaction.effective_category.not_ilike(f"%{excl}%"))
 
     if query_text:
         q = q.where(Transaction.description.ilike(f"%{query_text}%"))
@@ -540,6 +689,10 @@ async def _tool_get_spending_summary(session: AsyncSession, params: dict) -> str
     month = params.get("month")
     segment = params.get("segment", "all")
 
+    # Exclude credit card payments and transfers — they are debt repayments/inter-account
+    # moves, not actual expenses. The underlying spending is captured as individual transactions.
+    EXCLUDED_CATEGORIES = ("Credit Card Payment", "Transfer", "Payment")
+
     q = select(
         Transaction.effective_category,
         Transaction.effective_segment,
@@ -548,6 +701,7 @@ async def _tool_get_spending_summary(session: AsyncSession, params: dict) -> str
     ).where(
         Transaction.period_year == year,
         Transaction.is_excluded == False,
+        ~Transaction.effective_category.in_(EXCLUDED_CATEGORIES),
     )
     if month:
         q = q.where(Transaction.period_month == month)
@@ -917,7 +1071,7 @@ async def _tool_get_goals_summary(session: AsyncSession) -> str:
     from pipeline.db.schema import Goal
 
     result = await session.execute(
-        select(Goal).where(Goal.status.in_(["active", "in_progress"]))
+        select(Goal).where(Goal.status == "active")
     )
     goals = result.scalars().all()
 
@@ -942,7 +1096,8 @@ async def _tool_get_goals_summary(session: AsyncSession) -> str:
             if months_remaining > 0:
                 monthly_needed = round(remaining / months_remaining, 2)
                 if g.monthly_contribution and g.monthly_contribution > 0:
-                    on_track = g.monthly_contribution >= monthly_needed * 0.9  # 90% threshold
+                    projected = g.current_amount + g.monthly_contribution * months_remaining
+                    on_track = projected >= g.target_amount
 
         goal_list.append({
             "id": g.id,
@@ -1149,19 +1304,26 @@ async def _tool_get_life_scenarios(session: AsyncSession) -> str:
 async def run_chat(
     session: AsyncSession,
     messages: list[dict[str, str]],
+    conversation_id: int | None = None,
+    page_context: str | None = None,
 ) -> dict[str, Any]:
     """
-    Run the chat agentic loop.
+    Run the chat agentic loop with persistent history.
 
     Args:
         session: DB session
         messages: List of {"role": "user"|"assistant", "content": "..."} dicts
+        conversation_id: Existing conversation to continue (None = create new)
+        page_context: Page slug this chat originated from (None = global Sir Henry page)
 
     Returns:
-        {"response": "...", "actions": [...], "tool_calls_made": int}
+        {"response": "...", "actions": [...], "tool_calls_made": int, "conversation_id": int}
     """
-    # Check AI consent before proceeding
+    from datetime import datetime as _dt
+    from pipeline.db.schema import ChatConversation, ChatMessage as ChatMessageModel
     from pipeline.db import UserPrivacyConsent
+
+    # Check AI consent before proceeding
     consent_result = await session.execute(
         select(UserPrivacyConsent).where(
             UserPrivacyConsent.consent_type == "ai_features",
@@ -1174,7 +1336,38 @@ async def run_chat(
             "requires_consent": True,
             "actions": [],
             "tool_calls_made": 0,
+            "conversation_id": None,
         }
+
+    # ---------- Conversation persistence: pre-loop ----------
+    user_text = next((m["content"] for m in reversed(messages) if m["role"] == "user"), "")
+    if conversation_id is None:
+        # Derive a readable title from the first user message
+        raw_title = user_text[:80]
+        # Trim to last space to avoid mid-word cuts
+        if len(user_text) > 80 and " " in raw_title:
+            raw_title = raw_title.rsplit(" ", 1)[0]
+        conv = ChatConversation(
+            title=raw_title or "New Conversation",
+            page_context=page_context,
+        )
+        session.add(conv)
+        await session.flush()  # get conv.id
+    else:
+        result = await session.execute(
+            select(ChatConversation).where(ChatConversation.id == conversation_id)
+        )
+        conv = result.scalar_one_or_none()
+        if conv is None:
+            # Conversation was deleted; start fresh
+            conv = ChatConversation(title=user_text[:80] or "New Conversation", page_context=page_context)
+            session.add(conv)
+            await session.flush()
+
+    # Persist the user's message
+    if user_text:
+        session.add(ChatMessageModel(conversation_id=conv.id, role="user", content=user_text))
+        await session.flush()
 
     import time as _time
     from pipeline.security.audit import log_audit
@@ -1190,6 +1383,9 @@ async def run_chat(
         for m in messages
     ]
 
+    final_response: str = "I wasn't able to complete that request."
+    final_round: int = 0
+
     for round_num in range(MAX_TOOL_ROUNDS):
         response = client.messages.create(
             model=CLAUDE_MODEL,
@@ -1202,13 +1398,11 @@ async def run_chat(
         if response.stop_reason == "end_turn":
             text_parts = [b.text for b in response.content if b.type == "text"]
             raw_response = "\n".join(text_parts)
+            final_response = sanitizer.desanitize_text(raw_response) if sanitizer.has_mappings else raw_response
+            final_round = round_num
             _elapsed = int((_time.monotonic() - _chat_start) * 1000)
             await log_audit(session, "ai_chat", "conversation", f"tools_used={len(actions)}", _elapsed)
-            return {
-                "response": sanitizer.desanitize_text(raw_response) if sanitizer.has_mappings else raw_response,
-                "actions": actions,
-                "tool_calls_made": round_num,
-            }
+            break
 
         if response.stop_reason == "tool_use":
             # Collect all tool_use blocks
@@ -1248,18 +1442,198 @@ async def run_chat(
         # Unexpected stop reason
         text_parts = [b.text for b in response.content if b.type == "text"]
         raw_response = "\n".join(text_parts) or "I wasn't able to complete that request."
+        final_response = sanitizer.desanitize_text(raw_response) if sanitizer.has_mappings else raw_response
+        final_round = round_num + 1
         _elapsed = int((_time.monotonic() - _chat_start) * 1000)
         await log_audit(session, "ai_chat", "conversation", f"tools_used={len(actions)}", _elapsed)
-        return {
-            "response": sanitizer.desanitize_text(raw_response) if sanitizer.has_mappings else raw_response,
-            "actions": actions,
-            "tool_calls_made": round_num + 1,
-        }
+        break
+    else:
+        # Hit MAX_TOOL_ROUNDS
+        final_response = "I've reached the maximum number of steps for this request. Please try a more specific question."
+        final_round = MAX_TOOL_ROUNDS
+        _elapsed = int((_time.monotonic() - _chat_start) * 1000)
+        await log_audit(session, "ai_chat", "conversation", f"tools_used={len(actions)},max_rounds=true", _elapsed)
 
-    _elapsed = int((_time.monotonic() - _chat_start) * 1000)
-    await log_audit(session, "ai_chat", "conversation", f"tools_used={len(actions)},max_rounds=true", _elapsed)
+    # ---------- Conversation persistence: post-loop ----------
+    session.add(ChatMessageModel(
+        conversation_id=conv.id,
+        role="assistant",
+        content=final_response,
+        actions_json=json.dumps(actions) if actions else None,
+    ))
+    conv.updated_at = _dt.utcnow()
+    await session.flush()
+
     return {
-        "response": "I've reached the maximum number of steps for this request. Please try a more specific question.",
+        "response": final_response,
         "actions": actions,
-        "tool_calls_made": MAX_TOOL_ROUNDS,
+        "tool_calls_made": final_round,
+        "conversation_id": conv.id,
     }
+
+
+async def run_chat_stream(
+    session: AsyncSession,
+    messages: list[dict[str, str]],
+    conversation_id: int | None = None,
+    page_context: str | None = None,
+):
+    """
+    Async generator that yields SSE-ready event dicts for streaming chat.
+
+    Event types yielded:
+        {"type": "text_delta", "text": "..."}       — incremental response text
+        {"type": "tool_start", "tool": "...", "label": "..."}  — tool execution started
+        {"type": "tool_done",  "tool": "...", "preview": "..."} — tool completed
+        {"type": "done", "conversation_id": int}    — stream complete
+        {"type": "requires_consent"}                — user must accept privacy terms first
+        {"type": "error", "message": "..."}         — error occurred
+    """
+    from datetime import datetime as _dt
+    from pipeline.db.schema import ChatConversation, ChatMessage as ChatMessageModel
+    from pipeline.db import UserPrivacyConsent
+    from pipeline.security.audit import log_audit
+    import time as _time
+
+    # ── Consent check ──
+    consent_result = await session.execute(
+        select(UserPrivacyConsent).where(
+            UserPrivacyConsent.consent_type == "ai_features",
+            UserPrivacyConsent.consented == True,
+        )
+    )
+    if not consent_result.scalar_one_or_none():
+        yield {"type": "requires_consent"}
+        return
+
+    # ── Conversation setup (same as run_chat) ──
+    user_text = next((m["content"] for m in reversed(messages) if m["role"] == "user"), "")
+    if conversation_id is None:
+        raw_title = user_text[:80]
+        if len(user_text) > 80 and " " in raw_title:
+            raw_title = raw_title.rsplit(" ", 1)[0]
+        conv = ChatConversation(
+            title=raw_title or "New Conversation",
+            page_context=page_context,
+        )
+        session.add(conv)
+        await session.flush()
+    else:
+        result = await session.execute(
+            select(ChatConversation).where(ChatConversation.id == conversation_id)
+        )
+        conv = result.scalar_one_or_none()
+        if conv is None:
+            conv = ChatConversation(title=user_text[:80] or "New Conversation", page_context=page_context)
+            session.add(conv)
+            await session.flush()
+
+    if user_text:
+        session.add(ChatMessageModel(conversation_id=conv.id, role="user", content=user_text))
+        await session.flush()
+
+    # ── Agentic streaming loop ──
+    async_client = anthropic.AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+    system_prompt, sanitizer = await _build_system_prompt(session)
+
+    api_messages = [{"role": m["role"], "content": m["content"]} for m in messages]
+    actions: list[dict] = []
+    _chat_start = _time.monotonic()
+
+    for round_num in range(MAX_TOOL_ROUNDS):
+        full_text = ""
+        stop_reason = "end_turn"
+
+        try:
+            async with async_client.messages.stream(
+                model=CLAUDE_MODEL,
+                max_tokens=4096,
+                system=system_prompt,
+                messages=api_messages,
+                tools=TOOLS,
+            ) as stream:
+                async for event in stream:
+                    etype = getattr(event, "type", None)
+
+                    if etype == "content_block_delta":
+                        delta = getattr(event, "delta", None)
+                        if delta and getattr(delta, "type", None) == "text_delta":
+                            chunk = delta.text
+                            full_text += chunk
+                            yield {"type": "text_delta", "text": chunk}
+
+                # Get final resolved message after stream completes
+                final = await stream.get_final_message()
+                stop_reason = final.stop_reason
+
+        except Exception as exc:
+            yield {"type": "error", "message": str(exc)}
+            return
+
+        if stop_reason == "end_turn":
+            # Desanitize and persist
+            final_response = sanitizer.desanitize_text(full_text) if sanitizer.has_mappings else full_text
+            _elapsed = int((_time.monotonic() - _chat_start) * 1000)
+            await log_audit(session, "ai_chat", "conversation", f"tools_used={len(actions)},streaming=true", _elapsed)
+
+            session.add(ChatMessageModel(
+                conversation_id=conv.id,
+                role="assistant",
+                content=final_response,
+                actions_json=json.dumps(actions) if actions else None,
+            ))
+            conv.updated_at = _dt.utcnow()
+            await session.flush()
+
+            yield {"type": "done", "conversation_id": conv.id, "actions": actions}
+            return
+
+        if stop_reason == "tool_use":
+            # Execute all tool calls from the final message
+            assistant_content = []
+            tool_results = []
+
+            for block in final.content:
+                if block.type == "text":
+                    assistant_content.append({"type": "text", "text": block.text})
+                elif block.type == "tool_use":
+                    assistant_content.append({
+                        "type": "tool_use",
+                        "id": block.id,
+                        "name": block.name,
+                        "input": block.input,
+                    })
+
+                    label = TOOL_LABELS.get(block.name, block.name.replace("_", " ").title())
+                    yield {"type": "tool_start", "tool": block.name, "label": label}
+
+                    result_str = await _exec_tool(session, block.name, block.input)
+
+                    done_label = TOOL_DONE_LABELS.get(block.name, label)
+                    yield {"type": "tool_done", "tool": block.name, "label": done_label, "preview": result_str[:200]}
+
+                    tool_results.append({
+                        "type": "tool_result",
+                        "tool_use_id": block.id,
+                        "content": result_str,
+                    })
+                    actions.append({
+                        "tool": block.name,
+                        "input": block.input,
+                        "result_preview": result_str[:300],
+                    })
+
+            api_messages.append({"role": "assistant", "content": assistant_content})
+            api_messages.append({"role": "user", "content": tool_results})
+            continue
+
+        # Unexpected stop reason
+        yield {"type": "error", "message": f"Unexpected stop reason: {stop_reason}"}
+        return
+
+    # Hit MAX_TOOL_ROUNDS
+    final_response = "I've reached the maximum number of steps for this request. Please try a more specific question."
+    session.add(ChatMessageModel(conversation_id=conv.id, role="assistant", content=final_response))
+    conv.updated_at = _dt.utcnow()
+    await session.flush()
+    yield {"type": "done", "conversation_id": conv.id, "actions": actions}

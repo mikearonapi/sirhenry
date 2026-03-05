@@ -74,25 +74,26 @@ async def budget_forecast(
         .group_by(Transaction.effective_category, Transaction.period_year, Transaction.period_month)
     )
     rows = result.all()
-    transactions_by_cat: dict[str, list[dict]] = {}
+    # Build flat transaction list in the format the engine expects
+    flat_transactions: list[dict] = []
     for row in rows:
         cat = row.effective_category
         if not cat:
             continue
-        transactions_by_cat.setdefault(cat, []).append({
-            "year": row.period_year,
-            "month": row.period_month,
-            "total": abs(float(row.total or 0)),
+        flat_transactions.append({
+            "effective_category": cat,
+            "period_month": row.period_month,
+            "amount": -abs(float(row.total or 0)),  # Engine expects negative amounts for expenses
         })
 
     recurring_result = await session.execute(
         select(Budget.category, Budget.budget_amount)
         .where(Budget.year == y, Budget.month == m)
     )
-    recurring = {r.category: r.budget_amount for r in recurring_result.all()}
+    recurring_total = sum(r.budget_amount for r in recurring_result.all())
 
-    forecast = BudgetForecastEngine.forecast_next_month(transactions_by_cat, recurring)
-    seasonal = BudgetForecastEngine.detect_seasonal_patterns(transactions_by_cat)
+    forecast = BudgetForecastEngine.forecast_next_month(flat_transactions, recurring_total, m, y)
+    seasonal = BudgetForecastEngine.detect_seasonal_patterns(flat_transactions)
     return {"forecast": forecast, "seasonal": seasonal, "target_month": m, "target_year": y}
 
 
@@ -116,11 +117,11 @@ async def spend_velocity(
     )
     budgets_list = list(budgets_result.scalars().all())
 
-    velocity = []
-    for b in budgets_list:
-        actual = actuals.get(b.category, 0.0)
-        v = BudgetForecastEngine.spending_velocity(actual, b.budget_amount, days_elapsed, days_in_month)
-        v["category"] = b.category
-        velocity.append(v)
-
+    budget_items = [
+        {"category": b.category, "budget_amount": b.budget_amount}
+        for b in budgets_list
+    ]
+    velocity = BudgetForecastEngine.spending_velocity(
+        budget_items, actuals, days_elapsed, days_in_month
+    )
     return velocity

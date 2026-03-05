@@ -102,6 +102,8 @@ class TransactionOut(BaseModel):
     notes: Optional[str]
     is_excluded: bool
     data_source: str = "csv"
+    merchant_name: Optional[str] = None
+    merchant_logo_url: Optional[str] = None
     created_at: datetime
 
 
@@ -137,6 +139,8 @@ class BusinessEntityOut(BaseModel):
     active_from: Optional[date]
     active_to: Optional[date]
     notes: Optional[str]
+    description: Optional[str]
+    expected_expenses: Optional[str]
     created_at: datetime
 
 
@@ -150,6 +154,8 @@ class BusinessEntityCreateIn(BaseModel):
     active_from: Optional[date] = None
     active_to: Optional[date] = None
     notes: Optional[str] = None
+    description: Optional[str] = None
+    expected_expenses: Optional[str] = None
 
 
 class BusinessEntityUpdateIn(BaseModel):
@@ -163,6 +169,34 @@ class BusinessEntityUpdateIn(BaseModel):
     active_from: Optional[date] = None
     active_to: Optional[date] = None
     notes: Optional[str] = None
+    description: Optional[str] = None
+    expected_expenses: Optional[str] = None
+
+
+# --- Entity Expense Report ---
+
+class EntityMonthlyTotalOut(BaseModel):
+    month: int
+    month_name: str
+    total_expenses: float
+    transaction_count: int
+
+
+class EntityCategoryBreakdownOut(BaseModel):
+    category: str
+    total: float
+    percentage: float
+
+
+class EntityExpenseReportOut(BaseModel):
+    entity_id: int
+    entity_name: str
+    year: int
+    monthly_totals: list[EntityMonthlyTotalOut]
+    category_breakdown: list[EntityCategoryBreakdownOut]
+    year_total_expenses: float
+    prior_year_total_expenses: Optional[float]
+    year_over_year_change_pct: Optional[float]
 
 
 class VendorEntityRuleOut(BaseModel):
@@ -506,6 +540,8 @@ class ChatMessageIn(BaseModel):
 
 class ChatRequestIn(BaseModel):
     messages: list[ChatMessageIn] = Field(..., min_length=1)
+    conversation_id: Optional[int] = None
+    page_context: Optional[str] = None
 
 
 class ChatActionOut(BaseModel):
@@ -515,9 +551,37 @@ class ChatActionOut(BaseModel):
 
 
 class ChatResponseOut(BaseModel):
-    response: str
+    response: Optional[str]
+    requires_consent: bool = False
     actions: list[ChatActionOut] = []
     tool_calls_made: int = 0
+    conversation_id: Optional[int] = None
+
+
+class ChatConversationOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    title: str
+    page_context: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+    message_count: int = 0
+
+
+class ChatMessageRecordOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    conversation_id: int
+    role: str
+    content: str
+    actions_json: Optional[str] = None
+    created_at: datetime
+
+
+class ChatConversationDetailOut(ChatConversationOut):
+    messages: list[ChatMessageRecordOut] = []
 
 
 # ---------------------------------------------------------------------------
@@ -737,9 +801,28 @@ class BudgetSummaryOut(BaseModel):
     year_over_year: list[YearOverYearDataOut]
 
 
+class ForecastCategory(BaseModel):
+    category: str
+    predicted_amount: float
+    confidence: float
+    historical_avg: float
+
+
+class ForecastResult(BaseModel):
+    month: int
+    year: int
+    categories: list[ForecastCategory]
+    total_predicted: float
+
+
+class SeasonalPatternDetail(BaseModel):
+    monthly_averages: dict[int, float]
+    peaks: dict[int, float]
+
+
 class BudgetForecastOut(BaseModel):
-    forecast: Any
-    seasonal: Any
+    forecast: ForecastResult
+    seasonal: dict[str, SeasonalPatternDetail]
     target_month: int
     target_year: int
 

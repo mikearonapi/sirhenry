@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Target, Loader2, Check, AlertCircle, MessageCircle, ArrowRight, Landmark, PieChart, Compass, Briefcase } from "lucide-react";
+import { Plus, Target, Loader2, Check, AlertCircle, MessageCircle, ArrowRight, Landmark, PieChart, Compass, Briefcase, TrendingUp, CheckCircle2 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { getGoals, createGoal } from "@/lib/api";
 import type { Goal } from "@/types/api";
@@ -8,20 +8,10 @@ import { getErrorMessage } from "@/lib/errors";
 import Card from "@/components/ui/Card";
 import PageHeader from "@/components/ui/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
+import ProgressBar from "@/components/ui/ProgressBar";
 import GoalCard from "@/components/goals/GoalCard";
 import GoalTemplates, { type GoalTemplate } from "@/components/goals/GoalTemplates";
-
-const GOAL_TYPES = [
-  { value: "savings", label: "Savings" },
-  { value: "debt_payoff", label: "Debt Payoff" },
-  { value: "investment", label: "Investment" },
-  { value: "emergency_fund", label: "Emergency Fund" },
-  { value: "purchase", label: "Major Purchase" },
-  { value: "tax", label: "Tax Reserve" },
-  { value: "other", label: "Other" },
-];
-
-const COLORS = ["#6366f1", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899"];
+import { GOAL_TYPES, COLORS } from "@/components/goals/constants";
 
 function askHenry(message: string) {
   window.dispatchEvent(new CustomEvent("ask-henry", { detail: { message } }));
@@ -40,7 +30,7 @@ export default function GoalsPage() {
   const [currentAmount, setCurrentAmount] = useState("0");
   const [targetDate, setTargetDate] = useState("");
   const [monthlyContrib, setMonthlyContrib] = useState("");
-  const [color, setColor] = useState(COLORS[0]);
+  const [color, setColor] = useState<string>(COLORS[0]);
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
@@ -72,16 +62,25 @@ export default function GoalsPage() {
     setTargetDate(""); setMonthlyContrib(""); setColor(COLORS[0]);
   }
 
+  // Form validation
+  const targetNum = parseFloat(targetAmount);
+  const currentNum = parseFloat(currentAmount) || 0;
+  const isTargetValid = !isNaN(targetNum) && targetNum > 0;
+  const isCurrentOverTarget = isTargetValid && currentNum > targetNum;
+  const today = new Date().toISOString().split("T")[0];
+  const isDatePast = targetDate && targetDate < today;
+  const canSubmit = name.trim() && isTargetValid && !saving;
+
   async function handleAdd() {
-    if (!name || !targetAmount) return;
+    if (!canSubmit) return;
     setSaving(true);
     setError(null);
     try {
       await createGoal({
-        name,
+        name: name.trim(),
         goal_type: goalType,
-        target_amount: parseFloat(targetAmount),
-        current_amount: parseFloat(currentAmount) || 0,
+        target_amount: targetNum,
+        current_amount: currentNum,
         target_date: targetDate || null,
         monthly_contribution: monthlyContrib ? parseFloat(monthlyContrib) : null,
         color,
@@ -99,6 +98,14 @@ export default function GoalsPage() {
 
   const active = goals.filter((g) => g.status === "active");
   const completed = goals.filter((g) => g.status === "completed");
+
+  // Summary stats
+  const totalTarget = active.reduce((s, g) => s + g.target_amount, 0);
+  const totalCurrent = active.reduce((s, g) => s + g.current_amount, 0);
+  const overallProgress = totalTarget > 0 ? Math.round(totalCurrent / totalTarget * 100) : 0;
+  const onTrackCount = active.filter((g) => g.on_track === true).length;
+  const behindCount = active.filter((g) => g.on_track === false).length;
+  const totalMonthly = active.reduce((s, g) => s + (g.monthly_contribution ?? 0), 0);
 
   return (
     <div className="space-y-6">
@@ -134,6 +141,49 @@ export default function GoalsPage() {
         </div>
       )}
 
+      {/* Goals Summary Dashboard — only when there are active goals */}
+      {!loading && active.length > 0 && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="!p-4">
+            <p className="text-xs text-stone-400 mb-1">Overall Progress</p>
+            <p className="text-2xl font-bold text-stone-800 font-mono tabular-nums">{overallProgress}%</p>
+            <ProgressBar value={overallProgress} color="#16A34A" size="sm" />
+            <p className="text-[11px] text-stone-400 mt-1.5">
+              {formatCurrency(totalCurrent, true)} of {formatCurrency(totalTarget, true)}
+            </p>
+          </Card>
+          <Card className="!p-4">
+            <p className="text-xs text-stone-400 mb-1">Active Goals</p>
+            <p className="text-2xl font-bold text-stone-800 font-mono tabular-nums">{active.length}</p>
+            <div className="flex items-center gap-2 mt-1.5">
+              {onTrackCount > 0 && (
+                <span className="text-[11px] text-green-600 flex items-center gap-0.5">
+                  <CheckCircle2 size={10} /> {onTrackCount} on track
+                </span>
+              )}
+              {behindCount > 0 && (
+                <span className="text-[11px] text-red-500 flex items-center gap-0.5">
+                  <AlertCircle size={10} /> {behindCount} behind
+                </span>
+              )}
+            </div>
+          </Card>
+          <Card className="!p-4">
+            <p className="text-xs text-stone-400 mb-1">Monthly Commitment</p>
+            <p className="text-2xl font-bold text-stone-800 font-mono tabular-nums">{formatCurrency(totalMonthly, true)}</p>
+            <p className="text-[11px] text-stone-400 mt-1.5">across {active.filter((g) => g.monthly_contribution).length} goals</p>
+          </Card>
+          <Card className="!p-4">
+            <p className="text-xs text-stone-400 mb-1">Remaining</p>
+            <p className="text-2xl font-bold text-stone-800 font-mono tabular-nums">{formatCurrency(totalTarget - totalCurrent, true)}</p>
+            <p className="text-[11px] text-stone-400 mt-1.5">
+              {completed.length > 0 && `${completed.length} goal${completed.length > 1 ? "s" : ""} completed`}
+              {completed.length === 0 && "to reach all targets"}
+            </p>
+          </Card>
+        </div>
+      )}
+
       {/* Add goal form */}
       {showAdd && (
         <Card padding="lg">
@@ -156,37 +206,68 @@ export default function GoalsPage() {
             </div>
             <div>
               <label className="block text-xs text-stone-500 mb-1.5">Target Amount</label>
-              <input type="number" value={targetAmount} onChange={(e) => setTargetAmount(e.target.value)} placeholder="0.00" min="0"
-                className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A]" />
+              <input type="number" value={targetAmount} onChange={(e) => setTargetAmount(e.target.value)} placeholder="0.00" min="1" step="0.01"
+                className={`w-full text-sm border rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A] ${targetAmount && !isTargetValid ? "border-red-300" : "border-stone-200"}`} />
+              {targetAmount && !isTargetValid && (
+                <p className="text-[11px] text-red-500 mt-1">Target amount must be greater than 0</p>
+              )}
             </div>
             <div>
               <label className="block text-xs text-stone-500 mb-1.5">Current Amount</label>
-              <input type="number" value={currentAmount} onChange={(e) => setCurrentAmount(e.target.value)} placeholder="0.00" min="0"
-                className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A]" />
+              <input type="number" value={currentAmount} onChange={(e) => setCurrentAmount(e.target.value)} placeholder="0.00" min="0" step="0.01"
+                className={`w-full text-sm border rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A] ${isCurrentOverTarget ? "border-amber-300" : "border-stone-200"}`} />
+              {isCurrentOverTarget && (
+                <p className="text-[11px] text-amber-600 mt-1">Current amount exceeds target — goal may already be complete</p>
+              )}
             </div>
             <div>
               <label className="block text-xs text-stone-500 mb-1.5">Monthly Contribution</label>
-              <input type="number" value={monthlyContrib} onChange={(e) => setMonthlyContrib(e.target.value)} placeholder="Optional"
+              <input type="number" value={monthlyContrib} onChange={(e) => setMonthlyContrib(e.target.value)} placeholder="Optional" min="0" step="0.01"
                 className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A]" />
             </div>
             <div>
               <label className="block text-xs text-stone-500 mb-1.5">Target Date</label>
               <input type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)}
-                className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A]" />
+                className={`w-full text-sm border rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A] ${isDatePast ? "border-amber-300" : "border-stone-200"}`} />
+              {isDatePast && (
+                <p className="text-[11px] text-amber-600 mt-1">This date is in the past</p>
+              )}
             </div>
             <div className="col-span-2">
               <label className="block text-xs text-stone-500 mb-2">Color</label>
               <div className="flex gap-2">
                 {COLORS.map((c) => (
                   <button key={c} onClick={() => setColor(c)}
+                    aria-label={`Select color ${c}`}
                     className={`w-8 h-8 rounded-full transition-transform ${color === c ? "scale-110 ring-2 ring-offset-2 ring-stone-400" : "hover:scale-105"}`}
                     style={{ backgroundColor: c }} />
                 ))}
               </div>
             </div>
           </div>
+
+          {/* Show projected timeline when monthly contribution and target are set */}
+          {isTargetValid && monthlyContrib && parseFloat(monthlyContrib) > 0 && (
+            <div className="mt-4 p-3 bg-stone-50 rounded-lg border border-stone-100">
+              <div className="flex items-center gap-2 text-xs text-stone-500">
+                <TrendingUp size={12} className="text-[#16A34A]" />
+                <span>
+                  At {formatCurrency(parseFloat(monthlyContrib))}/mo, you&apos;ll reach {formatCurrency(targetNum, true)} in{" "}
+                  <strong className="text-stone-700">
+                    {Math.ceil((targetNum - currentNum) / parseFloat(monthlyContrib))} months
+                  </strong>
+                  {targetDate && !isDatePast && (
+                    <>
+                      {" "}(target: {new Date(targetDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", year: "numeric" })})
+                    </>
+                  )}
+                </span>
+              </div>
+            </div>
+          )}
+
           <div className="flex gap-3 mt-5">
-            <button onClick={handleAdd} disabled={saving || !name || !targetAmount}
+            <button onClick={handleAdd} disabled={!canSubmit}
               className="flex items-center gap-2 bg-[#16A34A] text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-[#15803D] disabled:opacity-60 shadow-sm">
               {saving ? <Loader2 size={13} className="animate-spin" /> : null} Create Goal
             </button>

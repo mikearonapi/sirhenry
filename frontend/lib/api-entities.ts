@@ -1,14 +1,19 @@
 import type {
   BusinessEntity,
   BusinessEntityCreateIn,
+  EntityExpenseReport,
   EntityReassignIn,
   VendorEntityRule,
   VendorEntityRuleCreateIn,
 } from "@/types/api";
-import { request } from "./api-client";
+import { request, BASE } from "./api-client";
 
 export function getBusinessEntities(includeInactive = false): Promise<BusinessEntity[]> {
   return request(`/entities?include_inactive=${includeInactive}`);
+}
+
+export function getBusinessEntity(id: number): Promise<BusinessEntity> {
+  return request(`/entities/${id}`);
 }
 
 export function createBusinessEntity(body: BusinessEntityCreateIn): Promise<BusinessEntity> {
@@ -61,4 +66,18 @@ export function applyEntityRules(params?: {
 
 export function reassignEntity(body: EntityReassignIn): Promise<{ reassigned: number }> {
   return request("/entities/reassign", { method: "POST", body: JSON.stringify(body) });
+}
+
+// ---------------------------------------------------------------------------
+// Expense Reporting
+// ---------------------------------------------------------------------------
+
+export function getEntityExpenseReport(entityId: number, year: number): Promise<EntityExpenseReport> {
+  return request(`/entities/${entityId}/expenses?year=${year}`);
+}
+
+export function getEntityExpenseCsvUrl(entityId: number, year: number, month?: number): string {
+  const path = `/entities/${entityId}/expenses/csv?year=${year}`;
+  const full = month ? `${path}&month=${month}` : path;
+  return `${BASE}${full}`;
 }
