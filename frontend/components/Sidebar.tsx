@@ -4,9 +4,9 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, List, Upload,
   Wallet, ArrowLeftRight,
-  RotateCcw, Target, FileBarChart, Building2,
+  RotateCcw, Target, Building2,
   PieChart, ChevronLeft, ChevronRight, Activity, X,
-  Compass, FileText, BarChart3,
+  Compass, FileText, ChevronDown,
   Briefcase, Users, Settings, Zap, Landmark, Calendar, ShieldCheck,
   ChevronUp, Sparkles, MessageCircle,
 } from "lucide-react";
@@ -19,14 +19,16 @@ interface FamilyMember {
   relationship: string;
 }
 
+// ---------------------------------------------------------------------------
+// Navigation structure
+// ---------------------------------------------------------------------------
+
+const NAV_PINNED = [
+  { href: "/sir-henry", label: "Chat", icon: MessageCircle },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+];
+
 const NAV_SECTIONS = [
-  {
-    label: null,
-    items: [
-      { href: "/sir-henry", label: "Chat with Sir Henry", icon: MessageCircle },
-      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    ],
-  },
   {
     label: "Money",
     items: [
@@ -48,43 +50,98 @@ const NAV_SECTIONS = [
     ],
   },
   {
-    label: "Taxes",
+    label: "Taxes & Business",
     items: [
       { href: "/tax-strategy", label: "Tax Strategy", icon: Zap },
       { href: "/tax-documents", label: "Tax Documents", icon: FileText },
-    ],
-  },
-  {
-    label: "Business",
-    items: [
-      { href: "/business", label: "My Businesses", icon: Briefcase },
-    ],
-  },
-  {
-    label: "Setup",
-    items: [
-      { href: "/setup", label: "Setup Wizard", icon: Sparkles },
-      { href: "/accounts", label: "Accounts", icon: Building2 },
-      { href: "/household", label: "Household", icon: Users },
-      { href: "/life-events", label: "Life Events", icon: Calendar },
-      { href: "/insurance", label: "Policies", icon: ShieldCheck },
+      { href: "/business", label: "My Businesses", icon: Building2 },
     ],
   },
 ];
 
-const USER_MENU_ITEMS = [
-  { href: "/reports", label: "Reports", icon: FileBarChart },
-  { href: "/statements", label: "Statements", icon: BarChart3 },
-  { href: "/import", label: "Data & Docs", icon: Upload },
+const SETUP_MENU_ITEMS = [
+  { href: "/setup", label: "Setup Wizard", icon: Sparkles },
+  { href: "/accounts", label: "Accounts", icon: Building2 },
+  { href: "/household", label: "Household", icon: Users },
+  { href: "/life-events", label: "Life Events", icon: Calendar },
+  { href: "/insurance", label: "Policies", icon: ShieldCheck },
+];
+
+const UTILITY_MENU_ITEMS = [
+  { href: "/import", label: "Import", icon: Upload },
   { href: "/admin", label: "Settings", icon: Settings },
 ];
+
+// ---------------------------------------------------------------------------
+// localStorage helpers for collapsed sections
+// ---------------------------------------------------------------------------
+
+const STORAGE_KEY = "sidebar.collapsed";
+const ALL_SECTION_LABELS = NAV_SECTIONS.map((s) => s.label);
+
+function getStoredCollapsed(): Set<string> {
+  try {
+    const raw = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
+    // Default: all sections collapsed until the user expands them
+    return raw ? new Set(JSON.parse(raw) as string[]) : new Set(ALL_SECTION_LABELS);
+  } catch { return new Set(ALL_SECTION_LABELS); }
+}
+
+function persistCollapsed(sections: Set<string>) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify([...sections]));
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function isRouteActive(pathname: string, href: string) {
+  return pathname === href || (href !== "/dashboard" && pathname.startsWith(href + "/"));
+}
+
+function sectionContainsActiveRoute(pathname: string, items: { href: string }[]) {
+  return items.some((item) => isRouteActive(pathname, item.href));
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
 
 export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const [userName, setUserName] = useState<string | null>(null);
+
+  // Load collapsed sections from localStorage
+  useEffect(() => { setCollapsedSections(getStoredCollapsed()); }, []);
+
+  // Auto-expand section containing active route
+  useEffect(() => {
+    for (const section of NAV_SECTIONS) {
+      if (section.label && sectionContainsActiveRoute(pathname, section.items)) {
+        setCollapsedSections((prev) => {
+          if (!prev.has(section.label)) return prev;
+          const next = new Set(prev);
+          next.delete(section.label);
+          persistCollapsed(next);
+          return next;
+        });
+      }
+    }
+  }, [pathname]);
+
+  function toggleSection(label: string) {
+    setCollapsedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      persistCollapsed(next);
+      return next;
+    });
+  }
 
   const fetchUserName = useCallback(async () => {
     try {
@@ -111,6 +168,45 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
   const displayName = userName ?? "User";
   const displayInitial = displayName.charAt(0).toUpperCase();
 
+  // Render a single nav link
+  function NavLink({ href, label, icon: Icon }: { href: string; label: string; icon: typeof MessageCircle }) {
+    const active = isRouteActive(pathname, href);
+    return (
+      <Link
+        href={href}
+        onClick={onClose}
+        title={collapsed ? label : undefined}
+        className={`flex items-center ${collapsed ? "justify-center" : "gap-2.5"} px-2.5 py-2 rounded-lg text-[13px] font-medium transition-all ${
+          active
+            ? "bg-[#16A34A]/15 text-[#22C55E] border-l-2 border-[#16A34A]"
+            : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 border-l-2 border-transparent"
+        }`}
+      >
+        <Icon size={18} className="shrink-0" />
+        {!collapsed && <span className="truncate">{label}</span>}
+      </Link>
+    );
+  }
+
+  // Render a user menu link
+  function MenuLink({ href, label, icon: Icon }: { href: string; label: string; icon: typeof MessageCircle }) {
+    const active = isRouteActive(pathname, href);
+    return (
+      <Link
+        href={href}
+        onClick={() => { setUserMenuOpen(false); onClose(); }}
+        className={`flex items-center gap-2.5 px-3 py-2 text-[13px] transition-colors ${
+          active
+            ? "text-[#22C55E] bg-[#16A34A]/10"
+            : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+        }`}
+      >
+        <Icon size={15} className="shrink-0" />
+        <span>{label}</span>
+      </Link>
+    );
+  }
+
   return (
     <>
     {isOpen && <div className="fixed inset-0 bg-black/50 z-10 lg:hidden" onClick={onClose} />}
@@ -134,70 +230,87 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto px-2.5 py-3 space-y-4">
-        {NAV_SECTIONS.map((section, si) => (
-          <div key={si}>
-            {section.label && !collapsed && (
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-600 px-2.5 mb-1.5">{section.label}</p>
-            )}
-            <div className="space-y-0.5">
-              {section.items.map(({ href, label, icon: Icon }) => {
-                const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(href + "/"));
-                return (
-                  <Link
-                    key={href}
-                    href={href}
-                    onClick={onClose}
-                    title={collapsed ? label : undefined}
-                    className={`flex items-center ${collapsed ? "justify-center" : "gap-2.5"} px-2.5 py-2 rounded-lg text-[13px] font-medium transition-all ${
-                      active
-                        ? "bg-[#16A34A]/15 text-[#22C55E] border-l-2 border-[#16A34A]"
-                        : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 border-l-2 border-transparent"
+      <nav className="flex-1 overflow-y-auto px-2.5 py-3">
+        {/* Pinned items */}
+        <div className="space-y-0.5">
+          {NAV_PINNED.map((item) => (
+            <NavLink key={item.href} {...item} />
+          ))}
+        </div>
+
+        <div className="border-b border-zinc-800 my-3" />
+
+        {/* Collapsible sections */}
+        {NAV_SECTIONS.map((section, si) => {
+          const isCollapsed = collapsedSections.has(section.label);
+          const hasActiveChild = sectionContainsActiveRoute(pathname, section.items);
+
+          return (
+            <div key={section.label}>
+              {/* Section header — clickable toggle (hidden in icon-only mode) */}
+              {!collapsed ? (
+                <button
+                  onClick={() => toggleSection(section.label)}
+                  className="w-full flex items-center justify-between px-2.5 py-1.5 mb-0.5 group"
+                >
+                  <span className={`text-[10px] font-semibold uppercase tracking-wider transition-colors ${
+                    hasActiveChild ? "text-zinc-400" : "text-zinc-600 group-hover:text-zinc-400"
+                  }`}>
+                    {section.label}
+                  </span>
+                  <ChevronDown
+                    size={12}
+                    className={`text-zinc-600 group-hover:text-zinc-400 transition-transform duration-200 ${
+                      isCollapsed ? "-rotate-90" : ""
                     }`}
-                  >
-                    <Icon size={18} className="shrink-0" />
-                    {!collapsed && <span className="truncate">{label}</span>}
-                  </Link>
-                );
-              })}
+                  />
+                </button>
+              ) : (
+                <div className="my-2" />
+              )}
+
+              {/* Section items */}
+              <div
+                className={`space-y-0.5 overflow-hidden transition-all duration-200 ${
+                  isCollapsed && !collapsed ? "max-h-0 opacity-0" : "max-h-[500px] opacity-100"
+                }`}
+              >
+                {section.items.map((item) => (
+                  <NavLink key={item.href} {...item} />
+                ))}
+              </div>
+
+              {si < NAV_SECTIONS.length - 1 && (
+                <div className="border-b border-zinc-800 my-3" />
+              )}
             </div>
-            {si < NAV_SECTIONS.length - 1 && (
-              <div className="border-b border-zinc-800 mt-3" />
-            )}
-          </div>
-        ))}
+          );
+        })}
       </nav>
 
       {/* User section */}
       <div className="border-t border-zinc-800 p-3" ref={userMenuRef}>
-        {/* User menu popup */}
+        {/* User menu popup — expanded sidebar */}
         {userMenuOpen && !collapsed && (
           <div className="absolute bottom-[72px] left-3 right-3 bg-zinc-900 border border-zinc-700 rounded-xl shadow-xl overflow-hidden z-40">
-            {USER_MENU_ITEMS.map(({ href, label, icon: Icon }) => (
-              <Link
-                key={href}
-                href={href}
-                onClick={() => { setUserMenuOpen(false); onClose(); }}
-                className="flex items-center gap-2.5 px-3 py-2.5 text-[13px] text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
-              >
-                <Icon size={15} className="shrink-0" />
-                <span>{label}</span>
-              </Link>
+            {SETUP_MENU_ITEMS.map((item) => (
+              <MenuLink key={item.href} {...item} />
+            ))}
+            <div className="border-t border-zinc-700 my-0.5" />
+            {UTILITY_MENU_ITEMS.map((item) => (
+              <MenuLink key={item.href} {...item} />
             ))}
           </div>
         )}
+        {/* User menu popup — collapsed sidebar */}
         {userMenuOpen && collapsed && (
-          <div className="absolute bottom-[72px] left-[72px] w-44 bg-zinc-900 border border-zinc-700 rounded-xl shadow-xl overflow-hidden z-40">
-            {USER_MENU_ITEMS.map(({ href, label, icon: Icon }) => (
-              <Link
-                key={href}
-                href={href}
-                onClick={() => { setUserMenuOpen(false); onClose(); }}
-                className="flex items-center gap-2.5 px-3 py-2.5 text-[13px] text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
-              >
-                <Icon size={15} className="shrink-0" />
-                <span>{label}</span>
-              </Link>
+          <div className="absolute bottom-[72px] left-[72px] w-48 bg-zinc-900 border border-zinc-700 rounded-xl shadow-xl overflow-hidden z-40">
+            {SETUP_MENU_ITEMS.map((item) => (
+              <MenuLink key={item.href} {...item} />
+            ))}
+            <div className="border-t border-zinc-700 my-0.5" />
+            {UTILITY_MENU_ITEMS.map((item) => (
+              <MenuLink key={item.href} {...item} />
             ))}
           </div>
         )}
