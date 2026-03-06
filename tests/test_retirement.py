@@ -106,18 +106,42 @@ class TestRetirementCalculatorContributions:
         assert r.current_savings_rate_pct > 0
 
 
-class TestRetirementCalculatorFireNumbers:
+class TestRetirementCalculatorTargetNumbers:
     def test_fire_number_positive(self):
         r = RetirementCalculator.calculate(_base_inputs())
         assert r.fire_number > 0
 
-    def test_coast_fire_less_than_fire(self):
+    def test_coast_number_less_than_fire(self):
         r = RetirementCalculator.calculate(_base_inputs())
         assert r.coast_fire_number <= r.fire_number
 
-    def test_lean_fire_less_than_fire(self):
-        r = RetirementCalculator.calculate(_base_inputs())
-        assert r.lean_fire_number <= r.fire_number
+
+class TestRetirementCalculatorRetireEarlier:
+    def test_retire_earlier_scenarios_populated(self):
+        r = RetirementCalculator.calculate(_base_inputs(
+            current_age=35, retirement_age=65,
+        ))
+        assert len(r.retire_earlier_scenarios) == 2
+        assert r.retire_earlier_scenarios[0]["years_earlier"] == 5
+        assert r.retire_earlier_scenarios[1]["years_earlier"] == 10
+
+    def test_retire_earlier_needs_more_savings(self):
+        r = RetirementCalculator.calculate(_base_inputs(
+            current_age=35, retirement_age=65,
+        ))
+        # Earlier retirement should require a higher target
+        base_target = r.target_nest_egg
+        for s in r.retire_earlier_scenarios:
+            # The target may differ depending on debt/expense changes, but
+            # the projected savings should be less (less time to save)
+            assert s["projected_nest_egg"] < r.projected_nest_egg
+
+    def test_retire_earlier_skipped_when_too_close(self):
+        r = RetirementCalculator.calculate(_base_inputs(
+            current_age=58, retirement_age=62,
+        ))
+        # Only 4 years to retirement: -5yr would be before current_age
+        assert len(r.retire_earlier_scenarios) == 0
 
 
 class TestRetirementCalculatorProjection:

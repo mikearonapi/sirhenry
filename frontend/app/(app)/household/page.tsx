@@ -4,8 +4,10 @@ import { Loader2, AlertCircle, Zap, Shield } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import {
   getHouseholdProfiles, deleteHouseholdProfile, optimizeHousehold,
+  getHouseholdUpdates, applyHouseholdUpdates,
 } from "@/lib/api";
-import type { HouseholdProfile, HouseholdOptimizationResult } from "@/types/api";
+import type { HouseholdProfile, HouseholdOptimizationResult, HouseholdUpdateSuggestion } from "@/types/api";
+import { DataUpdateBanner } from "@/components/ui/DataUpdateBanner";
 import StatCard from "@/components/ui/StatCard";
 import PageHeader from "@/components/ui/PageHeader";
 import {
@@ -29,6 +31,7 @@ export default function HouseholdPage() {
   const [activeTab, setActiveTab] = useState("profile");
   const [optimizingId, setOptimizingId] = useState<number | null>(null);
   const [optimizationResult, setOptimizationResult] = useState<HouseholdOptimizationResult | null>(null);
+  const [suggestions, setSuggestions] = useState<HouseholdUpdateSuggestion[]>([]);
 
   const loadProfiles = useCallback(async () => {
     try {
@@ -41,7 +44,10 @@ export default function HouseholdPage() {
     }
   }, []);
 
-  useEffect(() => { loadProfiles(); }, [loadProfiles]);
+  useEffect(() => {
+    loadProfiles();
+    getHouseholdUpdates().then((r) => setSuggestions(r.suggestions)).catch(() => {});
+  }, [loadProfiles]);
 
   const primaryProfile = profiles.find((p) => p.is_primary) || profiles[0] || null;
 
@@ -93,6 +99,18 @@ export default function HouseholdPage() {
           <p className="text-sm">{error}</p>
           <button onClick={() => setError(null)} className="ml-auto text-xs text-red-400">Dismiss</button>
         </div>
+      )}
+
+      {suggestions.length > 0 && (
+        <DataUpdateBanner
+          suggestions={suggestions}
+          onApply={async (updates) => {
+            await applyHouseholdUpdates(updates.map((u) => ({ field: u.field, suggested: u.suggested })));
+            setSuggestions([]);
+            await loadProfiles();
+          }}
+          onDismiss={() => setSuggestions([])}
+        />
       )}
 
       {optimizationResult && (

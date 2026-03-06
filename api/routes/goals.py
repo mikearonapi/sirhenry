@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.database import get_session
 from api.models.schemas import GoalIn, GoalOut, GoalUpdateIn
 from pipeline.db import Goal
+from pipeline.db.schema import PlaidAccount, ManualAsset
 
 router = APIRouter(prefix="/goals", tags=["goals"])
 
@@ -53,6 +54,25 @@ async def list_goals(session: AsyncSession = Depends(get_session)):
         select(Goal).where(Goal.status != "cancelled").order_by(Goal.created_at.desc())
     )
     goals = list(result.scalars().all())
+
+    # Auto-update current_amount for account-linked goals
+    for g in goals:
+        if g.account_id and g.status == "active":
+            # Try PlaidAccount first, then ManualAsset
+            acct_result = await session.execute(
+                select(PlaidAccount).where(PlaidAccount.id == g.account_id).limit(1)
+            )
+            acct = acct_result.scalar_one_or_none()
+            if acct and acct.current_balance is not None:
+                g.current_amount = float(acct.current_balance)
+            else:
+                asset_result = await session.execute(
+                    select(ManualAsset).where(ManualAsset.id == g.account_id).limit(1)
+                )
+                asset = asset_result.scalar_one_or_none()
+                if asset and asset.current_value is not None:
+                    g.current_amount = float(asset.current_value)
+
     return [_compute_goal_out(g) for g in goals]
 
 

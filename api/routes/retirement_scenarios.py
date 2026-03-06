@@ -56,7 +56,15 @@ class RetirementProfileIn(BaseModel):
     post_retirement_return_pct: float = 5.0
     tax_rate_in_retirement_pct: float = 22.0
     current_annual_expenses: Optional[float] = None
+    retirement_budget_annual: Optional[float] = None
     debt_payoffs: list[DebtPayoffIn] = []
+    # Second income (spouse/partner)
+    second_income_annual: float = 0.0
+    second_income_start_age: int = 0
+    second_income_end_age: int = 0
+    second_income_monthly_contribution: float = 0.0
+    second_income_employer_match_pct: float = 0.0
+    second_income_employer_match_limit_pct: float = 6.0
     is_primary: bool = False
     notes: Optional[str] = None
 
@@ -70,7 +78,6 @@ class RetirementResultsOut(BaseModel):
     target_nest_egg: float
     fire_number: float
     coast_fire_number: float
-    lean_fire_number: float
     projected_nest_egg: float
     projected_monthly_income: float
     savings_gap: float
@@ -90,6 +97,7 @@ class RetirementResultsOut(BaseModel):
     debt_payoff_savings_annual: float
     earliest_retirement_age: int
     yearly_projection: list[dict]
+    retire_earlier_scenarios: list[dict] = []
 
 
 class BudgetSnapshotOut(BaseModel):
@@ -97,6 +105,44 @@ class BudgetSnapshotOut(BaseModel):
     monthly_expenses: float
     categories: list[dict]
     liabilities: list[dict]
+
+
+class ComprehensiveBudgetLineOut(BaseModel):
+    category: str
+    monthly_amount: float
+    source: str  # "budget" | "spending_history"
+    months_of_data: int | None = None
+
+
+class ComprehensiveBudgetOut(BaseModel):
+    lines: list[ComprehensiveBudgetLineOut]
+    monthly_total: float
+    annual_total: float
+
+
+class RetirementBudgetLineOut(BaseModel):
+    category: str
+    current_monthly: float
+    retirement_monthly: float
+    multiplier: float
+    reason: str
+    source: str  # "budget" | "spending_history"
+    is_user_override: bool = False
+
+
+class RetirementBudgetOut(BaseModel):
+    lines: list[RetirementBudgetLineOut]
+    current_monthly_total: float
+    current_annual_total: float
+    retirement_monthly_total: float
+    retirement_annual_total: float
+
+
+class RetirementBudgetOverrideIn(BaseModel):
+    category: str
+    multiplier: float | None = None
+    fixed_amount: float | None = None
+    reason: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -125,7 +171,6 @@ async def calculate_retirement(body: RetirementProfileIn):
         target_nest_egg=round(results.target_nest_egg, 0),
         fire_number=round(results.fire_number, 0),
         coast_fire_number=round(results.coast_fire_number, 0),
-        lean_fire_number=round(results.lean_fire_number, 0),
         projected_nest_egg=round(results.projected_nest_egg, 0),
         projected_monthly_income=round(results.projected_monthly_income, 0),
         savings_gap=round(results.savings_gap, 0),
@@ -145,6 +190,7 @@ async def calculate_retirement(body: RetirementProfileIn):
         debt_payoff_savings_annual=round(results.debt_payoff_savings_annual, 0),
         earliest_retirement_age=results.earliest_retirement_age,
         yearly_projection=results.yearly_projection,
+        retire_earlier_scenarios=results.retire_earlier_scenarios,
     )
 
 
@@ -242,10 +288,10 @@ async def budget_snapshot(session: AsyncSession = Depends(get_session)):
     from pipeline.db.schema_extended import Budget, ManualAsset, RecurringTransaction
     now = datetime.now(timezone.utc)
 
-    # Get most recent full month of budget data
+    # Get most recent full month of PERSONAL budget data (exclude business)
     budget_result = await session.execute(
         select(Budget.category, func.sum(Budget.budget_amount).label("total"))
-        .where(Budget.year == now.year, Budget.month == now.month)
+        .where(Budget.year == now.year, Budget.month == now.month, Budget.segment == "personal")
         .group_by(Budget.category)
     )
     budget_rows = budget_result.all()
@@ -256,7 +302,7 @@ async def budget_snapshot(session: AsyncSession = Depends(get_session)):
         prev_year = now.year if now.month > 1 else now.year - 1
         budget_result = await session.execute(
             select(Budget.category, func.sum(Budget.budget_amount).label("total"))
-            .where(Budget.year == prev_year, Budget.month == prev_month)
+            .where(Budget.year == prev_year, Budget.month == prev_month, Budget.segment == "personal")
             .group_by(Budget.category)
         )
         budget_rows = budget_result.all()
@@ -264,10 +310,10 @@ async def budget_snapshot(session: AsyncSession = Depends(get_session)):
     categories = [{"category": row.category, "monthly": row.total, "annual": row.total * 12} for row in budget_rows]
     monthly_total = sum(row.total for row in budget_rows)
 
-    # Also check recurring expenses not captured in budget
+    # Also check recurring personal expenses not captured in budget
     recurring_result = await session.execute(
         select(RecurringTransaction)
-        .where(RecurringTransaction.status == "active")
+        .where(RecurringTransaction.status == "active", RecurringTransaction.segment == "personal")
     )
     recurring_items = recurring_result.scalars().all()
     for r in recurring_items:
@@ -307,3 +353,88 @@ async def budget_snapshot(session: AsyncSession = Depends(get_session)):
         categories=categories,
         liabilities=liab_out,
     )
+
+
+@router.get("/comprehensive-budget", response_model=ComprehensiveBudgetOut)
+async def comprehensive_budget(session: AsyncSession = Depends(get_session)):
+    """Full personal spending picture — merges curated budget with transaction history."""
+    from pipeline.planning.smart_defaults import compute_comprehensive_personal_budget
+
+    lines = await compute_comprehensive_personal_budget(session)
+    monthly_total = sum(l["monthly_amount"] for l in lines)
+    return ComprehensiveBudgetOut(
+        lines=[ComprehensiveBudgetLineOut(**l) for l in lines],
+        monthly_total=round(monthly_total, 2),
+        annual_total=round(monthly_total * 12, 2),
+    )
+
+
+@router.get("/retirement-budget", response_model=RetirementBudgetOut)
+async def retirement_budget(
+    retirement_age: int = 65,
+    session: AsyncSession = Depends(get_session),
+):
+    """Current budget translated to retirement with smart defaults + user overrides."""
+    from pipeline.planning.retirement_budget import compute_retirement_budget
+    from pipeline.planning.smart_defaults import compute_comprehensive_personal_budget
+
+    current_lines = await compute_comprehensive_personal_budget(session)
+
+    # Load user overrides
+    from pipeline.db.schema import RetirementBudgetOverride
+    override_result = await session.execute(select(RetirementBudgetOverride))
+    overrides = [
+        {"category": o.category, "multiplier": o.multiplier, "fixed_amount": o.fixed_amount, "reason": o.reason}
+        for o in override_result.scalars()
+    ]
+
+    # Load debt payoffs from primary retirement profile
+    profile_result = await session.execute(
+        select(RetirementProfile).where(RetirementProfile.is_primary == True)
+    )
+    profile = profile_result.scalar_one_or_none()
+    debt_payoffs = []
+    if profile and profile.debt_payoffs_json:
+        try:
+            debt_payoffs = json.loads(profile.debt_payoffs_json)
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    result = compute_retirement_budget(current_lines, overrides, retirement_age, debt_payoffs)
+    return RetirementBudgetOut(**result)
+
+
+@router.put("/retirement-budget/override")
+async def save_retirement_budget_override(
+    body: RetirementBudgetOverrideIn,
+    session: AsyncSession = Depends(get_session),
+):
+    """Save or update a single category override for the retirement budget."""
+    from pipeline.db.schema import RetirementBudgetOverride
+
+    # Upsert: find existing or create new
+    result = await session.execute(
+        select(RetirementBudgetOverride).where(
+            RetirementBudgetOverride.category == body.category,
+        )
+    )
+    existing = result.scalar_one_or_none()
+
+    if existing:
+        if body.multiplier is not None:
+            existing.multiplier = body.multiplier
+        if body.fixed_amount is not None:
+            existing.fixed_amount = body.fixed_amount
+        if body.reason is not None:
+            existing.reason = body.reason
+    else:
+        override = RetirementBudgetOverride(
+            category=body.category,
+            multiplier=body.multiplier if body.multiplier is not None else 1.0,
+            fixed_amount=body.fixed_amount,
+            reason=body.reason or "",
+        )
+        session.add(override)
+
+    await session.flush()
+    return {"status": "ok"}

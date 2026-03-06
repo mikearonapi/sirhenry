@@ -1,6 +1,7 @@
 "use client";
 import { ReactNode } from "react";
 import { MessageCircle } from "lucide-react";
+import SirHenryName from "@/components/ui/SirHenryName";
 
 interface TemplateItem {
   icon: ReactNode;
@@ -47,7 +48,7 @@ export default function EmptyState({
       {henryTip && (
         <div className="flex items-start gap-3 bg-stone-50 rounded-lg p-4 mb-6 max-w-lg mx-auto text-left">
           <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[#0a0a0b] flex items-center justify-center">
-            <span className="text-[#EAB308] font-bold text-xs">H</span>
+            <span className="text-white font-extrabold text-xs" style={{ fontFamily: "var(--font-display, sans-serif)" }}>H</span>
           </div>
           <p className="text-xs text-stone-600 leading-relaxed">{henryTip}</p>
         </div>
@@ -62,7 +63,7 @@ export default function EmptyState({
           className="flex items-center gap-1.5 mx-auto mt-4 text-xs text-[#16A34A] hover:text-[#15803D] transition-colors"
         >
           <MessageCircle size={12} />
-          Ask Sir Henry for guidance
+          Ask <SirHenryName /> for guidance
         </button>
       )}
 

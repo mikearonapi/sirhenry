@@ -34,6 +34,16 @@ from pipeline.ai.chat_tools import (
     _tool_trigger_plaid_sync,
     _tool_run_categorization,
     _tool_get_data_health,
+    _tool_update_transaction,
+    _tool_create_transaction,
+    _tool_exclude_transactions,
+    _tool_manage_budget,
+    _tool_manage_goal,
+    _tool_create_reminder,
+    _tool_update_business_entity,
+    _tool_create_business_entity,
+    _tool_save_user_context,
+    _tool_get_user_context,
 )
 
 load_dotenv()
@@ -62,6 +72,16 @@ TOOL_LABELS: dict[str, str] = {
     "trigger_plaid_sync": "Syncing bank data",
     "run_categorization": "Categorizing transactions",
     "get_data_health": "Running data health check",
+    "update_transaction": "Updating transaction",
+    "create_transaction": "Creating transaction",
+    "exclude_transactions": "Updating transactions",
+    "manage_budget": "Updating budget",
+    "manage_goal": "Updating goal",
+    "create_reminder": "Setting reminder",
+    "update_business_entity": "Updating business profile",
+    "create_business_entity": "Creating business entity",
+    "save_user_context": "Remembering context",
+    "get_user_context": "Recalling context",
 }
 
 TOOL_DONE_LABELS: dict[str, str] = {
@@ -85,6 +105,16 @@ TOOL_DONE_LABELS: dict[str, str] = {
     "trigger_plaid_sync": "Sync complete",
     "run_categorization": "Categorization complete",
     "get_data_health": "Health check done",
+    "update_transaction": "Transaction updated",
+    "create_transaction": "Transaction created",
+    "exclude_transactions": "Transactions updated",
+    "manage_budget": "Budget updated",
+    "manage_goal": "Goal updated",
+    "create_reminder": "Reminder set",
+    "update_business_entity": "Business profile updated",
+    "create_business_entity": "Business entity created",
+    "save_user_context": "Context remembered",
+    "get_user_context": "Context recalled",
 }
 
 _SYSTEM_PROMPT_BASE = """You are Sir Henry, a senior personal financial advisor and CPA assistant embedded in the SirHENRY platform. You have deep access to the household's complete financial data and can take real actions on their behalf.
@@ -95,14 +125,18 @@ You are the household's dedicated AI financial advisor. You know their financial
 ## What You Can Do
 1. **Search & Analyze** — Find any transaction by description, date, amount, category. Cross-reference spending patterns.
 2. **Explain & Educate** — Tell them exactly what a charge is, why it's categorized a certain way, whether it's tax-deductible.
-3. **Recategorize & Correct** — Fix miscategorized transactions immediately. Change category, tax category, segment, or business entity.
+3. **Recategorize & Correct** — Fix miscategorized transactions immediately. Change category, tax category, segment, or business entity. Exclude duplicates, add notes, mark as reviewed.
 4. **Spending Insights** — Break down spending by category and period. Spot anomalies, trends, and opportunities to save.
+11. **Fix Data Issues** — Exclude duplicate transactions, add missing manual entries, update transaction notes. Handle bulk cleanup conversationally.
+12. **Manage Budgets & Goals** — Create, update, and delete budget targets and financial goals. Set reminders for financial deadlines.
 5. **Tax Strategy** — Surface tax optimization opportunities. Explain deduction eligibility. Flag items that need documentation.
 6. **Budget Coaching** — Show budget vs. actual, highlight overspending, suggest adjustments.
 7. **Goal Tracking** — Help evaluate progress toward financial goals and whether spending habits support them.
 8. **Subscription Audit** — Review recurring charges, flag ones that may no longer be needed, calculate potential savings.
 9. **Manage Assets** — View and update manual asset values (home, vehicles, trusts, retirement accounts). Look up current stock prices to keep values current.
 10. **Sync & Maintain** — Trigger bank account syncs via Plaid, run AI categorization on new transactions, and run data health checks to identify gaps.
+13. **Business Profile Management** — Create and enrich business entity profiles through conversation. When a user mentions a business, proactively ask follow-up questions to complete the profile: what does the business do? (description), what are common expense types? (expected_expenses), how is it structured? (entity_type, tax_treatment), who owns it? (owner — match to household members), when did it start? (active_from). Use update_business_entity to save answers progressively — don't wait to collect everything at once.
+14. **Remember Context** — When the user shares important information about their financial situation, preferences, or goals, proactively save it using save_user_context. Don't ask for confirmation — just save it. The user will see a notification. Examples: their risk tolerance, business details, tax preferences, career plans, upcoming life changes.
 
 ## How to Respond
 - **Be specific with numbers.** Always include dollar amounts, dates, percentages. Never be vague.
@@ -174,7 +208,49 @@ async def _build_system_prompt(session: AsyncSession) -> tuple[str, "PIISanitize
         lines.append("- Active business entities:")
         lines.extend(entity_lines)
 
-    log_ai_privacy_audit("chat_system_prompt", ["household", "entities", "accounts"], sanitized=True)
+    # ---------- Entity completeness ----------
+    if active_entities:
+        incomplete = []
+        for e in active_entities:
+            missing = []
+            if not e.description:
+                missing.append("description")
+            if not e.expected_expenses:
+                missing.append("expense types")
+            if not e.owner:
+                missing.append("owner")
+            if not e.ein:
+                missing.append("EIN")
+            if missing:
+                incomplete.append(
+                    f"  - {sanitizer.sanitize_text(e.name)}: missing {', '.join(missing)}"
+                )
+        if incomplete:
+            lines.append("- Business entities needing enrichment:")
+            lines.extend(incomplete)
+
+    # ---------- User Context (learned facts) ----------
+    from pipeline.db.schema import UserContext
+    ctx_result = await session.execute(
+        sa_select(UserContext).where(UserContext.is_active == True).order_by(UserContext.category)
+    )
+    user_facts = ctx_result.scalars().all()
+
+    if user_facts:
+        ctx_lines: list[str] = []
+        current_cat = None
+        for fact in user_facts:
+            if fact.category != current_cat:
+                current_cat = fact.category
+                ctx_lines.append(f"  [{fact.category.upper()}]")
+            ctx_lines.append(f"  - {sanitizer.sanitize_text(fact.value)}")
+        lines.append("")
+        lines.append("## What You Know About This Household")
+        lines.extend(ctx_lines)
+        lines.append("")
+        lines.append("Use this context to personalize your responses. Update or add context entries when the user shares new information.")
+
+    log_ai_privacy_audit("chat_system_prompt", ["household", "entities", "accounts", "user_context"], sanitized=True)
 
     # ---------- Setup Status ----------
     acct_result = await session.execute(
@@ -465,6 +541,239 @@ TOOLS = [
             "required": [],
         },
     },
+    {
+        "name": "update_transaction",
+        "description": "Update a transaction's metadata: add notes, exclude/include it from reports (useful for duplicates or erroneous entries), or mark it as manually reviewed. For category, segment, or entity changes use recategorize_transaction instead.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "transaction_id": {"type": "integer", "description": "The transaction ID to update"},
+                "is_excluded": {"type": "boolean", "description": "Set to true to exclude from reports (e.g., duplicates), false to re-include"},
+                "notes": {"type": "string", "description": "Notes to add to the transaction (replaces existing notes)"},
+                "is_manually_reviewed": {"type": "boolean", "description": "Mark as manually reviewed (confirms categorization is correct)"},
+            },
+            "required": ["transaction_id"],
+        },
+    },
+    {
+        "name": "create_transaction",
+        "description": "Create a manual transaction. Use this to add missing income, adjustments, or other entries not captured by imports. Requires an account_id (use get_account_balances to find account IDs).",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "account_id": {"type": "integer", "description": "The account ID this transaction belongs to (use get_account_balances to find IDs)"},
+                "date": {"type": "string", "description": "Transaction date in YYYY-MM-DD format"},
+                "description": {"type": "string", "description": "Transaction description (e.g., 'Freelance payment from Client X')"},
+                "amount": {"type": "number", "description": "Amount in dollars. Negative for expenses, positive for income/credits"},
+                "category": {"type": "string", "description": "Expense category (e.g., 'Income', 'Freelance Income', 'Reimbursement')"},
+                "segment": {
+                    "type": "string",
+                    "enum": ["personal", "business", "investment", "reimbursable"],
+                    "description": "Transaction segment (default: personal)",
+                },
+                "notes": {"type": "string", "description": "Optional notes about this transaction"},
+            },
+            "required": ["account_id", "date", "description", "amount"],
+        },
+    },
+    {
+        "name": "exclude_transactions",
+        "description": "Batch exclude or include multiple transactions matching criteria. Useful for handling duplicates, bulk cleanup, or re-including previously excluded data. Returns count of affected transactions. ALWAYS preview with search_transactions first before excluding.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string",
+                    "enum": ["exclude", "include"],
+                    "description": "'exclude' to hide from reports, 'include' to restore",
+                },
+                "transaction_ids": {
+                    "type": "array",
+                    "items": {"type": "integer"},
+                    "description": "Specific transaction IDs to exclude/include (max 50)",
+                },
+                "query": {"type": "string", "description": "Text to match in transaction descriptions (alternative to listing IDs)"},
+                "year": {"type": "integer", "description": "Filter by year when using query-based matching"},
+                "month": {"type": "integer", "description": "Filter by month (1-12) when using query-based matching"},
+                "account_id": {"type": "integer", "description": "Filter by account when using query-based matching"},
+                "reason": {"type": "string", "description": "Reason for excluding/including (stored in notes)"},
+            },
+            "required": ["action"],
+        },
+    },
+    {
+        "name": "manage_budget",
+        "description": "Create, update, or delete budget entries. Use 'upsert' to create a new budget or update an existing one (matched by year+month+category+segment). Use 'delete' to remove a budget entry by ID.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string",
+                    "enum": ["upsert", "delete"],
+                    "description": "'upsert' to create or update, 'delete' to remove",
+                },
+                "budget_id": {"type": "integer", "description": "Budget ID (required for delete)"},
+                "year": {"type": "integer", "description": "Budget year (required for upsert)"},
+                "month": {"type": "integer", "description": "Budget month 1-12 (required for upsert)"},
+                "category": {"type": "string", "description": "Expense category (required for upsert, e.g., 'Groceries', 'Dining Out')"},
+                "budget_amount": {"type": "number", "description": "Monthly budget amount in dollars (required for upsert)"},
+                "segment": {
+                    "type": "string",
+                    "enum": ["personal", "business"],
+                    "description": "Segment (default: personal)",
+                },
+                "notes": {"type": "string", "description": "Optional notes"},
+            },
+            "required": ["action"],
+        },
+    },
+    {
+        "name": "manage_goal",
+        "description": "Create, update, or delete financial goals. Use 'upsert' to create a new goal or update an existing one. Use 'delete' to remove a goal by ID.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string",
+                    "enum": ["upsert", "delete"],
+                    "description": "'upsert' to create or update, 'delete' to remove",
+                },
+                "goal_id": {"type": "integer", "description": "Goal ID (required for delete, optional for upsert to update existing)"},
+                "name": {"type": "string", "description": "Goal name (required for new goals, e.g., 'Emergency Fund', 'House Down Payment')"},
+                "goal_type": {
+                    "type": "string",
+                    "enum": ["savings", "debt_payoff", "investment", "retirement", "education", "custom"],
+                    "description": "Type of goal (default: savings)",
+                },
+                "target_amount": {"type": "number", "description": "Target amount in dollars (required for new goals)"},
+                "current_amount": {"type": "number", "description": "Current amount saved toward this goal"},
+                "target_date": {"type": "string", "description": "Target date in YYYY-MM-DD format"},
+                "monthly_contribution": {"type": "number", "description": "Monthly contribution amount in dollars"},
+                "status": {
+                    "type": "string",
+                    "enum": ["active", "paused", "completed", "cancelled"],
+                    "description": "Goal status",
+                },
+                "notes": {"type": "string", "description": "Optional notes"},
+            },
+            "required": ["action"],
+        },
+    },
+    {
+        "name": "create_reminder",
+        "description": "Create a reminder for a financial deadline (tax filing, estimated payment, enrollment window, bill due date, etc.).",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "title": {"type": "string", "description": "Reminder title (e.g., 'Q1 Estimated Tax Payment Due')"},
+                "due_date": {"type": "string", "description": "Due date in YYYY-MM-DD format"},
+                "description": {"type": "string", "description": "Additional details about the reminder"},
+                "reminder_type": {
+                    "type": "string",
+                    "enum": ["tax_deadline", "payment_due", "enrollment", "review", "custom"],
+                    "description": "Type of reminder (default: custom)",
+                },
+                "amount": {"type": "number", "description": "Dollar amount associated (e.g., estimated tax payment amount)"},
+                "advance_notice": {
+                    "type": "string",
+                    "enum": ["1_day", "3_days", "7_days", "14_days", "30_days"],
+                    "description": "How far in advance to notify (default: 7_days)",
+                },
+            },
+            "required": ["title", "due_date"],
+        },
+    },
+    {
+        "name": "update_business_entity",
+        "description": "Update a business entity's profile. Use this to rename entities, enrich details through conversation — description, expected expense types, tax treatment, owner assignment, EIN, and notes. Look up entities with get_household_summary first if you need the entity name or ID.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "entity_name": {"type": "string", "description": "Name of the entity to update (case-insensitive match)"},
+                "entity_id": {"type": "integer", "description": "ID of the entity to update (alternative to entity_name)"},
+                "new_name": {"type": "string", "description": "New name for the entity (rename)"},
+                "description": {"type": "string", "description": "What the business does (1-3 sentences)"},
+                "expected_expenses": {"type": "string", "description": "Comma-separated common expense types (e.g., 'Inventory, Rent, Marketing, Software')"},
+                "entity_type": {
+                    "type": "string",
+                    "enum": ["sole_prop", "llc", "s_corp", "c_corp", "partnership", "employer"],
+                    "description": "Business structure type",
+                },
+                "tax_treatment": {
+                    "type": "string",
+                    "enum": ["w2", "schedule_c", "k1", "section_195", "none"],
+                    "description": "How the entity is taxed",
+                },
+                "ein": {"type": "string", "description": "Employer Identification Number"},
+                "owner": {"type": "string", "description": "Name of the household member who owns this entity"},
+                "is_provisional": {"type": "boolean", "description": "True if business hasn't started generating revenue (Section 195 startup costs)"},
+                "active_from": {"type": "string", "description": "Date business became active (YYYY-MM-DD)"},
+                "active_to": {"type": "string", "description": "Date business ceased operations (YYYY-MM-DD)"},
+                "notes": {"type": "string", "description": "Additional notes (appended to existing notes)"},
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "create_business_entity",
+        "description": "Create a new business entity. Use when a user mentions a business that doesn't exist yet. After creating, ask follow-up questions to complete the profile.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string", "description": "Business or entity name"},
+                "description": {"type": "string", "description": "What the business does"},
+                "expected_expenses": {"type": "string", "description": "Comma-separated common expense types"},
+                "entity_type": {
+                    "type": "string",
+                    "enum": ["sole_prop", "llc", "s_corp", "c_corp", "partnership", "employer"],
+                    "description": "Business structure type (default: sole_prop)",
+                },
+                "tax_treatment": {
+                    "type": "string",
+                    "enum": ["w2", "schedule_c", "k1", "section_195", "none"],
+                    "description": "How the entity is taxed (default: schedule_c)",
+                },
+                "ein": {"type": "string", "description": "Employer Identification Number"},
+                "owner": {"type": "string", "description": "Name of the household member who owns this entity"},
+                "is_provisional": {"type": "boolean", "description": "True if business hasn't started generating revenue"},
+                "active_from": {"type": "string", "description": "Date business became active (YYYY-MM-DD)"},
+                "notes": {"type": "string", "description": "Additional notes"},
+            },
+            "required": ["name"],
+        },
+    },
+    {
+        "name": "save_user_context",
+        "description": "Save a learned fact about the user for future reference. Use this proactively when the user shares important context about their financial situation, preferences, or goals. Each fact has a category and a short key for deduplication. Don't ask for confirmation — just save it.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string",
+                    "enum": ["business", "tax", "preference", "household", "financial_goal", "investment", "career"],
+                    "description": "Category of the context fact",
+                },
+                "key": {"type": "string", "description": "Short identifier for dedup (e.g., 'primary_business', 'tax_strategy_preference', 'risk_tolerance')"},
+                "value": {"type": "string", "description": "The fact to remember (1-2 sentences)"},
+            },
+            "required": ["category", "key", "value"],
+        },
+    },
+    {
+        "name": "get_user_context",
+        "description": "Retrieve stored context facts about the user. Use this to recall previously learned information when needed.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string",
+                    "enum": ["business", "tax", "preference", "household", "financial_goal", "investment", "career"],
+                    "description": "Filter by category. Omit for all.",
+                },
+            },
+            "required": [],
+        },
+    },
 ]
 
 
@@ -511,6 +820,26 @@ async def _exec_tool(session: AsyncSession, tool_name: str, tool_input: dict) ->
             return await _tool_run_categorization(session, tool_input)
         elif tool_name == "get_data_health":
             return await _tool_get_data_health(session, tool_input)
+        elif tool_name == "update_transaction":
+            return await _tool_update_transaction(session, tool_input)
+        elif tool_name == "create_transaction":
+            return await _tool_create_transaction(session, tool_input)
+        elif tool_name == "exclude_transactions":
+            return await _tool_exclude_transactions(session, tool_input)
+        elif tool_name == "manage_budget":
+            return await _tool_manage_budget(session, tool_input)
+        elif tool_name == "manage_goal":
+            return await _tool_manage_goal(session, tool_input)
+        elif tool_name == "create_reminder":
+            return await _tool_create_reminder(session, tool_input)
+        elif tool_name == "update_business_entity":
+            return await _tool_update_business_entity(session, tool_input)
+        elif tool_name == "create_business_entity":
+            return await _tool_create_business_entity(session, tool_input)
+        elif tool_name == "save_user_context":
+            return await _tool_save_user_context(session, tool_input)
+        elif tool_name == "get_user_context":
+            return await _tool_get_user_context(session, tool_input)
         else:
             return json.dumps({"error": f"Unknown tool: {tool_name}"})
     except Exception as e:
@@ -1611,6 +1940,24 @@ async def run_chat_stream(
 
                     done_label = TOOL_DONE_LABELS.get(block.name, label)
                     yield {"type": "tool_done", "tool": block.name, "label": done_label, "preview": result_str[:200]}
+
+                    # Emit learning events for tools that store learned knowledge
+                    if block.name == "save_user_context":
+                        try:
+                            parsed = json.loads(result_str)
+                            if parsed.get("remembered"):
+                                yield {"type": "learning", "message": f"Remembered: {parsed.get('value', '')[:80]}"}
+                        except Exception:
+                            pass
+                    elif block.name in ("update_business_entity", "create_business_entity"):
+                        try:
+                            parsed = json.loads(result_str)
+                            if parsed.get("success"):
+                                entity_name = parsed.get("entity_name", "entity")
+                                changes = parsed.get("fields_updated", []) or ["profile"]
+                                yield {"type": "learning", "message": f"Updated {entity_name}: {', '.join(changes[:3])}"}
+                        except Exception:
+                            pass
 
                     tool_results.append({
                         "type": "tool_result",

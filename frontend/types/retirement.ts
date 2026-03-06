@@ -55,7 +55,6 @@ export interface RetirementResults {
   target_nest_egg: number;
   fire_number: number;
   coast_fire_number: number;
-  lean_fire_number: number;
   projected_nest_egg: number;
   projected_monthly_income: number;
   savings_gap: number;
@@ -83,6 +82,15 @@ export interface RetirementResults {
     contribution: number;
     withdrawal: number;
   }>;
+  retire_earlier_scenarios: Array<{
+    years_earlier: number;
+    retirement_age: number;
+    target_nest_egg: number;
+    projected_nest_egg: number;
+    readiness_pct: number;
+    monthly_savings_needed: number;
+    on_track: boolean;
+  }>;
 }
 
 export interface RetirementImpact {
@@ -100,4 +108,35 @@ export interface MonteCarloResult {
   p75: number;
   p90: number;
   runs: number;
+}
+
+export interface ComprehensiveBudgetLine {
+  category: string;
+  monthly_amount: number;
+  source: "budget" | "spending_history";
+  months_of_data: number | null;
+}
+
+export interface ComprehensiveBudget {
+  lines: ComprehensiveBudgetLine[];
+  monthly_total: number;
+  annual_total: number;
+}
+
+export interface RetirementBudgetLine {
+  category: string;
+  current_monthly: number;
+  retirement_monthly: number;
+  multiplier: number;
+  reason: string;
+  source: string;
+  is_user_override: boolean;
+}
+
+export interface RetirementBudget {
+  lines: RetirementBudgetLine[];
+  current_monthly_total: number;
+  current_annual_total: number;
+  retirement_monthly_total: number;
+  retirement_annual_total: number;
 }

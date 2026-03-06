@@ -22,16 +22,35 @@ IMPORT_DIRS = {
     "investment": Path("data/imports/investments"),
     "amazon": Path("data/imports/amazon"),
     "monarch": Path("data/imports/monarch"),
+    "insurance": Path("data/imports/insurance"),
+    "pay_stub": Path("data/imports/pay-stubs"),
 }
 
 
 async def _run_post_import_background(tax_year: Optional[int]) -> None:
     """
-    Background task: runs AI categorization, Amazon order matching, and
-    period recompute after a successful synchronous import.
+    Background task: runs entity rules, category rules, AI categorization,
+    Amazon order matching, and period recompute after a successful synchronous import.
     """
     async with AsyncSessionLocal() as session:
         async with session.begin():
+            # 1. Apply entity rules (assigns business entities via vendor patterns)
+            try:
+                from pipeline.db.models import apply_entity_rules
+                ent_result = await apply_entity_rules(session)
+                logger.info(f"Entity rules applied: {ent_result} transactions")
+            except Exception as e:
+                logger.warning(f"Entity rules failed: {e}")
+
+            # 2. Apply category rules (handles known merchants without AI)
+            try:
+                from pipeline.ai.category_rules import apply_rules
+                cat_rules_result = await apply_rules(session)
+                logger.info(f"Category rules applied: {cat_rules_result}")
+            except Exception as e:
+                logger.warning(f"Category rules failed: {e}")
+
+            # 3. AI categorization for remaining uncategorized transactions
             try:
                 from pipeline.ai.categorizer import categorize_transactions
                 cat_result = await categorize_transactions(session)
@@ -58,7 +77,7 @@ async def _run_post_import_background(tax_year: Optional[int]) -> None:
 async def upload_and_import(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
-    document_type: Literal["credit_card", "tax_document", "investment", "amazon", "monarch"] = Form(...),
+    document_type: Literal["credit_card", "tax_document", "investment", "amazon", "monarch", "insurance", "pay_stub"] = Form(...),
     account_name: str = Form(""),
     institution: str = Form(""),
     segment: Literal["personal", "business", "investment", "reimbursable"] = Form("personal"),
@@ -134,6 +153,12 @@ async def upload_and_import(
             session, str(dest_path),
             default_segment=segment,
         )
+    elif document_type == "insurance":
+        from pipeline.importers.insurance_doc import import_insurance_doc
+        result = await import_insurance_doc(session, str(dest_path))
+    elif document_type == "pay_stub":
+        from pipeline.importers.paystub import import_paystub
+        result = await import_paystub(session, str(dest_path))
 
     if result.get("status") == "error":
         raise HTTPException(status_code=422, detail=result.get("message", "Import failed"))
@@ -150,6 +175,44 @@ async def upload_and_import(
         transactions_skipped=result.get("transactions_skipped", 0),
         message=result.get("message", ""),
     )
+
+
+@router.post("/detect-type")
+async def detect_type_endpoint(
+    file: UploadFile = File(...),
+):
+    """Auto-detect the type of an uploaded document using file content analysis."""
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No filename provided.")
+
+    suffix = Path(file.filename).suffix.lower()
+    content = await file.read(50_000_001)
+    if len(content) > 50_000_000:
+        raise HTTPException(status_code=413, detail="File too large (max 50 MB)")
+
+    text_preview = ""
+    if suffix == ".csv":
+        try:
+            text_preview = content[:5000].decode("utf-8", errors="replace")
+        except Exception:
+            text_preview = ""
+    elif suffix == ".pdf":
+        import tempfile, os
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+            tmp.write(content)
+            tmp_path = tmp.name
+        try:
+            from pipeline.parsers.pdf_parser import extract_pdf
+            pdf_doc = extract_pdf(tmp_path)
+            text_preview = pdf_doc.full_text[:5000] if pdf_doc.full_text else ""
+        except Exception:
+            text_preview = ""
+        finally:
+            os.unlink(tmp_path)
+
+    from pipeline.ai.categorizer import detect_document_type
+    result = detect_document_type(text_preview, file.filename)
+    return result
 
 
 @router.post("/batch-tax-docs")
@@ -185,10 +248,19 @@ async def run_categorization(
     month: Optional[int] = None,
     session: AsyncSession = Depends(get_session),
 ):
-    """Manually trigger AI categorization for uncategorized transactions."""
+    """Manually trigger categorization: entity rules → category rules → AI."""
+    from pipeline.db.models import apply_entity_rules
+    from pipeline.ai.category_rules import apply_rules
     from pipeline.ai.categorizer import categorize_transactions
-    result = await categorize_transactions(session, year=year, month=month)
-    return result
+
+    entity_count = await apply_entity_rules(session, year=year, month=month)
+    rules_result = await apply_rules(session)
+    ai_result = await categorize_transactions(session, year=year, month=month)
+    return {
+        **ai_result,
+        "entity_rules_applied": entity_count,
+        "category_rules_applied": rules_result.get("applied", 0),
+    }
 
 
 @router.get("/amazon-reconcile/status")
@@ -263,3 +335,20 @@ async def amazon_reconcile(
     match_result = await auto_match_amazon_orders(session, propagate_categories=fix_categories)
     logger.info(f"Amazon reconciliation: {match_result}")
     return match_result
+
+
+@router.post("/amazon-split/reprocess")
+async def reprocess_amazon_splits(
+    year: Optional[int] = None,
+    dry_run: bool = False,
+    session: AsyncSession = Depends(get_session),
+):
+    """
+    Reprocess existing matched Amazon orders to create item-level split transactions.
+    Runs AI categorization on items that lack categories, then creates splits.
+    Use dry_run=true to preview without making changes.
+    """
+    from pipeline.importers.amazon import reprocess_existing_splits
+    result = await reprocess_existing_splits(session, year=year, dry_run=dry_run)
+    logger.info(f"Amazon split reprocess: {result}")
+    return result

@@ -10,9 +10,10 @@ import {
   getBudgets, getBudgetSummary, createBudget, updateBudget,
   deleteBudget, getBudgetCategories, getUnbudgetedCategories,
   copyBudgetMonth, getBudgetForecast, getSpendVelocity,
+  generateSmartBudget, applySmartBudget,
 } from "@/lib/api";
 import type { BudgetCategoryMeta } from "@/lib/api-budget";
-import type { BudgetItem, BudgetSummary, UnbudgetedCategory, BudgetForecastResponse, SpendVelocity } from "@/types/api";
+import type { BudgetItem, BudgetSummary, UnbudgetedCategory, BudgetForecastResponse, SpendVelocity, SmartBudgetLine } from "@/types/api";
 import Card from "@/components/ui/Card";
 import ProgressBar from "@/components/ui/ProgressBar";
 import { useInsights } from "@/hooks/useInsights";
@@ -149,6 +150,10 @@ export default function BudgetPage() {
   const [copying, setCopying] = useState(false);
   const [segmentFilter, setSegmentFilter] = useState<"all" | "personal" | "business">("all");
   const [suggestingBudget, setSuggestingBudget] = useState(false);
+  const [smartLines, setSmartLines] = useState<SmartBudgetLine[]>([]);
+  const [smartPreview, setSmartPreview] = useState(false);
+  const [generatingSmart, setGeneratingSmart] = useState(false);
+  const [applyingSmart, setApplyingSmart] = useState(false);
 
   // ── Data fetching ────────────────────────────────────────────────────────
 
@@ -263,6 +268,27 @@ export default function BudgetPage() {
     setSuggestingBudget(false);
   }
 
+  async function handleGenerateSmartBudget() {
+    setGeneratingSmart(true);
+    try {
+      const result = await generateSmartBudget(year, month);
+      setSmartLines(result.lines);
+      setSmartPreview(true);
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : String(e)); }
+    setGeneratingSmart(false);
+  }
+
+  async function handleApplySmartBudget() {
+    setApplyingSmart(true);
+    try {
+      await applySmartBudget(year, month);
+      setSmartPreview(false);
+      setSmartLines([]);
+      await load();
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : String(e)); }
+    setApplyingSmart(false);
+  }
+
   function toggleGroup(group: string) {
     setCollapsedGroups((prev) => { const next = new Set(prev); if (next.has(group)) next.delete(group); else next.add(group); return next; });
   }
@@ -375,10 +401,28 @@ export default function BudgetPage() {
           {loading ? (
             <div className="flex justify-center py-12"><Loader2 className="animate-spin text-stone-300" size={24} /></div>
           ) : budgets.length === 0 ? (
-            <Card className="text-center py-10">
+            <Card padding="lg" className="text-center">
               <Target className="mx-auto text-stone-200 mb-3" size={36} />
               <p className="text-stone-400 text-sm">No budget set for {monthName(month)} {year}.</p>
-              <p className="text-stone-300 text-xs mt-1">Add budget lines above or copy from {monthName(prev.month)}.</p>
+              <p className="text-stone-300 text-xs mt-1 mb-4">Add budget lines above or copy from {monthName(prev.month)}.</p>
+              <div className="flex items-center justify-center gap-3">
+                <button
+                  onClick={handleGenerateSmartBudget}
+                  disabled={generatingSmart}
+                  className="flex items-center gap-2 bg-[#16A34A] text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-[#15803d] disabled:opacity-50 shadow-sm"
+                >
+                  {generatingSmart ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                  Generate Smart Budget
+                </button>
+                <button
+                  onClick={handleCopyPrevious}
+                  disabled={copying}
+                  className="flex items-center gap-1.5 text-sm border border-stone-200 rounded-lg px-4 py-2.5 text-stone-600 hover:bg-stone-50 disabled:opacity-50"
+                >
+                  {copying ? <Loader2 size={14} className="animate-spin" /> : <Copy size={14} />}
+                  Copy from {monthName(prev.month)}
+                </button>
+              </div>
             </Card>
           ) : (
           <div className="space-y-6">
@@ -570,6 +614,41 @@ export default function BudgetPage() {
           )}
         </div>
       </div>
+      {/* Smart Budget Preview */}
+      {smartPreview && smartLines.length > 0 && (
+        <Card padding="lg">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Sparkles size={16} className="text-[#16A34A]" />
+              <h3 className="text-sm font-semibold text-stone-800">Smart Budget Preview</h3>
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={() => { setSmartPreview(false); setSmartLines([]); }} className="text-xs text-stone-400 hover:text-stone-600 px-2 py-1">Cancel</button>
+              <button onClick={handleApplySmartBudget} disabled={applyingSmart} className="flex items-center gap-1.5 text-xs bg-[#16A34A] text-white rounded-lg px-3 py-1.5 hover:bg-[#15803d] disabled:opacity-50">
+                {applyingSmart ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                Apply All ({smartLines.length} lines)
+              </button>
+            </div>
+          </div>
+          <div className="divide-y divide-stone-100">
+            {smartLines.map((line, i) => (
+              <div key={i} className="flex items-center py-2.5 text-sm">
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-stone-700">{line.category}</p>
+                  <p className="text-xs text-stone-400">{line.source}</p>
+                </div>
+                <span className="text-sm font-mono tabular-nums text-stone-800">{formatCurrency(line.budget_amount)}</span>
+              </div>
+            ))}
+            <div className="flex items-center pt-3 mt-1">
+              <span className="flex-1 text-sm font-bold text-stone-800">Total</span>
+              <span className="text-sm font-bold font-mono tabular-nums text-stone-800">
+                {formatCurrency(smartLines.reduce((s, l) => s + l.budget_amount, 0))}
+              </span>
+            </div>
+          </div>
+        </Card>
+      )}
       </>
       )}
 

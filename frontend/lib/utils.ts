@@ -105,6 +105,73 @@ export function priorityColor(p: number): string {
   return "bg-gray-100 text-gray-600";
 }
 
+/**
+ * Returns a clean, human-readable transaction name.
+ * Prefers merchant_name (Plaid-enriched) when available,
+ * otherwise strips bank junk from the raw description.
+ */
+export function cleanTransactionName(
+  description: string,
+  merchantName?: string | null,
+): string {
+  // Plaid merchant_name is already clean — prefer it
+  if (merchantName && merchantName.trim()) {
+    return merchantName.trim();
+  }
+
+  let name = description;
+
+  // Recognize known payment patterns and replace entirely
+  if (/\bCREDIT\s+CRD\b.*\bEPAY\b/i.test(name)) {
+    // "CHASE CREDIT CRD DES:EPAY ..." → extract bank name or use generic
+    const bank = name.match(/^(\w+)\s+CREDIT/i);
+    return bank ? `${titleCase(bank[1])} Credit Card Payment` : "Credit Card Payment";
+  }
+  if (/\bDEBIT\s+CRD\b.*\bEPAY\b/i.test(name)) {
+    const bank = name.match(/^(\w+)\s+DEBIT/i);
+    return bank ? `${titleCase(bank[1])} Debit Card Payment` : "Debit Card Payment";
+  }
+
+  // "Online scheduled transfer to CHK 0209 Confirmation# XXXXX32227"
+  if (/\bonline\s+(scheduled\s+)?transfer\b/i.test(name)) {
+    return "Scheduled Transfer";
+  }
+
+  // Strip common ACH/bank descriptor patterns:
+  // "MERCHANT DES:TYPE ID:XXX INDN:NAME CO ID:XXX PPD/WEB/CCD"
+  // Keep only the part before the first DES: or similar token
+  const cutPatterns = /\s+(DES:|ID:|INDN:|CO ID:|PMT INFO:|CCD|PPD|WEB|ACH|POS)\b/i;
+  const cutMatch = name.match(cutPatterns);
+  if (cutMatch?.index && cutMatch.index > 2) {
+    name = name.substring(0, cutMatch.index);
+  }
+
+  // Remove trailing asterisk codes like *B99SD3D40
+  name = name.replace(/\*[A-Z0-9]{5,}$/i, "").trim();
+
+  // Remove Confirmation# and reference numbers
+  name = name.replace(/\s*Confirmation#?\s*\S+/gi, "").trim();
+
+  // Remove "to CHK XXXX" / "to SAV XXXX" account references
+  name = name.replace(/\s+to\s+(CHK|SAV|DDA)\s*\S*/gi, "").trim();
+
+  // Clean up extra whitespace
+  name = name.replace(/\s+/g, " ").trim();
+
+  // Title case if entirely uppercase and looks like a merchant name
+  if (name === name.toUpperCase() && name.length > 2) {
+    name = titleCase(name);
+  }
+
+  return name || description;
+}
+
+function titleCase(str: string): string {
+  return str
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 export function safeJsonParse<T>(json: string | null | undefined, fallback: T): T {
   if (!json) return fallback;
   try {

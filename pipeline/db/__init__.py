@@ -45,9 +45,16 @@ from .schema import (
     # Privacy & Audit
     UserPrivacyConsent,
     AuditLog,
+    # Payroll / Income
+    PayrollConnection,
+    PayStubRecord,
     # Chat history
     ChatConversation,
     ChatMessage,
+    # User context
+    UserContext,
+    # Retirement budget
+    RetirementBudgetOverride,
     # DB init
     init_db,
     init_extended_db,
@@ -96,6 +103,9 @@ from .models import (
     create_reminder_record,
     get_recurring,
     get_net_worth_snapshots,
+    upsert_user_context,
+    get_active_user_context,
+    delete_user_context,
     get_life_events,
     get_life_event,
     create_life_event,
@@ -119,7 +129,10 @@ __all__ = [
     "HouseholdProfile", "BenefitPackage", "HouseholdOptimization",
     "TaxProjection", "BenchmarkSnapshot", "LifeEvent", "InsurancePolicy",
     "FamilyMember",
+    "PayrollConnection", "PayStubRecord",
     "ChatConversation", "ChatMessage",
+    "UserContext",
+    "RetirementBudgetOverride",
     "init_db", "init_extended_db", "DATABASE_URL",
     "get_account", "get_all_accounts", "upsert_account",
     "get_document_by_hash", "create_document", "update_document_status",
@@ -137,4 +150,6 @@ __all__ = [
     "get_goals", "upsert_goal", "delete_goal",
     "get_reminders", "create_reminder_record",
     "get_recurring", "get_net_worth_snapshots",
+    "upsert_user_context", "get_active_user_context", "delete_user_context",
+    "UserContext",
 ]

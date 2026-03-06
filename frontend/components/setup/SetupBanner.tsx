@@ -2,6 +2,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { ArrowRight, Sparkles, X } from "lucide-react";
 import Link from "next/link";
+import SirHenryName from "@/components/ui/SirHenryName";
+import { isSetupComplete } from "@/components/AppShell";
 import { getHouseholdProfiles } from "@/lib/api-household";
 import { getAccounts } from "@/lib/api-accounts";
 import { getInsurancePolicies } from "@/lib/api-insurance";
@@ -15,6 +17,12 @@ export default function SetupBanner() {
   const [completionPct, setCompletionPct] = useState(0);
 
   const checkCompletion = useCallback(async () => {
+    // If user completed the setup wizard, don't show the banner
+    if (isSetupComplete()) {
+      setShow(false);
+      return;
+    }
+
     try {
       const [profiles, accounts, policies] = await Promise.all([
         getHouseholdProfiles().catch(() => []),
@@ -61,7 +69,8 @@ export default function SetupBanner() {
           <p className="text-xs text-stone-500 mt-0.5">
             {completionPct === 0
               ? "Set up your household, accounts, and insurance to unlock personalized optimization."
-              : `${completionPct}% complete — finish setting up to get the most from Sir Henry.`
+              : <>{completionPct}% complete — finish setting up to get the most from <SirHenryName />.</>
+
             }
           </p>
           {/* Mini progress bar */}

@@ -165,11 +165,11 @@ export function SirHenryAvatar({ size = 8 }: { size?: number }) {
   const px = size * 4;
   return (
     <div
-      className="rounded-full bg-[#EAB308] flex items-center justify-center flex-shrink-0 shadow-sm ring-1 ring-[#EAB308]/40"
+      className="rounded-full bg-[#0a0a0b] flex items-center justify-center flex-shrink-0 shadow-sm ring-1 ring-zinc-700"
       style={{ width: px, height: px }}
     >
       <span
-        className="font-bold text-[#0a0a0b] leading-none"
+        className="font-extrabold text-white leading-none"
         style={{ fontSize: px * 0.44, fontFamily: "var(--font-display, sans-serif)" }}
       >
         H
@@ -182,10 +182,21 @@ export function SirHenryAvatar({ size = 8 }: { size?: number }) {
 // ActionCard — renders a single tool-call result card
 // ---------------------------------------------------------------------------
 
+const WRITE_TOOLS = new Set([
+  "recategorize_transaction",
+  "update_transaction",
+  "create_transaction",
+  "exclude_transactions",
+  "manage_budget",
+  "manage_goal",
+  "create_reminder",
+  "update_asset_value",
+]);
+
 function ActionCard({ action }: { action: ChatAction }) {
   const Icon = TOOL_ICONS[action.tool] || Zap;
   const label = TOOL_DONE_LABELS[action.tool] || action.tool;
-  const isUpdate = action.tool === "recategorize_transaction";
+  const isUpdate = WRITE_TOOLS.has(action.tool);
 
   let detail = "";
   if (isUpdate && action.result_preview) {
@@ -193,6 +204,10 @@ function ActionCard({ action }: { action: ChatAction }) {
       const parsed = JSON.parse(action.result_preview);
       if (parsed.changes) {
         detail = (parsed.changes as string[]).join(", ");
+      } else if (parsed.message) {
+        detail = parsed.message as string;
+      } else if (parsed.action) {
+        detail = parsed.action as string;
       }
     } catch { /* ignore parse errors */ }
   }

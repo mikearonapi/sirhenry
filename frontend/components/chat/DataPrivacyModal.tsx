@@ -1,5 +1,6 @@
 "use client";
 import { X, Shield, Lock, Database, Cloud, CheckCircle2, EyeOff } from "lucide-react";
+import SirHenryName from "@/components/ui/SirHenryName";
 
 interface Props {
   onClose: () => void;
@@ -31,7 +32,7 @@ export default function DataPrivacyModal({ onClose }: Props) {
                 >
                   Your Privacy
                 </h2>
-                <p className="text-[11px] text-stone-400">How Sir Henry handles your financial data</p>
+                <p className="text-[11px] text-stone-400">How <SirHenryName /> handles your financial data</p>
               </div>
             </div>
             <button
@@ -62,7 +63,7 @@ export default function DataPrivacyModal({ onClose }: Props) {
                 <h3 className="font-semibold text-stone-800 text-[13px]">What may be sent to Claude</h3>
               </div>
               <p className="text-[12.5px] text-stone-500 leading-relaxed mb-2.5">
-                When you ask a question, Sir Henry shares only what's needed to answer it — fetched live from your local database:
+                When you ask a question, <SirHenryName /> shares only what{"'"}s needed to answer it — fetched live from your local database:
               </p>
               <ul className="space-y-1.5">
                 {[

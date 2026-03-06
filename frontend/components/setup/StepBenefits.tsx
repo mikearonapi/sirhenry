@@ -2,10 +2,13 @@
 import { useState, useEffect } from "react";
 import { Briefcase, Check, Heart, PiggyBank, Shield } from "lucide-react";
 import Card from "@/components/ui/Card";
+import { AutoFilledIndicator } from "@/components/ui/AutoFilledIndicator";
 import type { SetupData } from "./SetupWizard";
 import { getHouseholdBenefits, upsertHouseholdBenefits } from "@/lib/api-household";
+import { getSmartDefaults } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import type { BenefitPackageType } from "@/types/household";
+import type { BenefitsDefaults } from "@/types/smart-defaults";
 
 const INPUT = "w-full rounded-lg border border-stone-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#16A34A]/30 focus:border-[#16A34A] bg-white";
 
@@ -34,6 +37,9 @@ const EMPTY_FORM: BenefitForm = {
   has_health: false,
 };
 
+/** Tracks which fields were auto-filled from smart defaults. */
+type AutoFilledFields = Set<keyof BenefitForm>;
+
 export default function StepBenefits({ data, onRefresh }: Props) {
   const household = data.household;
   const married = household?.filing_status === "mfj" || household?.filing_status === "mfs";
@@ -44,6 +50,51 @@ export default function StepBenefits({ data, onRefresh }: Props) {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [autoFilledFields, setAutoFilledFields] = useState<AutoFilledFields>(new Set());
+
+  // Fetch smart defaults on mount for payroll-based pre-fill
+  useEffect(() => {
+    getSmartDefaults()
+      .then((sd) => {
+        const benefits: BenefitsDefaults = sd.benefits;
+        // Only pre-fill if we have meaningful data (e.g. from payroll connection)
+        const hasPayrollData =
+          benefits.has_401k || benefits.has_hsa || benefits.has_espp || benefits.match_pct > 0;
+        if (!hasPayrollData) return;
+
+        const filled = new Set<keyof BenefitForm>();
+
+        setFormA((prev) => {
+          const updated = { ...prev };
+          if (benefits.has_401k && !prev.has_401k) {
+            updated.has_401k = true;
+            filled.add("has_401k");
+          }
+          if (benefits.match_pct > 0 && !prev.employer_match_pct) {
+            updated.employer_match_pct = benefits.match_pct.toString();
+            filled.add("employer_match_pct");
+          }
+          if (benefits.has_hsa && !prev.has_hsa) {
+            updated.has_hsa = true;
+            filled.add("has_hsa");
+          }
+          if (benefits.has_espp && !prev.has_espp) {
+            updated.has_espp = true;
+            filled.add("has_espp");
+          }
+          if (benefits.health_premium_monthly > 0 && !prev.has_health) {
+            updated.has_health = true;
+            filled.add("has_health");
+          }
+          return updated;
+        });
+
+        setAutoFilledFields(filled);
+      })
+      .catch(() => {
+        // Smart defaults unavailable — non-critical, user enters manually
+      });
+  }, []);
 
   useEffect(() => {
     if (!household) return;
@@ -93,6 +144,14 @@ export default function StepBenefits({ data, onRefresh }: Props) {
   function updateField<K extends keyof BenefitForm>(key: K, value: BenefitForm[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
     setSaved(false);
+    // Clear auto-filled indicator when user modifies a field
+    if (autoFilledFields.has(key)) {
+      setAutoFilledFields((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+    }
   }
 
   async function handleSave() {
@@ -211,10 +270,16 @@ export default function StepBenefits({ data, onRefresh }: Props) {
           whyItMatters="Drives retirement contribution optimization and employer match capture."
           checked={form.has_401k}
           onChange={(v) => updateField("has_401k", v)}
+          autoFilled={autoFilledFields.has("has_401k")}
         >
           {form.has_401k && (
             <div className="mt-3 ml-8">
-              <label className="text-xs text-stone-500 mb-1 block">Employer match %</label>
+              <div className="flex items-center gap-2 mb-1">
+                <label className="text-xs text-stone-500">Employer match %</label>
+                {autoFilledFields.has("employer_match_pct") && (
+                  <AutoFilledIndicator source="payroll connection" />
+                )}
+              </div>
               <input
                 type="number"
                 value={form.employer_match_pct}
@@ -233,6 +298,7 @@ export default function StepBenefits({ data, onRefresh }: Props) {
           whyItMatters="HSA contributions reduce taxable income and build a healthcare reserve."
           checked={form.has_hsa}
           onChange={(v) => updateField("has_hsa", v)}
+          autoFilled={autoFilledFields.has("has_hsa")}
         />
 
         <ToggleCard
@@ -242,6 +308,7 @@ export default function StepBenefits({ data, onRefresh }: Props) {
           whyItMatters="ESPP discount is essentially free money — tracking helps optimize sell timing."
           checked={form.has_espp}
           onChange={(v) => updateField("has_espp", v)}
+          autoFilled={autoFilledFields.has("has_espp")}
         />
 
         <ToggleCard
@@ -251,6 +318,7 @@ export default function StepBenefits({ data, onRefresh }: Props) {
           whyItMatters="Affects insurance gap analysis and premium deduction eligibility."
           checked={form.has_health}
           onChange={(v) => updateField("has_health", v)}
+          autoFilled={autoFilledFields.has("has_health")}
         />
       </div>
 
@@ -296,6 +364,7 @@ function ToggleCard({
   checked,
   onChange,
   children,
+  autoFilled = false,
 }: {
   icon: React.ComponentType<{ size?: number; className?: string }>;
   label: string;
@@ -304,6 +373,7 @@ function ToggleCard({
   checked: boolean;
   onChange: (v: boolean) => void;
   children?: React.ReactNode;
+  autoFilled?: boolean;
 }) {
   return (
     <div
@@ -332,6 +402,7 @@ function ToggleCard({
             <span className={`text-sm font-medium ${checked ? "text-stone-800" : "text-stone-600"}`}>
               {label}
             </span>
+            {autoFilled && <AutoFilledIndicator source="payroll connection" />}
           </div>
           <p className="text-[11px] text-stone-400 mt-0.5">{desc}</p>
           {checked && (

@@ -21,7 +21,7 @@ async def setup_status(session: AsyncSession = Depends(get_session)):
     has_household = household is not None
     has_income = False
     if household:
-        income = (household.primary_w2_income or 0) + (household.spouse_w2_income or 0)
+        income = (household.spouse_a_income or 0) + (household.spouse_b_income or 0)
         has_income = income > 0
 
     # Check if any accounts (Plaid or manual) exist

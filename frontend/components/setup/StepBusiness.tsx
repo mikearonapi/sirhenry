@@ -5,6 +5,7 @@ import Card from "@/components/ui/Card";
 import type { SetupData } from "./SetupWizard";
 import { createBusinessEntity } from "@/lib/api-entities";
 import { getErrorMessage } from "@/lib/errors";
+import SirHenryName from "@/components/ui/SirHenryName";
 
 const INPUT = "w-full rounded-lg border border-stone-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#16A34A]/30 focus:border-[#16A34A] bg-white";
 
@@ -120,7 +121,7 @@ export default function StepBusiness({ data, onRefresh }: Props) {
             className="flex items-center gap-1 mt-2 mx-auto text-[11px] text-[#16A34A]/70 hover:underline"
           >
             <MessageCircle size={10} />
-            Thinking about starting one? Ask Sir Henry
+            Thinking about starting one? Ask <SirHenryName />
           </button>
         </Card>
       )}
@@ -205,7 +206,7 @@ export default function StepBusiness({ data, onRefresh }: Props) {
               className="flex items-center gap-1 mt-2 text-[11px] text-[#16A34A] hover:underline"
             >
               <MessageCircle size={10} />
-              Need help choosing? Ask Sir Henry
+              Need help choosing? Ask <SirHenryName />
             </button>
           </div>
           {/* Owner — shown when married */}
@@ -238,7 +239,7 @@ export default function StepBusiness({ data, onRefresh }: Props) {
             </div>
           )}
 
-          {error && <p className="text-xs text-red-600">{error}</p>}
+          {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
           <div className="flex gap-2">
             <button
               onClick={handleSave}
@@ -251,7 +252,7 @@ export default function StepBusiness({ data, onRefresh }: Props) {
               onClick={() => setShowForm(false)}
               className="px-3 py-2 text-sm text-stone-500 hover:text-stone-700 transition-colors"
             >
-              Done
+              Cancel
             </button>
           </div>
         </Card>

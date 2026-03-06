@@ -15,6 +15,7 @@ import {
   getEquityDashboard,
   getHouseholdProfiles, getLifeEvents, getInsurancePolicies, getBusinessEntities,
 } from "@/lib/api";
+import { getIncomeConnections } from "@/lib/api-income";
 import { formatCurrency } from "@/lib/utils";
 import type {
   Account, PlaidItem, ManualAsset, ManualAssetType,
@@ -23,15 +24,16 @@ import type {
 import PageHeader from "@/components/ui/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
 import {
-  AdminHealthBar, CompletenessTracker, GettingStartedChecklist,
+  GettingStartedChecklist,
   NetWorthHeader, AccountGroupList, SummarySidebar, AddAccountModal,
+  SetupBanner,
 } from "@/components/accounts";
 import {
   EMPTY_FORM, SORT_ORDER, GROUP_META, MANUAL_ASSET_CONFIG, INVESTMENT_SUBTYPES,
   plaidTypeToGroupKey, manualAssetTypeToGroupKey, assetToFormState,
 } from "@/components/accounts/accounts-types";
 import type {
-  UnifiedGroup, AdminHealthSection, AddFlowStep, CompletenessStep, AssetFormState,
+  UnifiedGroup, AdminHealthSection, AddFlowStep, CompletenessStep, SetupItem, AssetFormState,
 } from "@/components/accounts/accounts-types";
 import { getErrorMessage } from "@/lib/errors";
 import { LINK_TOKEN_KEY, INSTITUTION_KEY } from "@/app/oauth-redirect/page";
@@ -69,23 +71,26 @@ function AccountsPageContent() {
   const [assetForm, setAssetForm] = useState<AssetFormState>(EMPTY_FORM);
   const [savingAsset, setSavingAsset] = useState(false);
   const [bizEntities, setBizEntities] = useState<BusinessEntity[]>([]);
+  const [hasEmployerConnection, setHasEmployerConnection] = useState(false);
 
   async function load() {
     setLoading(true);
     setError(null);
     try {
-      const [items, allAccounts, assets, equity, entities] = await Promise.all([
+      const [items, allAccounts, assets, equity, entities, incomeConns] = await Promise.all([
         getPlaidItems(),
         getAccounts(),
         getManualAssets(),
         getEquityDashboard().catch(() => null),
         getBusinessEntities(true).catch(() => [] as BusinessEntity[]),
+        getIncomeConnections().catch(() => []),
       ]);
       setPlaidItems(items);
       setAccounts(allAccounts);
       setManualAssets(assets);
       setEquityDashboard(equity);
       setBizEntities(entities);
+      setHasEmployerConnection(incomeConns.length > 0);
     } catch (e: unknown) {
       setError(getErrorMessage(e));
     } finally {
@@ -332,12 +337,14 @@ function AccountsPageContent() {
     let gk: string;
     if (acct.data_source === "plaid" && acct.plaid_type) {
       gk = plaidTypeToGroupKey(acct.plaid_type, acct.plaid_subtype ?? null);
-    } else if (acct.subtype === "credit_card") {
+    } else if (acct.subtype === "credit_card" || acct.subtype === "credit card") {
       gk = "credit_cards";
-    } else if (acct.subtype === "savings") {
+    } else if (acct.subtype === "savings" || acct.subtype === "money market" || acct.subtype === "cd") {
       gk = "savings";
     } else if (acct.subtype === "brokerage" || acct.account_type === "investment") {
       gk = "investments";
+    } else if (acct.subtype === "mortgage" || acct.subtype === "loan" || acct.subtype === "auto" || acct.subtype === "student") {
+      gk = "loans";
     } else {
       gk = "checking";
     }
@@ -455,6 +462,18 @@ function AccountsPageContent() {
     { label: "Liabilities", count: manualAssets.filter((a) => a.is_liability).length, action: "Add mortgage, auto loans, credit cards" },
   ];
 
+  // Merge admin health + financial completeness into unified setup items
+  const setupItems: SetupItem[] = [
+    ...adminHealth,
+    ...completenessSteps.map((s): SetupItem => ({
+      label: s.label,
+      href: "/accounts",
+      count: s.count,
+      status: s.count > 0 ? "complete" : "empty",
+      action: s.action,
+    })),
+  ];
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -481,10 +500,12 @@ function AccountsPageContent() {
         }
       />
 
-      {!healthLoading && adminHealth.length > 0 && (
-        <AdminHealthBar
-          adminHealth={adminHealth}
-          accountsCount={accounts.length + manualAssets.length}
+      {!loading && !healthLoading && (
+        <SetupBanner
+          items={setupItems}
+          hasEmployerConnection={hasEmployerConnection}
+          loading={false}
+          onConnectionComplete={() => load()}
         />
       )}
 
@@ -501,8 +522,6 @@ function AccountsPageContent() {
           <p className="text-sm font-medium">{successMsg}</p>
         </div>
       )}
-
-      {!loading && <CompletenessTracker steps={completenessSteps} />}
 
       {loading ? (
         <div className="flex items-center justify-center h-48 gap-3 text-stone-400">

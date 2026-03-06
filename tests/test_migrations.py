@@ -35,7 +35,14 @@ async def session():
         await conn.execute(text("""
             CREATE TABLE transactions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                description TEXT
+                account_id INTEGER,
+                date TIMESTAMP,
+                description TEXT,
+                amount FLOAT,
+                notes TEXT,
+                category TEXT,
+                effective_category TEXT,
+                is_excluded BOOLEAN DEFAULT 0
             )
         """))
         await conn.execute(text("""

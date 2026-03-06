@@ -180,6 +180,19 @@ async def set_transaction_entity(
 # Expense Reporting
 # ---------------------------------------------------------------------------
 
+@router.get("/{entity_id}/reimbursements")
+async def get_entity_reimbursements(
+    entity_id: int,
+    session: AsyncSession = Depends(get_session),
+):
+    """Get reimbursement tracking report for a business entity."""
+    from pipeline.planning.business_reports import compute_reimbursement_report
+    result = await compute_reimbursement_report(session, entity_id)
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
+
+
 @router.get("/{entity_id}/expenses", response_model=EntityExpenseReportOut)
 async def get_entity_expenses(
     entity_id: int,
@@ -192,6 +205,21 @@ async def get_entity_expenses(
     if "error" in result:
         raise HTTPException(status_code=404, detail=result["error"])
     return result
+
+
+@router.get("/{entity_id}/expenses/transactions")
+async def list_entity_transactions(
+    entity_id: int,
+    year: int = Query(...),
+    month: Optional[int] = Query(None),
+    session: AsyncSession = Depends(get_session),
+):
+    """Get transaction list for a business entity as JSON."""
+    from pipeline.planning.business_reports import get_entity_transactions
+    entity = await get_business_entity(session, entity_id)
+    if not entity:
+        raise HTTPException(status_code=404, detail="Business entity not found")
+    return await get_entity_transactions(session, entity_id, year, month)
 
 
 @router.get("/{entity_id}/expenses/csv")

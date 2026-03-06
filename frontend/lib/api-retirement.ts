@@ -1,4 +1,4 @@
-import type { BudgetSnapshot, RetirementProfile, RetirementResults } from "@/types/api";
+import type { BudgetSnapshot, RetirementProfile, RetirementResults, RetirementBudget } from "@/types/api";
 import { request } from "./api-client";
 
 export function getRetirementProfiles(): Promise<RetirementProfile[]> {
@@ -41,4 +41,20 @@ export interface TrajectoryProjection {
 
 export function getTrajectoryProjection(profileId: number): Promise<TrajectoryProjection> {
   return request(`/retirement/trajectory/${profileId}`);
+}
+
+export function getRetirementBudget(retirementAge: number = 65): Promise<RetirementBudget> {
+  return request(`/retirement/retirement-budget?retirement_age=${retirementAge}`);
+}
+
+export function saveRetirementBudgetOverride(body: {
+  category: string;
+  multiplier?: number | null;
+  fixed_amount?: number | null;
+  reason?: string | null;
+}): Promise<{ status: string }> {
+  return request("/retirement/retirement-budget/override", {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
 }

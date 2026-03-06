@@ -1,5 +1,7 @@
 import { DollarSign, BarChart3, Zap } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import type { ReactNode } from "react";
+import SirHenryName from "@/components/ui/SirHenryName";
 
 interface Problem {
   icon: LucideIcon;
@@ -7,7 +9,7 @@ interface Problem {
   title: string;
   quote: string;
   detail: string;
-  fix: string;
+  fix: ReactNode;
 }
 
 const PROBLEMS: Problem[] = [
@@ -36,7 +38,7 @@ const PROBLEMS: Problem[] = [
     quote: "\"I need guidance but I can't access it.\"",
     detail:
       "Wealth managers want $1M+ to talk to you. CFPs charge $5K\u2013$15K/year. You\u2019re too sophisticated for robo-advisors and too busy for Reddit.",
-    fix: "Sir Henry \u2014 an AI advisor who knows your complete financial picture and is available right now.",
+    fix: <><SirHenryName /> — an AI advisor who knows your complete financial picture and is available right now.</>,
   },
 ];
 

@@ -1,21 +1,22 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import {
-  Calculator, Loader2, AlertCircle, TrendingUp, Target,
-  DollarSign, Clock, Flame, Shield, ChevronDown, ChevronUp,
+  Loader2, AlertCircle, TrendingUp, Target,
+  DollarSign, Clock, ChevronDown, ChevronUp,
   CheckCircle, XCircle, Save, Plus, Trash2, Zap, Calendar, BarChart3, MessageCircle,
+  ArrowDown, Wallet, Users,
 } from "lucide-react";
 import { formatCurrency, formatPercent } from "@/lib/utils";
-import { calculateRetirement, getRetirementProfiles, createRetirementProfile, getRetirementBudgetSnapshot } from "@/lib/api";
+import { calculateRetirement, getRetirementProfiles, createRetirementProfile, getRetirementBudgetSnapshot, getSmartDefaults } from "@/lib/api";
+import { getRetirementBudget } from "@/lib/api-retirement";
 import { request } from "@/lib/api-client";
-import { getManualAssets } from "@/lib/api-assets";
-import { getHouseholdProfiles, getHouseholdBenefits, getFamilyMembers } from "@/lib/api-household";
-import type { RetirementResults, RetirementProfile, DebtPayoff, BudgetSnapshot } from "@/types/api";
-import type { ManualAsset } from "@/types/portfolio";
-import type { HouseholdProfile, BenefitPackageType, FamilyMember } from "@/types/household";
+import type { RetirementResults, RetirementProfile, DebtPayoff, BudgetSnapshot, SmartDefaults } from "@/types/api";
 import { getErrorMessage } from "@/lib/errors";
 import Card from "@/components/ui/Card";
 import PageHeader from "@/components/ui/PageHeader";
+import RetirementBudgetTable from "@/components/retirement/RetirementBudgetTable";
+import { AutoFilledIndicator, MissingDataHint } from "@/components/ui/AutoFilledIndicator";
+import SirHenryName from "@/components/ui/SirHenryName";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceLine,
@@ -105,64 +106,112 @@ export default function RetirementPage() {
   const [mcLoading, setMcLoading] = useState(false);
   // Track whether defaults were seeded from real data so we don't overwrite a loaded profile
   const [contextSeeded, setContextSeeded] = useState(false);
+  // Track which fields were auto-filled for UI indicators
+  const [autoFilledFields, setAutoFilledFields] = useState<Record<string, string>>({});
+  // Tab: "simulator" or "budget"
+  const [activeTab, setActiveTab] = useState<"simulator" | "budget">("budget");
+  // Retirement budget annual total (from the budget table, feeds into simulator)
+  const [retirementBudgetAnnual, setRetirementBudgetAnnual] = useState<number>(0);
+  // Lump sum "What If" scenario
+  const [lumpSumAmount, setLumpSumAmount] = useState<number>(50000);
+  const [lumpSumResults, setLumpSumResults] = useState<RetirementResults | null>(null);
+  const [lumpSumLoading, setLumpSumLoading] = useState(false);
+  // Second Income "What If" scenario
+  const [secondIncome, setSecondIncome] = useState({
+    salary: 0, startsInYears: 1, worksUntilRetirement: true, workYears: 10,
+    monthlySavings: 0, matchPct: 50, matchLimit: 6,
+  });
+  const [secondIncomeResults, setSecondIncomeResults] = useState<RetirementResults | null>(null);
+  const [secondIncomeLoading, setSecondIncomeLoading] = useState(false);
 
-  /** Seed defaults from household + assets when no saved profile exists */
+  /** Seed defaults from SmartDefaults engine — one call pulls all data */
   const seedFromContext = useCallback(async () => {
     try {
-      const [assets, profiles, members] = await Promise.all([
-        getManualAssets().catch(() => [] as ManualAsset[]),
-        getHouseholdProfiles().catch(() => [] as HouseholdProfile[]),
-        getFamilyMembers().catch(() => [] as FamilyMember[]),
-      ]);
+      const defaults = await getSmartDefaults().catch(() => null as SmartDefaults | null);
+      if (!defaults) { setContextSeeded(true); return; }
 
-      const primary = profiles.find((p) => p.is_primary) ?? profiles[0] ?? null;
-      const primaryMember = members.find((m) => m.relationship === "self") ?? null;
+      const filled: Record<string, string> = {};
+      const patch: Partial<RetirementInputState> = {};
 
-      const retirementAssets = assets.filter((a) => a.is_retirement_account && !a.is_liability && a.is_active !== false);
-      const totalRetirementSavings = retirementAssets.reduce((sum, a) => sum + (a.current_value ?? 0), 0);
-      const otherInvestmentAssets = assets.filter((a) => a.asset_type === "investment" && !a.is_retirement_account && !a.is_liability && a.is_active !== false);
-      const totalOtherInvestments = otherInvestmentAssets.reduce((sum, a) => sum + (a.current_value ?? 0), 0);
+      // Age from family member DOB
+      if (defaults.age?.current_age) {
+        patch.current_age = defaults.age.current_age;
+        filled.current_age = "Date of Birth";
+      }
 
-      // Best employer match from any retirement asset or benefit package
-      let bestMatchPct = 0;
-      let bestMatchLimitPct = 0;
-      for (const a of retirementAssets) {
-        if ((a.employer_match_pct ?? 0) > bestMatchPct) {
-          bestMatchPct = a.employer_match_pct ?? 0;
-          bestMatchLimitPct = a.employer_match_limit_pct ?? 0;
+      // Income from W-2 or household
+      if (defaults.income?.combined > 0) {
+        patch.current_annual_income = defaults.income.combined;
+        filled.current_annual_income = defaults.data_sources?.has_w2 ? "W-2" : "Household Profile";
+      }
+
+      // Retirement savings from tagged accounts
+      if (defaults.retirement?.total_savings > 0) {
+        patch.current_retirement_savings = defaults.retirement.total_savings;
+        filled.current_retirement_savings = "Retirement Accounts";
+      }
+
+      // Monthly contribution from W-2 Box 12 or account data
+      if (defaults.retirement?.monthly_contribution > 0) {
+        patch.monthly_retirement_contribution = defaults.retirement.monthly_contribution;
+        filled.monthly_retirement_contribution = defaults.data_sources?.has_w2 ? "W-2 Box 12" : "Account Data";
+      }
+
+      // Employer match from benefits
+      if (defaults.benefits?.match_pct > 0) {
+        patch.employer_match_pct = defaults.benefits.match_pct;
+        filled.employer_match_pct = "Benefits Package";
+      }
+      if (defaults.benefits?.match_limit_pct > 0) {
+        patch.employer_match_limit_pct = defaults.benefits.match_limit_pct;
+        filled.employer_match_limit_pct = "Benefits Package";
+      }
+
+      // Other investments from assets
+      if (defaults.assets?.investment_total > 0) {
+        patch.current_other_investments = defaults.assets.investment_total;
+        filled.current_other_investments = "Investment Accounts";
+      }
+
+      // Annual expenses: prefer curated budget data over raw transaction totals
+      // (raw totals include credit card payments, transfers, savings — not real spending)
+      const snapshot = await getRetirementBudgetSnapshot().catch(() => null);
+      if (snapshot) setBudgetSnapshot(snapshot);
+      if (snapshot && snapshot.annual_expenses > 0) {
+        patch.current_annual_expenses = snapshot.annual_expenses;
+        filled.current_annual_expenses = "Personal Budget";
+      }
+
+      // Debts from liabilities — only retirement-relevant ones (mortgage, car loans)
+      // not revolving credit cards
+      if (defaults.debts?.length > 0) {
+        const retDebts = defaults.debts.filter(
+          (d: { retirement_relevant?: boolean }) => d.retirement_relevant !== false,
+        );
+        if (retDebts.length > 0) {
+          const currentAge = patch.current_age || inputs.current_age;
+          patch.debt_payoffs = retDebts.map(
+            (d: { name: string; monthly_payment?: number; balance?: number }) => {
+              let payoffAge = 65;
+              // Estimate payoff age from balance and monthly payment
+              if (d.monthly_payment && d.monthly_payment > 0 && d.balance) {
+                const monthsLeft = Math.ceil(d.balance / d.monthly_payment);
+                const yearsLeft = Math.ceil(monthsLeft / 12);
+                payoffAge = Math.min(currentAge + yearsLeft, 90);
+              }
+              return {
+                name: d.name,
+                monthly_payment: d.monthly_payment || 0,
+                payoff_age: payoffAge,
+              };
+            },
+          );
+          filled.debt_payoffs = "Linked Accounts";
         }
       }
 
-      // Try benefits if assets don't have match info
-      if (bestMatchPct === 0 && primary) {
-        const benefits = await getHouseholdBenefits(primary.id).catch(() => [] as BenefitPackageType[]);
-        for (const b of benefits) {
-          if ((b.employer_match_pct ?? 0) > bestMatchPct) {
-            bestMatchPct = b.employer_match_pct ?? 0;
-            bestMatchLimitPct = b.employer_match_limit_pct ?? 0;
-          }
-        }
-      }
-
-      // Calculate age from DOB
-      let currentAge = DEFAULT_INPUTS.current_age;
-      if (primaryMember?.date_of_birth) {
-        const dob = new Date(primaryMember.date_of_birth);
-        const today = new Date();
-        currentAge = today.getFullYear() - dob.getFullYear();
-        const hadBirthday = today.getMonth() > dob.getMonth() || (today.getMonth() === dob.getMonth() && today.getDate() >= dob.getDate());
-        if (!hadBirthday) currentAge--;
-      }
-
-      setInputs((prev) => ({
-        ...prev,
-        current_annual_income: primary?.combined_income > 0 ? primary.combined_income : prev.current_annual_income,
-        current_retirement_savings: totalRetirementSavings > 0 ? totalRetirementSavings : prev.current_retirement_savings,
-        current_other_investments: totalOtherInvestments > 0 ? totalOtherInvestments : prev.current_other_investments,
-        employer_match_pct: bestMatchPct > 0 ? bestMatchPct : prev.employer_match_pct,
-        employer_match_limit_pct: bestMatchLimitPct > 0 ? bestMatchLimitPct : prev.employer_match_limit_pct,
-        current_age: currentAge,
-      }));
+      setInputs((prev) => ({ ...prev, ...patch }));
+      setAutoFilledFields(filled);
       setContextSeeded(true);
     } catch {
       setContextSeeded(true);
@@ -201,6 +250,15 @@ export default function RetirementPage() {
 
   useEffect(() => {
     getRetirementBudgetSnapshot().then(setBudgetSnapshot).catch(() => {});
+    // Pre-load retirement budget total so the simulator uses the correct expense number
+    getRetirementBudget(inputs.retirement_age)
+      .then((rb) => {
+        if (rb.retirement_annual_total > 0) {
+          setRetirementBudgetAnnual(rb.retirement_annual_total);
+          setDirty(true);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -211,6 +269,10 @@ export default function RetirementPage() {
         const body: Record<string, unknown> = { ...inputs };
         if (!body.desired_annual_retirement_income) delete body.desired_annual_retirement_income;
         if (!body.current_annual_expenses) delete body.current_annual_expenses;
+        // If retirement budget has been computed, pass it as the expense source
+        if (retirementBudgetAnnual > 0) {
+          body.retirement_budget_annual = retirementBudgetAnnual;
+        }
         const r = await calculateRetirement(body);
         setResults(r);
       } catch (e: unknown) { setError(e instanceof Error ? e.message : String(e)); }
@@ -218,7 +280,7 @@ export default function RetirementPage() {
       setDirty(false);
     }, 400);
     return () => clearTimeout(timer);
-  }, [inputs, dirty]);
+  }, [inputs, dirty, retirementBudgetAnnual]);
 
   function update(key: InputKey, value: number | string) {
     setInputs((prev) => ({ ...prev, [key]: value }));
@@ -274,11 +336,21 @@ export default function RetirementPage() {
     phase: p.phase,
   })) || [];
 
+  // Convert future-dollar values to today's dollars for intuitive display.
+  // The backend computes targets in inflation-adjusted future dollars (correct for math),
+  // but users think in today's money. Dividing by the inflation multiplier fixes the mismatch.
+  const inflationMult = results && results.years_to_retirement > 0
+    ? (1 + inputs.inflation_rate_pct / 100) ** results.years_to_retirement
+    : 1;
+  const targetToday = results ? results.target_nest_egg / inflationMult : 0;
+  const projectedToday = results ? results.projected_nest_egg / inflationMult : 0;
+  const gapToday = results ? results.savings_gap / inflationMult : 0;
+
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Retirement Calculator"
-        subtitle="How much do you need? When can you retire? Are you on track?"
+        title="Retirement Simulator"
+        subtitle="Build your retirement budget, track your progress, and see what it takes to retire sooner"
         actions={
           <div className="flex items-center gap-3">
             <button
@@ -286,7 +358,7 @@ export default function RetirementPage() {
               className="flex items-center gap-1.5 text-xs text-[#16A34A] hover:text-[#15803D] transition-colors"
             >
               <MessageCircle size={14} />
-              Ask Sir Henry
+              Ask <SirHenryName />
             </button>
             <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 bg-[#16A34A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#15803D] shadow-sm disabled:opacity-60">
               {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Save Profile
@@ -302,54 +374,139 @@ export default function RetirementPage() {
         </div>
       )}
 
-      {/* Results Summary */}
-      {results && (
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-          <div className={`rounded-xl border p-5 shadow-sm ${results.on_track ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}`}>
-            <div className="flex items-center gap-2">
-              {results.on_track ? <CheckCircle size={18} className="text-green-600" /> : <XCircle size={18} className="text-red-600" />}
-              <p className="text-xs font-medium text-stone-600">Retirement Readiness</p>
-            </div>
-            <p className={`text-3xl font-bold mt-2 font-mono tabular-nums ${results.on_track ? "text-green-700" : "text-red-700"}`}>
-              {formatPercent(results.retirement_readiness_pct)}
-            </p>
-            <p className={`text-xs mt-1 ${results.on_track ? "text-green-600" : "text-red-600"}`}>
-              {results.on_track ? "You're on track!" : `Need ${formatCurrency(Math.abs(results.savings_gap), true)} more`}
-            </p>
-          </div>
+      {/* Tab Switcher */}
+      <div className="flex gap-1 bg-stone-100 rounded-lg p-1 w-fit">
+        <button
+          onClick={() => setActiveTab("budget")}
+          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+            activeTab === "budget" ? "bg-white text-stone-800 shadow-sm" : "text-stone-500 hover:text-stone-700"
+          }`}
+        >
+          <span className="flex items-center gap-1.5"><Wallet size={14} /> Retirement Budget</span>
+        </button>
+        <button
+          onClick={() => setActiveTab("simulator")}
+          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+            activeTab === "simulator" ? "bg-white text-stone-800 shadow-sm" : "text-stone-500 hover:text-stone-700"
+          }`}
+        >
+          <span className="flex items-center gap-1.5"><BarChart3 size={14} /> Simulator</span>
+        </button>
+      </div>
 
-          <div className="bg-white rounded-xl border border-stone-100 p-5 shadow-sm">
-            <div className="flex items-center gap-2"><Target size={18} className="text-blue-500" /><p className="text-xs font-medium text-stone-500">Target Nest Egg</p></div>
-            <p className="text-2xl font-bold text-stone-900 mt-2 font-mono tabular-nums">{formatCurrency(results.target_nest_egg, true)}</p>
-            <p className="text-xs text-stone-400 mt-1">Projected: {formatCurrency(results.projected_nest_egg, true)}</p>
-          </div>
-
-          <div className="bg-white rounded-xl border border-stone-100 p-5 shadow-sm">
-            <div className="flex items-center gap-2"><Flame size={18} className="text-orange-500" /><p className="text-xs font-medium text-stone-500">FIRE Number</p></div>
-            <p className="text-2xl font-bold text-stone-900 mt-2 font-mono tabular-nums">{formatCurrency(results.fire_number, true)}</p>
-            <p className="text-xs text-stone-400 mt-1">Coast FIRE: {formatCurrency(results.coast_fire_number, true)}</p>
-          </div>
-
-          <div className="bg-white rounded-xl border border-stone-100 p-5 shadow-sm">
-            <div className="flex items-center gap-2"><Calendar size={18} className="text-indigo-500" /><p className="text-xs font-medium text-stone-500">Earliest Retirement</p></div>
-            <p className="text-2xl font-bold text-stone-900 mt-2">Age {results.earliest_retirement_age}</p>
-            <p className="text-xs text-stone-400 mt-1">
-              {results.earliest_retirement_age <= inputs.current_age ? "You could retire now" :
-               results.earliest_retirement_age < inputs.retirement_age ? `${inputs.retirement_age - results.earliest_retirement_age}yr earlier possible` :
-               results.earliest_retirement_age === inputs.retirement_age ? "Matches your target" :
-               `${results.earliest_retirement_age - inputs.retirement_age}yr later than target`}
-            </p>
-          </div>
-
-          <div className="bg-white rounded-xl border border-stone-100 p-5 shadow-sm">
-            <div className="flex items-center gap-2"><Clock size={18} className="text-purple-500" /><p className="text-xs font-medium text-stone-500">Money Lasts</p></div>
-            <p className="text-2xl font-bold text-stone-900 mt-2">{results.years_money_will_last.toFixed(0)} years</p>
-            <p className="text-xs text-stone-400 mt-1">
-              {results.years_money_will_last >= results.years_in_retirement ? "Covers full retirement" : `${(results.years_in_retirement - results.years_money_will_last).toFixed(0)}yr shortfall`}
-            </p>
-          </div>
-        </div>
+      {/* Retirement Budget Tab */}
+      {activeTab === "budget" && (
+        <RetirementBudgetTable
+          retirementAge={inputs.retirement_age}
+          onTotalChange={(total) => setRetirementBudgetAnnual(total)}
+        />
       )}
+
+      {/* Simulator Tab */}
+      {activeTab === "simulator" && (
+      <>
+      {/* Results Summary */}
+      {results && (() => {
+        const currentSavings = inputs.current_retirement_savings + inputs.current_other_investments;
+        const currentPct = targetToday > 0 ? Math.min(100, currentSavings / targetToday * 100) : 0;
+        const projectedPct = results.retirement_readiness_pct;
+        return (
+        <div className="space-y-4">
+          {/* Retirement Readiness — full-width card with progress visualization */}
+          <div className={`rounded-xl border p-5 shadow-sm ${results.on_track ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}`}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                {results.on_track ? <CheckCircle size={18} className="text-green-600" /> : <XCircle size={18} className="text-red-600" />}
+                <p className="text-sm font-semibold text-stone-800">Retirement Readiness</p>
+              </div>
+              <span className={`text-sm font-semibold px-3 py-1 rounded-full ${results.on_track ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                {results.on_track ? "On Track" : "Needs Attention"}
+              </span>
+            </div>
+
+            {/* Progress bar — current savings vs target */}
+            <div className="mb-3">
+              <div className="flex justify-between text-xs text-stone-500 mb-1">
+                <span>Current savings: <span className="font-semibold font-mono text-stone-700">{formatCurrency(currentSavings, true)}</span></span>
+                <span>Target: <span className="font-semibold font-mono text-stone-700">{formatCurrency(targetToday, true)}</span></span>
+              </div>
+              <div className="h-3 bg-stone-200 rounded-full overflow-hidden relative">
+                <div className="h-full bg-blue-500 rounded-full transition-all duration-500" style={{ width: `${Math.min(currentPct, 100)}%` }} />
+              </div>
+              <p className="text-xs text-stone-500 mt-1">
+                <span className="font-semibold font-mono text-stone-700">{currentPct.toFixed(1)}%</span> saved today
+              </p>
+            </div>
+
+            {/* How you get there */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-3 border-t border-stone-200/60">
+              <div>
+                <p className="text-[10px] uppercase tracking-wide text-stone-400">Monthly Contributions</p>
+                <p className="text-sm font-semibold font-mono tabular-nums text-stone-800">{formatCurrency(results.total_monthly_contribution)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-wide text-stone-400">Growth Rate</p>
+                <p className="text-sm font-semibold text-stone-800">{inputs.pre_retirement_return_pct}% / yr</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-wide text-stone-400">Years to Grow</p>
+                <p className="text-sm font-semibold text-stone-800">{results.years_to_retirement} years</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-wide text-stone-400">Projected at Retirement</p>
+                <p className="text-sm font-semibold font-mono tabular-nums text-stone-800">{formatCurrency(projectedToday, true)}</p>
+                <p className="text-[10px] text-stone-400">{projectedPct.toFixed(0)}% of target</p>
+              </div>
+            </div>
+
+            {!results.on_track && results.monthly_savings_needed > 0 && (
+              <p className="text-xs text-red-600 mt-3 pt-2 border-t border-red-200/60">
+                Save an extra <span className="font-semibold">{formatCurrency(results.monthly_savings_needed)}/mo</span> to close the gap by age {inputs.retirement_age}
+              </p>
+            )}
+          </div>
+
+          {/* Summary metric cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white rounded-xl border border-stone-100 p-5 shadow-sm">
+              <div className="flex items-center gap-2"><Wallet size={18} className="text-emerald-500" /><p className="text-xs font-medium text-stone-500">Retirement Budget</p></div>
+              <p className="text-2xl font-bold text-stone-900 mt-2 font-mono tabular-nums">{formatCurrency(results.annual_income_needed_today, true)}<span className="text-sm font-normal text-stone-400">/yr</span></p>
+              <p className="text-xs text-stone-400 mt-1">
+                {results.debt_payoff_savings_annual > 0 ? `Saves ${formatCurrency(results.debt_payoff_savings_annual, true)}/yr from paid-off loans` : `${formatCurrency(results.annual_income_needed_today / 12)}/mo in today's dollars`}
+              </p>
+            </div>
+
+            <div className="bg-white rounded-xl border border-stone-100 p-5 shadow-sm">
+              <div className="flex items-center gap-2"><Calendar size={18} className="text-indigo-500" /><p className="text-xs font-medium text-stone-500">Earliest Retirement</p></div>
+              <p className="text-2xl font-bold text-stone-900 mt-2">Age {results.earliest_retirement_age}</p>
+              <p className="text-xs text-stone-400 mt-1">
+                {results.earliest_retirement_age <= inputs.current_age ? "You could retire now" :
+                 results.earliest_retirement_age < inputs.retirement_age ? `${inputs.retirement_age - results.earliest_retirement_age}yr earlier possible` :
+                 results.earliest_retirement_age === inputs.retirement_age ? "Matches your target" :
+                 `${results.earliest_retirement_age - inputs.retirement_age}yr later than target`}
+              </p>
+            </div>
+
+            <div className="bg-white rounded-xl border border-stone-100 p-5 shadow-sm">
+              <div className="flex items-center gap-2"><Clock size={18} className="text-purple-500" /><p className="text-xs font-medium text-stone-500">Money Lasts</p></div>
+              <p className="text-2xl font-bold text-stone-900 mt-2">{results.years_money_will_last.toFixed(0)} years</p>
+              <p className="text-xs text-stone-400 mt-1">
+                {results.years_money_will_last >= results.years_in_retirement ? `Covers all ${results.years_in_retirement} years` : `${(results.years_in_retirement - results.years_money_will_last).toFixed(0)}yr shortfall`}
+              </p>
+            </div>
+
+            <div className="bg-white rounded-xl border border-stone-100 p-5 shadow-sm">
+              <div className="flex items-center gap-2"><TrendingUp size={18} className="text-amber-500" /><p className="text-xs font-medium text-stone-500">Savings Rate</p></div>
+              <p className="text-2xl font-bold text-stone-900 mt-2 font-mono tabular-nums">{results.current_savings_rate_pct.toFixed(1)}%</p>
+              <p className="text-xs text-stone-400 mt-1">
+                {results.recommended_savings_rate_pct > results.current_savings_rate_pct
+                  ? `Recommended: ${results.recommended_savings_rate_pct.toFixed(1)}%`
+                  : "Exceeds recommended rate"}
+              </p>
+            </div>
+          </div>
+        </div>);
+      })()}
 
       {/* Projection Chart */}
       {chartData.length > 0 && (
@@ -374,6 +531,353 @@ export default function RetirementPage() {
               <Area type="monotone" dataKey="balance" stroke="#16A34A" fill="url(#balGrad)" strokeWidth={2} />
             </AreaChart>
           </ResponsiveContainer>
+        </Card>
+      )}
+
+      {/* How the Simulator Works */}
+      {results && (
+        <Card padding="lg">
+          <details>
+            <summary className="cursor-pointer flex items-center gap-2 text-sm font-semibold text-stone-800">
+              <AlertCircle size={16} className="text-blue-500" />
+              How the Simulator Works
+            </summary>
+            <div className="mt-4 space-y-3 text-sm text-stone-600">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-stone-50 rounded-lg p-4">
+                  <p className="font-semibold text-stone-700 mb-1">1. Retirement Budget</p>
+                  <p>Your annual spending in retirement, based on your current budget adjusted for retirement (mortgage paid off, less commuting, more healthcare). Currently: <span className="font-mono font-semibold">{formatCurrency(results.annual_income_needed_today, true)}/yr</span></p>
+                </div>
+                <div className="bg-stone-50 rounded-lg p-4">
+                  <p className="font-semibold text-stone-700 mb-1">2. Target Savings</p>
+                  <p>How much you need saved to fund {results.years_in_retirement} years of retirement ({inputs.life_expectancy - inputs.retirement_age}yr from age {inputs.retirement_age} to {inputs.life_expectancy}), accounting for inflation ({inputs.inflation_rate_pct}%) and portfolio returns ({inputs.post_retirement_return_pct}% in retirement). Target: <span className="font-mono font-semibold">{formatCurrency(targetToday, true)}</span></p>
+                </div>
+                <div className="bg-stone-50 rounded-lg p-4">
+                  <p className="font-semibold text-stone-700 mb-1">3. Portfolio Growth</p>
+                  <p>Your current <span className="font-mono font-semibold">{formatCurrency(inputs.current_retirement_savings + inputs.current_other_investments, true)}</span> grows at <span className="font-semibold">{inputs.pre_retirement_return_pct}%/yr</span> (historical stock market average) with compound interest. Plus <span className="font-mono font-semibold">{formatCurrency(results.total_monthly_contribution)}/mo</span> in contributions (including employer match).</p>
+                </div>
+                <div className="bg-stone-50 rounded-lg p-4">
+                  <p className="font-semibold text-stone-700 mb-1">4. On Track?</p>
+                  <p>After {results.years_to_retirement} years of growth + contributions, your portfolio is projected to reach <span className="font-mono font-semibold">{formatCurrency(projectedToday, true)}</span> (today&apos;s dollars) — {projectedToday >= targetToday ? "exceeding" : "short of"} the <span className="font-mono font-semibold">{formatCurrency(targetToday, true)}</span> target. {results.on_track ? "You're on track." : `You need to save an extra ${formatCurrency(results.monthly_savings_needed)}/mo.`}</p>
+                </div>
+              </div>
+            </div>
+          </details>
+        </Card>
+      )}
+
+      {/* What If You Retire Earlier? */}
+      {results && results.retire_earlier_scenarios?.length > 0 && (
+        <Card padding="lg">
+          <div className="flex items-center gap-2 mb-1">
+            <TrendingUp size={18} className="text-indigo-500" />
+            <h3 className="text-sm font-semibold text-stone-800">What If You Retire Earlier?</h3>
+          </div>
+          <p className="text-xs text-stone-400 mb-4">
+            See what it takes to retire sooner. You can adjust the retirement age slider above to explore any target.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {results.retire_earlier_scenarios.map((scenario) => {
+              const scenarioInflation = (1 + inputs.inflation_rate_pct / 100) ** (scenario.retirement_age - inputs.current_age);
+              const scenarioTargetToday = scenario.target_nest_egg / scenarioInflation;
+              const scenarioProjectedToday = scenario.projected_nest_egg / scenarioInflation;
+              return (<div key={scenario.years_earlier} className={`rounded-xl border p-5 ${scenario.on_track ? "bg-green-50 border-green-200" : "bg-stone-50 border-stone-200"}`}>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-semibold text-stone-800">
+                    Retire at {scenario.retirement_age} <span className="text-xs font-normal text-stone-400">({scenario.years_earlier}yr earlier)</span>
+                  </p>
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${scenario.on_track ? "bg-green-100 text-green-700" : "bg-stone-200 text-stone-600"}`}>
+                    {scenario.readiness_pct.toFixed(0)}% ready
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-xs text-stone-400">Target Savings</p>
+                    <p className="font-semibold font-mono tabular-nums">{formatCurrency(scenarioTargetToday, true)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-stone-400">Projected</p>
+                    <p className="font-semibold font-mono tabular-nums">{formatCurrency(scenarioProjectedToday, true)}</p>
+                  </div>
+                </div>
+                {!scenario.on_track && scenario.monthly_savings_needed > 0 && (
+                  <div className="mt-3 pt-3 border-t border-stone-200">
+                    <p className="text-xs text-stone-500">
+                      To hit this target, save an extra <span className="font-semibold text-stone-700">{formatCurrency(scenario.monthly_savings_needed)}/mo</span> beyond your current contributions
+                    </p>
+                  </div>
+                )}
+                {scenario.on_track && (
+                  <div className="mt-3 pt-3 border-t border-green-200">
+                    <p className="text-xs text-green-600 font-medium">You&apos;re already on track for this timeline</p>
+                  </div>
+                )}
+              </div>);
+            })}
+          </div>
+        </Card>
+      )}
+
+      {/* Lump Sum "What If" Scenario */}
+      {results && (
+        <Card padding="lg">
+          <div className="flex items-center gap-2 mb-1">
+            <Zap size={18} className="text-amber-500" />
+            <h3 className="text-sm font-semibold text-stone-800">What If You Invest a Lump Sum Today?</h3>
+          </div>
+          <p className="text-xs text-stone-400 mb-4">
+            See how a one-time investment today compounds over time and impacts your retirement timeline.
+          </p>
+
+          <div className="flex items-center gap-3 mb-4">
+            <div className="relative flex-1 max-w-xs">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-sm">$</span>
+              <input
+                type="number"
+                value={lumpSumAmount}
+                onChange={(e) => setLumpSumAmount(Number(e.target.value) || 0)}
+                className="w-full pl-7 pr-3 py-2 border border-stone-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#16A34A]/30 focus:border-[#16A34A]"
+                placeholder="50000"
+                step={10000}
+                min={0}
+              />
+            </div>
+            <button
+              onClick={async () => {
+                if (lumpSumAmount <= 0 || !results) return;
+                setLumpSumLoading(true);
+                try {
+                  const body: Record<string, unknown> = { ...inputs };
+                  // Add lump sum to other investments
+                  body.current_other_investments = (inputs.current_other_investments || 0) + lumpSumAmount;
+                  if (!body.desired_annual_retirement_income) delete body.desired_annual_retirement_income;
+                  if (!body.current_annual_expenses) delete body.current_annual_expenses;
+                  if (retirementBudgetAnnual > 0) body.retirement_budget_annual = retirementBudgetAnnual;
+                  const r = await calculateRetirement(body);
+                  setLumpSumResults(r);
+                } catch {
+                  setLumpSumResults(null);
+                }
+                setLumpSumLoading(false);
+              }}
+              disabled={lumpSumLoading || lumpSumAmount <= 0}
+              className="px-4 py-2 bg-amber-500 text-white text-sm font-medium rounded-lg hover:bg-amber-600 disabled:opacity-50 transition-colors flex items-center gap-1.5"
+            >
+              {lumpSumLoading ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
+              Calculate
+            </button>
+          </div>
+
+          {lumpSumResults && results && (() => {
+            const currentEarliest = results.earliest_retirement_age;
+            const newEarliest = lumpSumResults.earliest_retirement_age;
+            const yearsSooner = currentEarliest - newEarliest;
+            const newProjectedToday = lumpSumResults.projected_nest_egg / inflationMult;
+            const extraAtRetirement = newProjectedToday - projectedToday;
+            // Compound growth of the lump sum alone over years_to_retirement at pre_retirement_return
+            const lumpGrowth = lumpSumAmount * ((1 + inputs.pre_retirement_return_pct / 100) ** results.years_to_retirement) - lumpSumAmount;
+            const newMoneyLasts = lumpSumResults.years_money_will_last;
+            const extraYears = newMoneyLasts - results.years_money_will_last;
+
+            return (
+              <div className="bg-amber-50 rounded-xl border border-amber-200 p-5">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <p className="text-xs text-stone-500">Retire Earlier By</p>
+                    <p className="text-xl font-bold text-amber-700 font-mono tabular-nums">
+                      {yearsSooner > 0 ? `${yearsSooner} yr` : yearsSooner === 0 ? "Same" : "—"}
+                    </p>
+                    <p className="text-[10px] text-stone-400">
+                      {yearsSooner > 0 ? `Age ${newEarliest} vs ${currentEarliest}` : "Already optimal"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-stone-500">Lump Sum Grows To</p>
+                    <p className="text-xl font-bold text-stone-800 font-mono tabular-nums">{formatCurrency(lumpSumAmount + lumpGrowth, true)}</p>
+                    <p className="text-[10px] text-stone-400">{formatCurrency(lumpGrowth, true)} in compound growth</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-stone-500">Extra at Retirement</p>
+                    <p className="text-xl font-bold text-stone-800 font-mono tabular-nums">+{formatCurrency(extraAtRetirement, true)}</p>
+                    <p className="text-[10px] text-stone-400">Added to nest egg (today&apos;s $)</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-stone-500">Money Lasts</p>
+                    <p className="text-xl font-bold text-stone-800 font-mono tabular-nums">{newMoneyLasts.toFixed(0)} yr</p>
+                    <p className="text-[10px] text-stone-400">
+                      {extraYears > 0.5 ? `+${extraYears.toFixed(0)}yr longer` : "Same duration"}
+                    </p>
+                  </div>
+                </div>
+
+                <p className="text-xs text-stone-500 mt-4 pt-3 border-t border-amber-200/60">
+                  A one-time <span className="font-semibold">{formatCurrency(lumpSumAmount, true)}</span> investment today,
+                  growing at {inputs.pre_retirement_return_pct}%/yr for {results.years_to_retirement} years,
+                  becomes <span className="font-semibold">{formatCurrency(lumpSumAmount + lumpGrowth, true)}</span> at retirement
+                  {yearsSooner > 0 && <> — letting you retire <span className="font-semibold text-amber-700">{yearsSooner} year{yearsSooner > 1 ? "s" : ""} sooner</span></>}.
+                </p>
+              </div>
+            );
+          })()}
+        </Card>
+      )}
+
+      {/* Second Income "What If" Scenario */}
+      {results && (
+        <Card padding="lg">
+          <div className="flex items-center gap-2 mb-1">
+            <Users size={18} className="text-emerald-600" />
+            <h3 className="text-sm font-semibold text-stone-800">What If You Add a Second Income?</h3>
+          </div>
+          <p className="text-xs text-stone-400 mb-4">
+            Model a spouse or partner returning to work — see how their savings accelerate your retirement timeline.
+          </p>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
+            <div>
+              <label className="text-[10px] uppercase tracking-wider text-stone-400 mb-1 block">Annual Salary</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-sm">$</span>
+                <input type="number" value={secondIncome.salary || ""} onChange={(e) => setSecondIncome(s => ({...s, salary: Number(e.target.value) || 0}))}
+                  className="w-full pl-7 pr-3 py-2 border border-stone-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500"
+                  placeholder="150000" step={10000} min={0} />
+              </div>
+            </div>
+            <div>
+              <label className="text-[10px] uppercase tracking-wider text-stone-400 mb-1 block">Monthly Savings</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-sm">$</span>
+                <input type="number" value={secondIncome.monthlySavings || ""} onChange={(e) => setSecondIncome(s => ({...s, monthlySavings: Number(e.target.value) || 0}))}
+                  className="w-full pl-7 pr-3 py-2 border border-stone-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500"
+                  placeholder="5000" step={500} min={0} />
+              </div>
+            </div>
+            <div>
+              <label className="text-[10px] uppercase tracking-wider text-stone-400 mb-1 block">Starts In</label>
+              <div className="relative">
+                <input type="number" value={secondIncome.startsInYears} onChange={(e) => setSecondIncome(s => ({...s, startsInYears: Math.max(0, Number(e.target.value) || 0)}))}
+                  className="w-full px-3 py-2 border border-stone-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500"
+                  min={0} max={30} />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 text-xs">years</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-4 mb-4">
+            <label className="flex items-center gap-2 text-sm text-stone-600 cursor-pointer">
+              <input type="checkbox" checked={secondIncome.worksUntilRetirement}
+                onChange={(e) => setSecondIncome(s => ({...s, worksUntilRetirement: e.target.checked}))}
+                className="rounded border-stone-300 text-emerald-600 focus:ring-emerald-500" />
+              Works until retirement
+            </label>
+            {!secondIncome.worksUntilRetirement && (
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-stone-400">Years working:</label>
+                <input type="number" value={secondIncome.workYears} onChange={(e) => setSecondIncome(s => ({...s, workYears: Math.max(1, Number(e.target.value) || 1)}))}
+                  className="w-16 px-2 py-1 border border-stone-200 rounded text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                  min={1} max={30} />
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-stone-400">Employer match:</label>
+              <input type="number" value={secondIncome.matchPct} onChange={(e) => setSecondIncome(s => ({...s, matchPct: Number(e.target.value) || 0}))}
+                className="w-14 px-2 py-1 border border-stone-200 rounded text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                min={0} max={100} />
+              <span className="text-xs text-stone-400">% up to</span>
+              <input type="number" value={secondIncome.matchLimit} onChange={(e) => setSecondIncome(s => ({...s, matchLimit: Number(e.target.value) || 0}))}
+                className="w-14 px-2 py-1 border border-stone-200 rounded text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                min={0} max={100} />
+              <span className="text-xs text-stone-400">%</span>
+            </div>
+          </div>
+
+          <button
+            onClick={async () => {
+              if (secondIncome.salary <= 0 || secondIncome.monthlySavings <= 0 || !results) return;
+              setSecondIncomeLoading(true);
+              try {
+                const body: Record<string, unknown> = { ...inputs };
+                if (!body.desired_annual_retirement_income) delete body.desired_annual_retirement_income;
+                if (!body.current_annual_expenses) delete body.current_annual_expenses;
+                if (retirementBudgetAnnual > 0) body.retirement_budget_annual = retirementBudgetAnnual;
+                // Second income fields
+                body.second_income_annual = secondIncome.salary;
+                body.second_income_start_age = inputs.current_age + secondIncome.startsInYears;
+                body.second_income_end_age = secondIncome.worksUntilRetirement
+                  ? inputs.retirement_age
+                  : inputs.current_age + secondIncome.startsInYears + secondIncome.workYears;
+                body.second_income_monthly_contribution = secondIncome.monthlySavings;
+                body.second_income_employer_match_pct = secondIncome.matchPct;
+                body.second_income_employer_match_limit_pct = secondIncome.matchLimit;
+                const r = await calculateRetirement(body);
+                setSecondIncomeResults(r);
+              } catch {
+                setSecondIncomeResults(null);
+              }
+              setSecondIncomeLoading(false);
+            }}
+            disabled={secondIncomeLoading || secondIncome.salary <= 0 || secondIncome.monthlySavings <= 0}
+            className="px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors flex items-center gap-1.5 mb-4"
+          >
+            {secondIncomeLoading ? <Loader2 size={14} className="animate-spin" /> : <Users size={14} />}
+            Calculate Impact
+          </button>
+
+          {secondIncomeResults && results && (() => {
+            const currentEarliest = results.earliest_retirement_age;
+            const newEarliest = secondIncomeResults.earliest_retirement_age;
+            const yearsSooner = currentEarliest - newEarliest;
+            const extraProjected = (secondIncomeResults.projected_nest_egg - results.projected_nest_egg) / inflationMult;
+            const workingYears = secondIncome.worksUntilRetirement
+              ? Math.max(0, inputs.retirement_age - inputs.current_age - secondIncome.startsInYears)
+              : secondIncome.workYears;
+            const newReadiness = secondIncomeResults.retirement_readiness_pct;
+
+            return (
+              <div className="bg-emerald-50 rounded-xl border border-emerald-200 p-5">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <p className="text-xs text-stone-500">Retire Earlier By</p>
+                    <p className="text-xl font-bold text-emerald-700 font-mono tabular-nums">
+                      {yearsSooner > 0 ? `${yearsSooner} yr` : yearsSooner === 0 ? "Same" : "—"}
+                    </p>
+                    <p className="text-[10px] text-stone-400">
+                      {yearsSooner > 0 ? `Age ${newEarliest} vs ${currentEarliest}` : `Earliest: age ${newEarliest}`}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-stone-500">Extra Savings</p>
+                    <p className="text-xl font-bold text-stone-800 font-mono tabular-nums">+{formatCurrency(extraProjected, true)}</p>
+                    <p className="text-[10px] text-stone-400">Added to nest egg (today&apos;s $)</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-stone-500">New Earliest Age</p>
+                    <p className="text-xl font-bold text-stone-800 font-mono tabular-nums">{newEarliest}</p>
+                    <p className="text-[10px] text-stone-400">
+                      {yearsSooner > 0 ? `${yearsSooner} yr sooner` : "Same as current"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-stone-500">Readiness</p>
+                    <p className="text-xl font-bold text-stone-800 font-mono tabular-nums">
+                      {results.retirement_readiness_pct.toFixed(0)}% → {newReadiness.toFixed(0)}%
+                    </p>
+                    <p className="text-[10px] text-stone-400">
+                      +{(newReadiness - results.retirement_readiness_pct).toFixed(0)} percentage points
+                    </p>
+                  </div>
+                </div>
+
+                <p className="text-xs text-stone-500 mt-4 pt-3 border-t border-emerald-200/60">
+                  A second income of <span className="font-semibold">{formatCurrency(secondIncome.salary, true)}</span>/yr
+                  saving <span className="font-semibold">{formatCurrency(secondIncome.monthlySavings, true)}</span>/mo
+                  for {workingYears} years adds <span className="font-semibold text-emerald-700">+{formatCurrency(extraProjected, true)}</span> to
+                  your nest egg
+                  {yearsSooner > 0 && <>, moving earliest retirement from <span className="font-semibold">{currentEarliest}</span> to <span className="font-semibold text-emerald-700">{newEarliest}</span></>}.
+                </p>
+              </div>
+            );
+          })()}
         </Card>
       )}
 
@@ -472,7 +976,10 @@ export default function RetirementPage() {
             ].map(({ key, label, min, max, step, prefix, suffix }) => (
               <div key={key}>
                 <div className="flex justify-between items-center mb-1">
-                  <label className="text-xs text-stone-500">{label}</label>
+                  <span className="flex items-center gap-1.5">
+                    <label className="text-xs text-stone-500">{label}</label>
+                    {autoFilledFields[key] && <AutoFilledIndicator source={autoFilledFields[key]} />}
+                  </span>
                   <span className="text-xs font-semibold text-stone-700 tabular-nums">
                     {prefix}{typeof inputs[key] === "number" ? (prefix === "$" ? (inputs[key] as number).toLocaleString() : String(inputs[key])) : String(inputs[key] ?? "")}{suffix ? ` ${suffix}` : ""}
                   </span>
@@ -494,7 +1001,10 @@ export default function RetirementPage() {
             ].map(({ key, label, max, step }) => (
               <div key={key}>
                 <div className="flex justify-between items-center mb-1">
-                  <label className="text-xs text-stone-500">{label}</label>
+                  <span className="flex items-center gap-1.5">
+                    <label className="text-xs text-stone-500">{label}</label>
+                    {autoFilledFields[key] && <AutoFilledIndicator source={autoFilledFields[key]} />}
+                  </span>
                   <span className="text-xs font-semibold text-stone-700 tabular-nums">${(inputs[key] as number).toLocaleString()}</span>
                 </div>
                 <input type="range" min={0} max={max} step={step} value={inputs[key] as number} onChange={(e) => update(key, Number(e.target.value))} className="w-full h-1.5 bg-stone-200 rounded-full appearance-none cursor-pointer accent-[#16A34A]" />
@@ -670,16 +1180,27 @@ export default function RetirementPage() {
             <div><p className="text-xs text-stone-400">Years to Retirement</p><p className="font-semibold">{results.years_to_retirement}</p></div>
             <div><p className="text-xs text-stone-400">Years in Retirement</p><p className="font-semibold">{results.years_in_retirement}</p></div>
             <div><p className="text-xs text-stone-400">Earliest Retirement Age</p><p className="font-semibold text-indigo-600">Age {results.earliest_retirement_age}</p></div>
-            <div><p className="text-xs text-stone-400">Annual Income Needed (today)</p><p className="font-semibold">{formatCurrency(results.annual_income_needed_today, true)}</p></div>
-            <div><p className="text-xs text-stone-400">Annual Income Needed (at retirement)</p><p className="font-semibold">{formatCurrency(results.annual_income_needed_at_retirement, true)}</p></div>
+            <div><p className="text-xs text-stone-400">Retirement Budget (today&apos;s $)</p><p className="font-semibold">{formatCurrency(results.annual_income_needed_today, true)}/yr</p></div>
+            <div><p className="text-xs text-stone-400">Budget at Retirement (inflated)</p><p className="font-semibold">{formatCurrency(results.annual_income_needed_at_retirement, true)}/yr</p><p className="text-[10px] text-stone-300">After {results.years_to_retirement}yr of {inputs.inflation_rate_pct}% inflation + {inputs.tax_rate_in_retirement_pct}% tax</p></div>
+            <div><p className="text-xs text-stone-400">Target Savings (today&apos;s $)</p><p className="font-semibold">{formatCurrency(targetToday, true)}</p></div>
+            <div><p className="text-xs text-stone-400">Target at Retirement (inflated)</p><p className="font-semibold">{formatCurrency(results.target_nest_egg, true)}</p><p className="text-[10px] text-stone-300">Actual dollars needed on retirement day</p></div>
             <div><p className="text-xs text-stone-400">Projected Monthly Income</p><p className="font-semibold">{formatCurrency(results.projected_monthly_income)}</p></div>
             <div><p className="text-xs text-stone-400">Social Security (annual)</p><p className="font-semibold">{formatCurrency(results.social_security_annual, true)}</p></div>
-            <div><p className="text-xs text-stone-400">Portfolio Income Needed</p><p className="font-semibold">{formatCurrency(results.portfolio_income_needed_annual, true)}/yr</p></div>
+            <div><p className="text-xs text-stone-400">Needed from Portfolio</p><p className="font-semibold">{formatCurrency(results.portfolio_income_needed_annual, true)}/yr</p></div>
             <div><p className="text-xs text-stone-400">Current Savings Rate</p><p className="font-semibold">{formatPercent(results.current_savings_rate_pct)}</p></div>
             <div><p className="text-xs text-stone-400">Recommended Savings Rate</p><p className="font-semibold">{formatPercent(results.recommended_savings_rate_pct)}</p></div>
             <div><p className="text-xs text-stone-400">Monthly Contribution (with match)</p><p className="font-semibold">{formatCurrency(results.total_monthly_contribution)}</p></div>
             <div><p className="text-xs text-stone-400">Employer Match (monthly)</p><p className="font-semibold">{formatCurrency(results.employer_match_monthly)}</p></div>
-            <div><p className="text-xs text-stone-400">Lean FIRE Number</p><p className="font-semibold">{formatCurrency(results.lean_fire_number, true)}</p></div>
+            <div>
+              <p className="text-xs text-stone-400">Retirement Target (25x rule)</p>
+              <p className="font-semibold">{formatCurrency(results.fire_number, true)}</p>
+              <p className="text-[10px] text-stone-300">25x your annual expenses — assumes 4% annual withdrawal</p>
+            </div>
+            <div>
+              <p className="text-xs text-stone-400">Coast Number</p>
+              <p className="font-semibold">{formatCurrency(results.coast_fire_number, true)}</p>
+              <p className="text-[10px] text-stone-300">What you&apos;d need today to stop saving and still reach your target</p>
+            </div>
             {results.debt_payoff_savings_annual > 0 && (
               <div><p className="text-xs text-stone-400">Debt Payoff Savings</p><p className="font-semibold text-green-600">{formatCurrency(results.debt_payoff_savings_annual)}/yr</p></div>
             )}
@@ -688,6 +1209,9 @@ export default function RetirementPage() {
             )}
           </div>
         </Card>
+      )}
+
+      </>
       )}
 
       {loading && (

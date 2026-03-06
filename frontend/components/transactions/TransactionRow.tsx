@@ -1,6 +1,6 @@
 "use client";
-import { ChevronRight, Tag, AlertTriangle, Building2, Bot } from "lucide-react";
-import { formatCurrency, segmentColor } from "@/lib/utils";
+import { ChevronRight, Tag, AlertTriangle, Building2, Bot, Package } from "lucide-react";
+import { formatCurrency, segmentColor, cleanTransactionName } from "@/lib/utils";
 import type { BusinessEntity, Transaction } from "@/types/api";
 import Badge from "@/components/ui/Badge";
 import { CATEGORY_ICONS } from "./constants";
@@ -21,6 +21,7 @@ export default function TransactionRow({ tx, entityMap, onSelect, selected, onTo
   const isUncategorized = !cat || cat === "Uncategorized";
   const hasLowConfidence = tx.ai_confidence !== null && tx.ai_confidence < 0.7 && !tx.is_manually_reviewed;
   const logoUrl = tx.merchant_logo_url;
+  const displayName = cleanTransactionName(tx.description, tx.merchant_name);
 
   return (
     <button
@@ -47,13 +48,13 @@ export default function TransactionRow({ tx, entityMap, onSelect, selected, onTo
         <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs shrink-0 mr-3 ${
           tx.amount >= 0 ? "bg-green-50 text-green-600" : "bg-stone-100 text-stone-500"
         }`}>
-          {catIcon || tx.description.charAt(0).toUpperCase()}
+          {catIcon || displayName.charAt(0).toUpperCase()}
         </div>
       )}
 
       <div className="flex-1 min-w-0 mr-3">
         <p className="text-[13px] font-medium text-stone-800 truncate leading-tight">
-          {tx.description}
+          {displayName}
         </p>
         <div className="flex items-center gap-1.5 mt-0.5">
           {isUncategorized ? (
@@ -77,6 +78,14 @@ export default function TransactionRow({ tx, entityMap, onSelect, selected, onTo
             <>
               <span className="text-stone-300">&middot;</span>
               <span className="text-[11px] text-violet-500">edited</span>
+            </>
+          )}
+          {tx.data_source === "amazon" && tx.parent_transaction_id && (
+            <>
+              <span className="text-stone-300">&middot;</span>
+              <span className="text-[11px] text-orange-500 flex items-center gap-0.5">
+                <Package size={8} /> Amazon
+              </span>
             </>
           )}
           {hasLowConfidence && (

@@ -12,6 +12,7 @@ import ProgressBar from "@/components/ui/ProgressBar";
 import GoalCard from "@/components/goals/GoalCard";
 import GoalTemplates, { type GoalTemplate } from "@/components/goals/GoalTemplates";
 import { GOAL_TYPES, COLORS } from "@/components/goals/constants";
+import SirHenryName from "@/components/ui/SirHenryName";
 
 function askHenry(message: string) {
   window.dispatchEvent(new CustomEvent("ask-henry", { detail: { message } }));
@@ -119,7 +120,7 @@ export default function GoalsPage() {
               className="flex items-center gap-1.5 text-xs text-[#16A34A] hover:text-[#15803D] transition-colors"
             >
               <MessageCircle size={14} />
-              Ask Sir Henry
+              Ask <SirHenryName />
             </button>
             <button
               onClick={() => { resetForm(); setShowAdd(true); }}

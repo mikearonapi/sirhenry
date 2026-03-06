@@ -1,5 +1,6 @@
 "use client";
 import { MessageCircle } from "lucide-react";
+import SirHenryName from "@/components/ui/SirHenryName";
 import { formatCurrency } from "@/lib/utils";
 import type { TaxEstimate } from "@/types/api";
 import StatCard from "@/components/ui/StatCard";
@@ -57,7 +58,7 @@ export default function TaxEstimateSection({ estimate, year }: { estimate: TaxEs
         onClick={() => askHenry(`Based on my ${year} tax estimate showing $${Math.round(estimate.total_estimated_tax).toLocaleString()} in total tax and $${Math.round(estimate.estimated_agi).toLocaleString()} adjusted gross income, am I on track? What should I prioritize to reduce my tax bill?`)}
         className="flex items-center gap-1.5 text-xs text-[#16A34A] hover:underline mt-3 print:hidden"
       >
-        <MessageCircle size={12} /> Ask Sir Henry about my tax situation
+        <MessageCircle size={12} /> Ask <SirHenryName /> about my tax situation
       </button>
     </div>
   );

@@ -7,6 +7,7 @@ import type { TaxDeductionInsights, TaxStrategy } from "@/types/api";
 import PageHeader from "@/components/ui/PageHeader";
 import { StrategyDashboard, DeductionOpportunities, StrategySimulators } from "@/components/tax-strategy";
 import TaxStrategyInterview from "@/components/tax-strategy/TaxStrategyInterview";
+import SirHenryName from "@/components/ui/SirHenryName";
 
 const currentYear = new Date().getFullYear();
 const YEARS = [currentYear, currentYear - 1, currentYear - 2];
@@ -106,7 +107,7 @@ export default function TaxStrategyPage() {
           <ClipboardList size={20} className="text-[#16A34A] flex-shrink-0" />
           <div className="flex-1">
             <p className="text-sm font-medium text-stone-800">Get personalized tax strategies</p>
-            <p className="text-xs text-stone-500 mt-0.5">Answer 5 quick questions and Sir Henry will generate strategies tailored to your situation.</p>
+            <p className="text-xs text-stone-500 mt-0.5">Answer 5 quick questions and <SirHenryName /> will generate strategies tailored to your situation.</p>
           </div>
           <button onClick={() => setShowInterview(true)} className={`whitespace-nowrap ${btnCls}`}>
             Start Interview

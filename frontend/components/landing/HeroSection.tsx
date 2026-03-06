@@ -42,13 +42,6 @@ export default function HeroSection() {
       {/* Hero */}
       <section className="bg-[#0A0A0B] pt-20 pb-16 px-6">
         <div className="max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 bg-[#EAB308]/10 border border-[#EAB308]/20 rounded-full px-4 py-1.5 mb-8">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#EAB308] animate-pulse" />
-            <span className="text-[#EAB308] text-xs font-semibold tracking-wide uppercase">
-              Coming soon &middot; Spring 2026
-            </span>
-          </div>
-
           <h1
             className="text-[#F9FAFB] font-extrabold leading-[1.1] mb-6"
             style={{

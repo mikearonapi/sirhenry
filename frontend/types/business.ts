@@ -72,6 +72,37 @@ export interface EntityReassignIn {
   date_to?: string | null;
 }
 
+export interface ReimbursementMonthly {
+  month: string;
+  expenses: number;
+  expense_count: number;
+  reimbursed: number;
+  reimbursement_count: number;
+  net: number;
+  running_balance: number;
+}
+
+export interface ReimbursementReport {
+  entity_id: number;
+  entity_name: string;
+  linked_accounts: { id: number; name: string; institution: string }[];
+  monthly: ReimbursementMonthly[];
+  total_expenses: number;
+  total_reimbursed: number;
+  balance: number;
+}
+
+export interface EntityTransaction {
+  date: string;
+  description: string;
+  amount: number;
+  category: string;
+  tax_category: string;
+  account: string;
+  segment: string;
+  notes: string;
+}
+
 export interface VendorEntityRuleCreateIn {
   vendor_pattern: string;
   business_entity_id: number;

@@ -1,4 +1,5 @@
 import { CheckCircle, Minus } from "lucide-react";
+import SirHenryBrand from "./SirHenryBrand";
 
 const ROWS: [string, boolean, boolean, boolean][] = [
   ["Monte Carlo retirement simulation", false, false, true],
@@ -127,7 +128,7 @@ export default function ComparisonTable() {
                   ) : (
                     <Minus size={14} className="text-[#D1D5DB]" />
                   )}
-                  <span>SirHENRY</span>
+                  <SirHenryBrand />
                 </div>
               </div>
             </div>

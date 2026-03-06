@@ -4,6 +4,7 @@ import type { TaxStrategy } from "@/types/api";
 import StrategySummaryBar from "./StrategySummaryBar";
 import StrategyTimeline from "./StrategyTimeline";
 import StrategyCard from "./StrategyCard";
+import SirHenryName from "@/components/ui/SirHenryName";
 
 function askHenry(message: string) {
   window.dispatchEvent(new CustomEvent("ask-henry", { detail: { message } }));
@@ -30,7 +31,7 @@ export default function StrategyDashboard({ strategies, onDismiss, onOpenSimulat
             onClick={() => askHenry("What are my best tax optimization strategies for this year? Consider my income, business, and household situation.")}
             className="flex items-center gap-1.5 text-xs text-[#16A34A] hover:underline mt-3 mx-auto"
           >
-            <MessageCircle size={12} /> Or ask Sir Henry for advice
+            <MessageCircle size={12} /> Or ask <SirHenryName /> for advice
           </button>
         </div>
       ) : (

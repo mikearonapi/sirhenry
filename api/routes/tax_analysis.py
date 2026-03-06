@@ -798,3 +798,73 @@ async def update_tax_item(
 
     await session.flush()
     return {"id": item.id, "updated_fields": list(updates.keys())}
+
+
+@router.get("/estimated-quarterly")
+async def estimated_quarterly_tax(
+    tax_year: int = Query(...),
+    session: AsyncSession = Depends(get_session),
+):
+    """Calculate quarterly estimated tax payments based on self-employment and non-withheld income."""
+    from pipeline.db.schema import BusinessEntity
+
+    # Get household info for tax rate
+    h_result = await session.execute(
+        select(HouseholdProfile).where(HouseholdProfile.is_primary.is_(True)).limit(1)
+    )
+    household = h_result.scalar_one_or_none()
+    filing_status = household.filing_status if household else "single"
+
+    # Sum YTD self-employment / non-withheld income
+    nec_result = await session.execute(
+        select(func.sum(TaxItem.nec_nonemployee_compensation))
+        .where(TaxItem.tax_year == tax_year, TaxItem.form_type == "1099-nec")
+    )
+    nec_total = float(nec_result.scalar() or 0)
+
+    k1_result = await session.execute(
+        select(func.sum(TaxItem.k1_ordinary_income))
+        .where(TaxItem.tax_year == tax_year, TaxItem.form_type == "k-1")
+    )
+    k1_total = float(k1_result.scalar() or 0)
+
+    # Business transaction income
+    biz_income_result = await session.execute(
+        select(func.sum(Transaction.amount))
+        .where(
+            Transaction.period_year == tax_year,
+            Transaction.amount > 0,
+            Transaction.effective_segment == "business",
+            Transaction.is_excluded.is_(False),
+        )
+    )
+    biz_income = float(biz_income_result.scalar() or 0)
+
+    total_se_income = nec_total + k1_total + biz_income
+
+    # Marginal rate estimation — include other income (K-1, 1099, etc.) for bracket accuracy
+    combined_income = ((household.combined_income or 0) + (household.other_income_annual or 0)) if household else 0
+    if filing_status in ("married_filing_jointly", "mfj"):
+        marginal_rate = 0.32 if combined_income > 340000 else 0.24 if combined_income > 190000 else 0.22
+    else:
+        marginal_rate = 0.32 if combined_income > 170000 else 0.24 if combined_income > 95000 else 0.22
+
+    se_tax_rate = 0.153  # Self-employment tax
+    annual_tax = total_se_income * (marginal_rate + se_tax_rate * 0.5)
+    quarterly_amount = round(annual_tax / 4, 2)
+
+    due_dates = [
+        {"quarter": 1, "due_date": f"{tax_year}-04-15", "amount": quarterly_amount},
+        {"quarter": 2, "due_date": f"{tax_year}-06-15", "amount": quarterly_amount},
+        {"quarter": 3, "due_date": f"{tax_year}-09-15", "amount": quarterly_amount},
+        {"quarter": 4, "due_date": f"{tax_year + 1}-01-15", "amount": quarterly_amount},
+    ]
+
+    return {
+        "tax_year": tax_year,
+        "total_se_income": round(total_se_income, 2),
+        "marginal_rate": marginal_rate,
+        "annual_estimated_tax": round(annual_tax, 2),
+        "quarterly_amount": quarterly_amount,
+        "due_dates": due_dates,
+    }

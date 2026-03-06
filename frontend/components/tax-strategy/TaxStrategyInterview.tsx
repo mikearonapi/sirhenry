@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, ClipboardList, Loader2 } from "lucide-react";
 import { getTaxStrategyProfile, saveTaxStrategyProfile, runTaxAnalysis } from "@/lib/api";
+import SirHenryName from "@/components/ui/SirHenryName";
 import type { TaxStrategyProfile } from "@/types/api";
 
 const STEPS = [
@@ -218,7 +219,7 @@ export default function TaxStrategyInterview({ onComplete, year }: {
 
         {step === 4 && (
           <div className="space-y-3">
-            <p className="text-sm text-stone-700 mb-3">Review your answers. Sir Henry will use this to generate personalized tax strategies.</p>
+            <p className="text-sm text-stone-700 mb-3">Review your answers. <SirHenryName /> will use this to generate personalized tax strategies.</p>
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div className="bg-stone-50 rounded-lg p-3">
                 <p className="text-xs text-stone-500 mb-1">Income</p>

@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Loader2, AlertCircle, Bot, Download, CheckSquare, X } from "lucide-react";
-import { getTransactions, updateTransaction, getBusinessEntities, getBudgetCategories, getTransactionAudit, runCategorization } from "@/lib/api";
+import { getTransactions, updateTransaction, getBusinessEntities, getBudgetCategories, getTransactionAudit, runCategorization, learnCategory } from "@/lib/api";
 import type { BusinessEntity, Transaction, TransactionUpdateIn } from "@/types/api";
 import type { TransactionAudit } from "@/lib/api-transactions";
 import Card from "@/components/ui/Card";
@@ -44,6 +44,12 @@ export default function TransactionsPage() {
 
   // Export state
   const [exporting, setExporting] = useState(false);
+
+  // Category learning state
+  const [learnToast, setLearnToast] = useState<{
+    merchant: string;
+    appliedCount: number;
+  } | null>(null);
 
   const allCategories = useMemo(() => {
     const set = new Set([...BASE_CATEGORIES, ...dbCategories]);
@@ -98,7 +104,37 @@ export default function TransactionsPage() {
     const updated = await updateTransaction(id, update);
     setTransactions((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
     setDetail({ tx: updated });
+
+    // Trigger category learning when user overrides a category
+    if (update.category_override) {
+      try {
+        const result = await learnCategory(
+          id,
+          update.category_override,
+          update.tax_category_override ?? undefined,
+          update.segment_override ?? undefined,
+          update.business_entity_override ?? undefined,
+        );
+        if (result.applied_count > 0 && result.rule_id) {
+          setLearnToast({ merchant: result.merchant, appliedCount: result.applied_count });
+        }
+      } catch {
+        // Learning is best-effort, don't block the user
+      }
+    }
   }
+
+  // Auto-dismiss learning toast after 4 seconds
+  useEffect(() => {
+    if (!learnToast) return;
+    const timer = setTimeout(() => {
+      setLearnToast(null);
+      // Refresh to show newly categorized transactions
+      const controller = new AbortController();
+      load(controller.signal);
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [learnToast]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleCategorize() {
     setCategorizing(true);
@@ -242,6 +278,21 @@ export default function TransactionsPage() {
             <span>AI categorized <strong>{catResult.categorized}</strong> transactions ({catResult.skipped} already categorized)</span>
           </div>
           <button onClick={() => setCatResult(null)} className="text-green-600 hover:text-green-800">
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
+      {/* Category learning toast */}
+      {learnToast && (
+        <div className="bg-green-50 text-green-800 rounded-xl p-3 flex items-center justify-between border border-green-100">
+          <div className="flex items-center gap-2 text-sm">
+            <CheckSquare size={16} className="text-green-600" />
+            <span>
+              Applied rule to <strong>{learnToast.appliedCount}</strong> transaction{learnToast.appliedCount !== 1 ? "s" : ""} from <strong>{learnToast.merchant}</strong>.
+            </span>
+          </div>
+          <button onClick={() => setLearnToast(null)} className="text-green-400 hover:text-green-600">
             <X size={14} />
           </button>
         </div>

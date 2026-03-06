@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { X, Check, Loader2, Eye, EyeOff, Building2, Bot } from "lucide-react";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { X, Check, Loader2, Eye, EyeOff, Building2, Bot, Package, ArrowUpRight } from "lucide-react";
+import { formatCurrency, formatDate, cleanTransactionName } from "@/lib/utils";
 import type { BusinessEntity, Transaction, TransactionUpdateIn } from "@/types/api";
 
 const TAX_CATEGORIES = [
@@ -130,16 +130,19 @@ export default function TransactionDetailPanel({
             <p className={`text-2xl font-bold tracking-tight ${tx.amount >= 0 ? "text-green-600" : "text-stone-900"}`}>
               {tx.amount >= 0 ? "+" : ""}{formatCurrency(tx.amount)}
             </p>
-            <p className="text-sm text-stone-600 mt-1 font-medium">{tx.description}</p>
-            {tx.merchant_name && tx.merchant_name !== tx.description && (
-              <p className="text-xs text-stone-400 mt-0.5">{tx.merchant_name}</p>
-            )}
+            <p className="text-sm text-stone-600 mt-1 font-medium">{cleanTransactionName(tx.description, tx.merchant_name)}</p>
             <p className="text-xs text-stone-400 mt-0.5">{formatDate(tx.date)}</p>
           </div>
 
           {/* Mapping info */}
-          {(tx.category || tx.ai_confidence !== null) && (
+          {(tx.category || tx.ai_confidence !== null || tx.description !== cleanTransactionName(tx.description, tx.merchant_name)) && (
             <div className="bg-stone-50 rounded-lg p-3 space-y-1.5 text-xs">
+              {tx.description !== cleanTransactionName(tx.description, tx.merchant_name) && (
+                <div className="flex justify-between gap-2">
+                  <span className="text-stone-500 shrink-0">Bank description</span>
+                  <span className="text-stone-500 text-right truncate" title={tx.description}>{tx.description}</span>
+                </div>
+              )}
               {tx.category && (
                 <div className="flex justify-between">
                   <span className="text-stone-500">Original category</span>
@@ -164,6 +167,39 @@ export default function TransactionDetailPanel({
                   <span className="text-stone-700 font-medium capitalize">{tx.data_source}</span>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Amazon split: child → shows parent link */}
+          {tx.data_source === "amazon" && tx.parent_transaction_id && (
+            <div className="bg-orange-50 rounded-lg p-3 border border-orange-100">
+              <p className="text-xs font-medium text-orange-800 flex items-center gap-1">
+                <Package size={12} /> Amazon Split
+              </p>
+              <p className="text-xs text-orange-700 mt-1">
+                This is part of an Amazon order that was split into per-category transactions for accurate budget tracking.
+              </p>
+            </div>
+          )}
+
+          {/* Amazon split: parent → shows children */}
+          {tx.children && tx.children.length > 0 && (
+            <div className="bg-orange-50 rounded-lg p-3 border border-orange-100">
+              <p className="text-xs font-medium text-orange-800 flex items-center gap-1 mb-2">
+                <Package size={12} /> Split into {tx.children.length} categories
+              </p>
+              <div className="space-y-1.5">
+                {tx.children.map((child) => (
+                  <div key={child.id} className="flex items-center justify-between text-xs">
+                    <span className="text-orange-700 truncate flex-1 mr-2">
+                      {child.effective_category || "Uncategorized"}
+                    </span>
+                    <span className="text-orange-800 font-mono font-medium shrink-0">
+                      {formatCurrency(child.amount)}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

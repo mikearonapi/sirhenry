@@ -14,6 +14,9 @@ import {
   Compass,
   RefreshCw,
   Activity,
+  Plus,
+  Filter,
+  Bell,
 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -41,6 +44,12 @@ export const TOOL_ICONS: Record<string, typeof Search> = {
   trigger_plaid_sync: RefreshCw,
   run_categorization: Sparkles,
   get_data_health: Activity,
+  update_transaction: FileEdit,
+  create_transaction: Plus,
+  exclude_transactions: Filter,
+  manage_budget: Target,
+  manage_goal: Target,
+  create_reminder: Bell,
 };
 
 export const TOOL_LABELS: Record<string, string> = {
@@ -64,6 +73,12 @@ export const TOOL_LABELS: Record<string, string> = {
   trigger_plaid_sync: "Syncing bank data",
   run_categorization: "Categorizing transactions",
   get_data_health: "Running data health check",
+  update_transaction: "Updating transaction",
+  create_transaction: "Creating transaction",
+  exclude_transactions: "Updating transactions",
+  manage_budget: "Updating budget",
+  manage_goal: "Updating goal",
+  create_reminder: "Setting reminder",
 };
 
 export const TOOL_DONE_LABELS: Record<string, string> = {
@@ -87,6 +102,12 @@ export const TOOL_DONE_LABELS: Record<string, string> = {
   trigger_plaid_sync: "Bank data synced",
   run_categorization: "Categorization complete",
   get_data_health: "Health check complete",
+  update_transaction: "Transaction updated",
+  create_transaction: "Transaction created",
+  exclude_transactions: "Transactions updated",
+  manage_budget: "Budget updated",
+  manage_goal: "Goal updated",
+  create_reminder: "Reminder set",
 };
 
 // ---------------------------------------------------------------------------
@@ -181,9 +202,9 @@ export const SUGGESTION_CATEGORIES: SuggestionCategory[] = [
     bgColor: "bg-rose-50 hover:bg-rose-100 border-rose-100",
     suggestions: [
       "Run a data health check — what needs attention?",
-      "Sync my bank accounts and categorize new transactions",
-      "What are my manual assets worth? Any values need updating?",
-      "Look up the current price of ACN stock",
+      "My income looks too high this month — can you investigate?",
+      "Set a budget of $500/month for dining out",
+      "Create a savings goal for a house down payment",
     ],
   },
 ];

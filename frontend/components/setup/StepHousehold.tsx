@@ -6,6 +6,7 @@ import type { SetupData } from "./SetupWizard";
 import type { OtherIncomeSource, OtherIncomeType } from "@/types/household";
 import { createHouseholdProfile, updateHouseholdProfile } from "@/lib/api-household";
 import { getErrorMessage } from "@/lib/errors";
+import SirHenryName from "@/components/ui/SirHenryName";
 
 const INPUT = "w-full rounded-lg border border-stone-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#16A34A]/30 focus:border-[#16A34A] bg-white";
 const DOLLAR = "w-full rounded-lg border border-stone-200 pl-7 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#16A34A]/30 focus:border-[#16A34A] bg-white";
@@ -291,7 +292,7 @@ export default function StepHousehold({ data, onRefresh }: Props) {
           className="flex items-center gap-1 mt-2 text-[11px] text-[#16A34A] hover:underline"
         >
           <MessageCircle size={10} />
-          Not sure which to pick? Ask Sir Henry
+          Not sure which to pick? Ask <SirHenryName />
         </button>
       </div>
 

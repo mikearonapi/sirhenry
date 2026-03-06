@@ -19,6 +19,7 @@ import { getErrorMessage } from "@/lib/errors";
 import { request } from "@/lib/api-client";
 import EmptyState from "@/components/ui/EmptyState";
 import ESPPAnalysis from "@/components/equity-comp/ESPPAnalysis";
+import SirHenryName from "@/components/ui/SirHenryName";
 import VestingCalendar from "@/components/equity-comp/VestingCalendar";
 
 const GRANT_TYPE_COLORS: Record<string, string> = {
@@ -184,7 +185,7 @@ export default function EquityCompPage() {
             className="flex items-center gap-1.5 text-xs text-[#16A34A] hover:text-[#15803D] transition-colors"
           >
             <MessageCircle size={14} />
-            Ask Sir Henry
+            Ask <SirHenryName />
           </button>
           <button
             onClick={async () => {

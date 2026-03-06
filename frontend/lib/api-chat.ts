@@ -25,7 +25,7 @@ export function sendChatMessage(
 // ---------------------------------------------------------------------------
 
 export interface StreamEvent {
-  type: "text_delta" | "tool_start" | "tool_done" | "done" | "error" | "requires_consent";
+  type: "text_delta" | "tool_start" | "tool_done" | "done" | "error" | "requires_consent" | "learning";
   text?: string;
   tool?: string;
   label?: string;

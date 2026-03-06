@@ -96,6 +96,14 @@ export interface AdminHealthSection {
   action: string;
 }
 
+export interface SetupItem {
+  label: string;
+  href: string;
+  count: number;
+  status: "complete" | "partial" | "empty";
+  action: string;
+}
+
 export type AddFlowStep = "choose" | "manual-form";
 
 export interface CompletenessStep {

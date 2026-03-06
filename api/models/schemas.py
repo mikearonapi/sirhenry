@@ -5,7 +5,7 @@ These define the contract between the FastAPI backend and the Next.js frontend.
 from datetime import date, datetime
 from typing import Any, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 # ---------------------------------------------------------------------------
@@ -104,7 +104,25 @@ class TransactionOut(BaseModel):
     data_source: str = "csv"
     merchant_name: Optional[str] = None
     merchant_logo_url: Optional[str] = None
+    parent_transaction_id: Optional[int] = None
+    children: list["TransactionOut"] = Field(default_factory=list)
     created_at: datetime
+
+    @model_validator(mode="before")
+    @classmethod
+    def _prevent_lazy_load(cls, data: object) -> object:
+        """Prevent SQLAlchemy lazy-load of 'children' when validating from ORM."""
+        if hasattr(data, "__dict__"):
+            # Check if 'children' is loaded in the ORM instance state;
+            # if not, inject an empty list to avoid a lazy-load greenlet error.
+            from sqlalchemy import inspect as sa_inspect
+            try:
+                state = sa_inspect(data)
+                if "children" not in state.dict:
+                    state.dict["children"] = []
+            except Exception:
+                pass
+        return data
 
 
 class TransactionUpdateIn(BaseModel):

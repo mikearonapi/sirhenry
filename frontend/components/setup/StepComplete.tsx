@@ -3,6 +3,7 @@ import { CheckCircle2, ArrowRight, ChevronRight, MessageCircle } from "lucide-re
 import Card from "@/components/ui/Card";
 import type { SetupData, SetupStep } from "./SetupWizard";
 import Link from "next/link";
+import SirHenryName from "@/components/ui/SirHenryName";
 
 function askHenry(message: string) {
   window.dispatchEvent(new CustomEvent("ask-henry", { detail: { message } }));
@@ -46,11 +47,11 @@ export default function StepComplete({ data, onGoTo }: Props) {
       link: "/accounts",
     },
     {
-      label: "Employer Benefits",
+      label: "Employer & Benefits",
       done: !!data.household,
       detail: data.household ? "Configured" : "Needs household first",
       unlocks: "401k Optimization · HSA Strategy · Retirement Projections",
-      step: "benefits",
+      step: "employer",
       link: "/household",
     },
     {
@@ -62,14 +63,6 @@ export default function StepComplete({ data, onGoTo }: Props) {
       link: "/insurance",
     },
     {
-      label: "Life Events",
-      done: data.lifeEvents.length > 0,
-      detail: `${data.lifeEvents.length} events logged`,
-      unlocks: "Tax Impact Checklists · Action Items",
-      step: "life-events",
-      link: "/life-events",
-    },
-    {
       label: "Business Entities",
       done: true, // Always "done" — it's optional
       detail: data.entities.length > 0
@@ -78,6 +71,22 @@ export default function StepComplete({ data, onGoTo }: Props) {
       unlocks: "Business Expense Tracking · Schedule C/K-1 Tax Planning",
       step: "business",
       link: "/business",
+    },
+    {
+      label: "Life Events",
+      done: data.lifeEvents.length > 0,
+      detail: `${data.lifeEvents.length} events logged`,
+      unlocks: "Tax Impact Checklists · Action Items",
+      step: "life-events",
+      link: "/life-events",
+    },
+    {
+      label: "AI Learning",
+      done: true, // Optional — always marked done
+      detail: "Rules & insights ready",
+      unlocks: "Auto-Categorization · Spending Insights · Tax Optimization",
+      step: "rules",
+      link: "/rules",
     },
   ];
 
@@ -115,7 +124,8 @@ export default function StepComplete({ data, onGoTo }: Props) {
         </h2>
         <p className="text-sm text-stone-500 mt-1 max-w-md mx-auto">
           {completedCount === totalCount
-            ? "Your financial profile is complete. Sir Henry can now provide personalized tax, insurance, and wealth optimization."
+            ? <>Your financial profile is complete. <SirHenryName /> can now provide personalized tax, insurance, and wealth optimization.</>
+
             : `${completedCount} of ${totalCount} sections configured. You can always come back to add more details.`
           }
         </p>
@@ -170,7 +180,7 @@ export default function StepComplete({ data, onGoTo }: Props) {
       {/* Nudges for missing data */}
       {nudges.length > 0 && (
         <Card padding="sm" className="bg-amber-50/50 border-amber-100">
-          <p className="text-xs font-medium text-amber-700 mb-1.5">Tips to get more from Sir Henry</p>
+          <p className="text-xs font-medium text-amber-700 mb-1.5">Tips to get more from <SirHenryName /></p>
           <div className="space-y-1">
             {nudges.map((nudge, i) => (
               <p key={i} className="text-[11px] text-amber-600/80">
@@ -188,7 +198,7 @@ export default function StepComplete({ data, onGoTo }: Props) {
         className="flex items-center justify-center gap-1.5 w-full py-2.5 rounded-lg border border-[#16A34A]/20 text-sm text-[#16A34A] hover:bg-green-50 transition-colors"
       >
         <MessageCircle size={14} />
-        Ask Sir Henry what to focus on first
+        Ask <SirHenryName /> what to focus on first
       </button>
 
       {/* CTA */}

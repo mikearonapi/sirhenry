@@ -25,3 +25,7 @@ export * from "./api-insurance";
 export * from "./api-benchmarks";
 export * from "./api-privacy";
 export * from "./api-setup";
+export * from "./api-smart-defaults";
+export * from "./api-income";
+export * from "./api-valuations";
+export * from "./api-rules";

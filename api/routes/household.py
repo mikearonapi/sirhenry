@@ -5,11 +5,11 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.database import get_session
-from pipeline.db import HouseholdProfile, BenefitPackage
+from pipeline.db import HouseholdProfile, BenefitPackage, InsurancePolicy, LifeEvent
 
 from api.routes.household_optimization import router as optimization_router
 
@@ -166,6 +166,21 @@ async def create_profile(body: HouseholdProfileIn, session: AsyncSession = Depen
     data = body.model_dump()
     profile = HouseholdProfile(**data)
     profile.combined_income = profile.spouse_a_income + profile.spouse_b_income
+
+    # Auto-set first household as primary; enforce single primary
+    existing_count = await session.scalar(select(func.count()).select_from(HouseholdProfile))
+    if (existing_count or 0) == 0:
+        profile.is_primary = True
+    elif profile.is_primary:
+        # Clear any existing primary before setting the new one
+        await session.execute(
+            select(HouseholdProfile).where(HouseholdProfile.is_primary == True)
+        )
+        for existing in (await session.execute(
+            select(HouseholdProfile).where(HouseholdProfile.is_primary == True)
+        )).scalars():
+            existing.is_primary = False
+
     session.add(profile)
     await session.flush()
     await session.refresh(profile)
@@ -178,7 +193,20 @@ async def update_profile(profile_id: int, body: HouseholdProfileIn, session: Asy
     profile = result.scalar_one_or_none()
     if not profile:
         raise HTTPException(404, "Profile not found")
-    for k, v in body.model_dump(exclude_unset=True).items():
+
+    updates = body.model_dump(exclude_unset=True)
+
+    # Enforce single primary: clear others when setting this one as primary
+    if updates.get("is_primary"):
+        for existing in (await session.execute(
+            select(HouseholdProfile).where(
+                HouseholdProfile.is_primary == True,
+                HouseholdProfile.id != profile_id,
+            )
+        )).scalars():
+            existing.is_primary = False
+
+    for k, v in updates.items():
         setattr(profile, k, v)
     profile.combined_income = profile.spouse_a_income + profile.spouse_b_income
     profile.updated_at = datetime.now(timezone.utc)
@@ -193,6 +221,15 @@ async def delete_profile(profile_id: int, session: AsyncSession = Depends(get_se
     profile = result.scalar_one_or_none()
     if not profile:
         raise HTTPException(404, "Profile not found")
+
+    # Explicitly cascade to tables that may have SET NULL FKs in existing DBs
+    for model in (InsurancePolicy, LifeEvent):
+        related = await session.execute(
+            select(model).where(model.household_id == profile_id)
+        )
+        for record in related.scalars():
+            await session.delete(record)
+
     await session.delete(profile)
     await session.flush()
 

@@ -191,26 +191,28 @@ async def categorize_transactions(
     total_errors = 0
     total_skipped = 0
 
-    for iteration in range(max_iterations):
-        transactions = await get_transactions(
-            session,
-            year=year,
-            month=month,
-            limit=page_size,
-            offset=0,
-        )
+    from pipeline.db.schema import Transaction as TxModel
 
-        uncategorized = [
-            t for t in transactions
-            if t.effective_category is None and not t.is_manually_reviewed
-        ]
+    for iteration in range(max_iterations):
+        # Query uncategorized transactions directly instead of fetching all
+        q = select(TxModel).where(
+            TxModel.effective_category.is_(None),
+            TxModel.is_manually_reviewed.is_(False),
+            TxModel.is_excluded.is_(False),
+        )
+        if year:
+            q = q.where(TxModel.period_year == year)
+        if month:
+            q = q.where(TxModel.period_month == month)
+        q = q.order_by(TxModel.date.desc()).limit(page_size)
+
+        result = await session.execute(q)
+        uncategorized = list(result.scalars().all())
 
         if not uncategorized:
             if iteration == 0:
                 logger.info("No uncategorized transactions found.")
             break
-
-        total_skipped += len(transactions) - len(uncategorized)
         logger.info(
             f"Iteration {iteration + 1}: categorizing {len(uncategorized)} "
             f"transactions in batches of {batch_size}..."
@@ -402,3 +404,72 @@ Document text:
     raw = strip_json_fences(response.content[0].text)
 
     return json.loads(raw)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Document type auto-detection (no AI call — rule-based for speed)
+# ═══════════════════════════════════════════════════════════════════════════
+
+def detect_document_type(text: str, filename: str) -> dict:
+    """Auto-detect document type from file content and filename.
+
+    Uses pattern matching (no AI call) for instant results.
+    Returns {detected_type, confidence, suggested_fields}.
+    """
+    text_lower = (text or "").lower()
+    fname_lower = (filename or "").lower()
+
+    # CSV detection from content
+    if fname_lower.endswith(".csv"):
+        if any(k in text_lower for k in ["order id", "order date", "items ordered", "shipping address"]):
+            return {"detected_type": "amazon", "confidence": 0.95, "suggested_fields": {}}
+        if any(k in text_lower for k in ["account", "balance", "original description", "net worth", "monarch"]):
+            return {"detected_type": "monarch", "confidence": 0.90, "suggested_fields": {}}
+        if any(k in text_lower for k in ["1099-b", "proceeds", "cost basis", "gain/loss", "wash sale"]):
+            return {"detected_type": "investment", "confidence": 0.90, "suggested_fields": {}}
+        # Default CSV → credit card
+        if any(k in text_lower for k in ["transaction", "date", "amount", "description", "debit", "credit", "merchant"]):
+            return {"detected_type": "credit_card", "confidence": 0.80, "suggested_fields": {}}
+
+    # PDF/image detection from text content
+    if fname_lower.endswith((".pdf", ".jpg", ".jpeg", ".png")):
+        # Tax documents
+        if any(k in text_lower for k in ["w-2", "wage and tax statement", "w2"]):
+            return {"detected_type": "tax_document", "confidence": 0.95, "suggested_fields": {"form_type": "w2"}}
+        if any(k in text_lower for k in ["1099-nec", "nonemployee compensation"]):
+            return {"detected_type": "tax_document", "confidence": 0.95, "suggested_fields": {"form_type": "1099_nec"}}
+        if any(k in text_lower for k in ["1099-div", "dividends and distributions"]):
+            return {"detected_type": "tax_document", "confidence": 0.95, "suggested_fields": {"form_type": "1099_div"}}
+        if any(k in text_lower for k in ["1099-b", "proceeds from broker"]):
+            return {"detected_type": "tax_document", "confidence": 0.95, "suggested_fields": {"form_type": "1099_b"}}
+        if any(k in text_lower for k in ["1099-int", "interest income"]):
+            return {"detected_type": "tax_document", "confidence": 0.95, "suggested_fields": {"form_type": "1099_int"}}
+        if any(k in text_lower for k in ["schedule k-1", "partner's share", "k-1"]):
+            return {"detected_type": "tax_document", "confidence": 0.95, "suggested_fields": {"form_type": "k1"}}
+
+        # Insurance
+        if any(k in text_lower for k in ["declaration", "policy number", "insurance", "premium", "coverage", "deductible", "underwritten by"]):
+            if any(k in text_lower for k in ["auto", "vehicle", "home", "umbrella", "life insurance", "disability", "health plan"]):
+                return {"detected_type": "insurance", "confidence": 0.85, "suggested_fields": {}}
+
+        # Pay stub
+        if any(k in text_lower for k in ["pay stub", "earnings statement", "pay period", "gross pay", "net pay", "ytd", "federal withholding"]):
+            return {"detected_type": "pay_stub", "confidence": 0.90, "suggested_fields": {}}
+
+        # Investment statement
+        if any(k in text_lower for k in ["brokerage", "portfolio", "holdings", "account statement", "dividend summary"]):
+            return {"detected_type": "investment", "confidence": 0.80, "suggested_fields": {}}
+
+    # Filename-based fallbacks
+    if any(k in fname_lower for k in ["w2", "w-2"]):
+        return {"detected_type": "tax_document", "confidence": 0.80, "suggested_fields": {"form_type": "w2"}}
+    if any(k in fname_lower for k in ["1099"]):
+        return {"detected_type": "tax_document", "confidence": 0.80, "suggested_fields": {}}
+    if any(k in fname_lower for k in ["paystub", "pay_stub", "earnings", "paycheck"]):
+        return {"detected_type": "pay_stub", "confidence": 0.80, "suggested_fields": {}}
+    if any(k in fname_lower for k in ["insurance", "policy", "declaration"]):
+        return {"detected_type": "insurance", "confidence": 0.75, "suggested_fields": {}}
+    if any(k in fname_lower for k in ["amazon", "order"]):
+        return {"detected_type": "amazon", "confidence": 0.75, "suggested_fields": {}}
+
+    return {"detected_type": "credit_card", "confidence": 0.50, "suggested_fields": {}}

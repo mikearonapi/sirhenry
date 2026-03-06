@@ -233,6 +233,56 @@ async def copy_budget(
     }
 
 
+@router.post("/auto-generate", response_model=dict)
+async def auto_generate_budget(
+    year: int = Query(...),
+    month: int = Query(..., ge=1, le=12),
+    session: AsyncSession = Depends(get_session),
+):
+    """Generate a smart budget based on spending patterns. Returns preview (does NOT save)."""
+    from pipeline.planning.smart_defaults import generate_smart_budget
+    lines = await generate_smart_budget(session, year, month)
+    total = sum(line["budget_amount"] for line in lines)
+    return {"lines": lines, "total": round(total, 2), "year": year, "month": month}
+
+
+@router.post("/auto-generate/apply", response_model=dict)
+async def apply_auto_budget(
+    year: int = Query(...),
+    month: int = Query(..., ge=1, le=12),
+    session: AsyncSession = Depends(get_session),
+):
+    """Generate and save a smart budget for the given month."""
+    from pipeline.planning.smart_defaults import generate_smart_budget
+    lines = await generate_smart_budget(session, year, month)
+
+    # Check existing budgets
+    existing_result = await session.execute(
+        select(Budget.category, Budget.segment).where(
+            Budget.year == year, Budget.month == month
+        )
+    )
+    existing_keys = {(row[0], row[1]) for row in existing_result.all()}
+
+    created = 0
+    for line in lines:
+        key = (line["category"], line["segment"])
+        if key in existing_keys:
+            continue
+        session.add(Budget(
+            year=year,
+            month=month,
+            category=line["category"],
+            segment=line["segment"],
+            budget_amount=line["budget_amount"],
+            notes=f"Auto-generated from {line['source']}",
+        ))
+        created += 1
+
+    await session.flush()
+    return {"created": created, "year": year, "month": month}
+
+
 # ---- CRUD endpoints ----
 
 

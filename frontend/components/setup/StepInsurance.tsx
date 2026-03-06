@@ -9,6 +9,7 @@ import Card from "@/components/ui/Card";
 import type { SetupData } from "./SetupWizard";
 import { createInsurancePolicy } from "@/lib/api-insurance";
 import { getErrorMessage } from "@/lib/errors";
+import SirHenryName from "@/components/ui/SirHenryName";
 import type { InsurancePolicyType } from "@/types/insurance";
 
 const INPUT = "w-full rounded-lg border border-stone-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#16A34A]/30 focus:border-[#16A34A] bg-white";
@@ -186,7 +187,7 @@ export default function StepInsurance({ data, onRefresh }: Props) {
         className="flex items-center gap-1 text-[11px] text-[#16A34A] hover:underline"
       >
         <MessageCircle size={10} />
-        Want a coverage review? Ask Sir Henry
+        Want a coverage review? Ask <SirHenryName />
       </button>
 
       {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}

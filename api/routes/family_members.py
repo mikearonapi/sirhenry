@@ -175,33 +175,48 @@ async def _sync_household(household_id: int, session: AsyncSession) -> None:
     earner_spouse = next((m for m in members if m.relationship == "spouse"), None)
     dependents = [m for m in members if m.relationship in ("child", "other_dependent")]
 
+    # Always set spouse_a fields — clear if self member was deleted
     if earner_self:
         hp.spouse_a_name = earner_self.name
         hp.spouse_a_income = earner_self.income or 0.0
         hp.spouse_a_employer = earner_self.employer
         hp.spouse_a_work_state = earner_self.work_state
         hp.spouse_a_start_date = earner_self.employer_start_date
+    else:
+        hp.spouse_a_name = None
+        hp.spouse_a_income = 0.0
+        hp.spouse_a_employer = None
+        hp.spouse_a_work_state = None
+        hp.spouse_a_start_date = None
+
+    # Always set spouse_b fields — clear if spouse member was deleted
     if earner_spouse:
         hp.spouse_b_name = earner_spouse.name
         hp.spouse_b_income = earner_spouse.income or 0.0
         hp.spouse_b_employer = earner_spouse.employer
         hp.spouse_b_work_state = earner_spouse.work_state
         hp.spouse_b_start_date = earner_spouse.employer_start_date
+    else:
+        hp.spouse_b_name = None
+        hp.spouse_b_income = 0.0
+        hp.spouse_b_employer = None
+        hp.spouse_b_work_state = None
+        hp.spouse_b_start_date = None
 
     hp.combined_income = (hp.spouse_a_income or 0.0) + (hp.spouse_b_income or 0.0)
 
-    if dependents:
-        hp.dependents_json = json.dumps([
-            {
-                "id": d.id,
-                "name": d.name,
-                "age": _age_on(d.date_of_birth, date.today()) if d.date_of_birth else None,
-                "dob": d.date_of_birth.isoformat() if d.date_of_birth else None,
-                "care_cost_annual": d.care_cost_annual,
-                "college_start_year": d.college_start_year,
-            }
-            for d in dependents
-        ])
+    # Always update dependents — clear to empty array if none remain
+    hp.dependents_json = json.dumps([
+        {
+            "id": d.id,
+            "name": d.name,
+            "age": _age_on(d.date_of_birth, date.today()) if d.date_of_birth else None,
+            "dob": d.date_of_birth.isoformat() if d.date_of_birth else None,
+            "care_cost_annual": d.care_cost_annual,
+            "college_start_year": d.college_start_year,
+        }
+        for d in dependents
+    ])
 
 
 # ---------------------------------------------------------------------------

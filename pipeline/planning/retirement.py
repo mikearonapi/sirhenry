@@ -1,6 +1,6 @@
 """
 Retirement calculator engine for HENRYs.
-Computes: target nest egg, projected savings, monthly needed, FIRE numbers,
+Computes: target nest egg, projected savings, monthly needed, retirement budget,
 years money will last, and confidence metrics.
 Uses deterministic projections with optional Monte Carlo simulation.
 """
@@ -46,8 +46,17 @@ class RetirementInputs:
     tax_rate_in_retirement_pct: float = 22.0
     # Budget-based expense estimation (overrides income_replacement_pct when set)
     current_annual_expenses: Optional[float] = None
+    # Retirement budget annual total — highest priority, already includes healthcare/debts
+    retirement_budget_annual: Optional[float] = None
     # Debts that pay off before/during retirement, reducing expenses
     debt_payoffs: list = field(default_factory=list)
+    # Second income (e.g. spouse/partner returns to work)
+    second_income_annual: float = 0.0
+    second_income_start_age: int = 0  # YOUR age when second income starts
+    second_income_end_age: int = 0    # YOUR age when second income ends
+    second_income_monthly_contribution: float = 0.0
+    second_income_employer_match_pct: float = 0.0
+    second_income_employer_match_limit_pct: float = 6.0
 
 
 @dataclass
@@ -62,7 +71,6 @@ class RetirementResults:
     target_nest_egg: float = 0.0
     fire_number: float = 0.0
     coast_fire_number: float = 0.0
-    lean_fire_number: float = 0.0
     # Projections
     projected_nest_egg: float = 0.0
     projected_monthly_income: float = 0.0
@@ -89,6 +97,8 @@ class RetirementResults:
     debt_payoff_savings_annual: float = 0.0
     # Earliest possible retirement age
     earliest_retirement_age: int = 0
+    # Retire-earlier scenario comparisons (5yr, 10yr sooner)
+    retire_earlier_scenarios: list = field(default_factory=list)
 
 
 class RetirementCalculator:
@@ -122,6 +132,22 @@ class RetirementCalculator:
         return contribution_for_match * (match_pct / 100)
 
     @staticmethod
+    def _second_income_contribution(inputs: RetirementInputs, age: int, income_growth: float) -> float:
+        """Annual contribution from second income if active at this age."""
+        if (inputs.second_income_annual <= 0
+                or inputs.second_income_start_age <= 0
+                or age < inputs.second_income_start_age
+                or age >= inputs.second_income_end_age):
+            return 0.0
+        years_working = age - inputs.second_income_start_age
+        si_income = inputs.second_income_annual * (1 + income_growth) ** years_working
+        si_match = RetirementCalculator._compute_employer_match(
+            inputs.second_income_monthly_contribution, si_income,
+            inputs.second_income_employer_match_pct, inputs.second_income_employer_match_limit_pct,
+        )
+        return (inputs.second_income_monthly_contribution + si_match) * 12
+
+    @staticmethod
     def calculate(inputs: RetirementInputs) -> RetirementResults:
         r = RetirementResults()
         debts = RetirementCalculator._parse_debt_payoffs(inputs.debt_payoffs)
@@ -130,24 +156,35 @@ class RetirementCalculator:
         r.years_in_retirement = max(0, inputs.life_expectancy - inputs.retirement_age)
 
         # --- Step 1: Determine annual income need in retirement ---
-        # Priority: desired_annual > current_annual_expenses > income_replacement_pct
-        if inputs.desired_annual_retirement_income and inputs.desired_annual_retirement_income > 0:
-            base_expenses = inputs.desired_annual_retirement_income
-        elif inputs.current_annual_expenses and inputs.current_annual_expenses > 0:
-            base_expenses = inputs.current_annual_expenses
+        # Priority: retirement_budget_annual > desired_annual > current_annual_expenses > income_replacement_pct
+        use_retirement_budget = (
+            inputs.retirement_budget_annual is not None
+            and inputs.retirement_budget_annual > 0
+        )
+
+        if use_retirement_budget:
+            # Retirement budget already includes healthcare, debt adjustments, etc.
+            base_expenses = inputs.retirement_budget_annual
+            r.debt_payoff_savings_annual = 0  # already factored in
         else:
-            base_expenses = inputs.current_annual_income * (inputs.income_replacement_pct / 100)
+            if inputs.desired_annual_retirement_income and inputs.desired_annual_retirement_income > 0:
+                base_expenses = inputs.desired_annual_retirement_income
+            elif inputs.current_annual_expenses and inputs.current_annual_expenses > 0:
+                base_expenses = inputs.current_annual_expenses
+            else:
+                base_expenses = inputs.current_annual_income * (inputs.income_replacement_pct / 100)
 
-        # Subtract debts that pay off before retirement
-        debt_savings = 0.0
-        for d in debts:
-            if d.payoff_age > 0 and d.payoff_age <= inputs.retirement_age:
-                debt_savings += d.monthly_payment * 12
-        r.debt_payoff_savings_annual = debt_savings
-        base_expenses = max(0, base_expenses - debt_savings)
+            # Subtract debts that pay off before retirement
+            debt_savings = 0.0
+            for d in debts:
+                if d.payoff_age > 0 and d.payoff_age <= inputs.retirement_age:
+                    debt_savings += d.monthly_payment * 12
+            r.debt_payoff_savings_annual = debt_savings
+            base_expenses = max(0, base_expenses - debt_savings)
 
-        base_expenses += inputs.healthcare_annual_estimate
-        base_expenses += inputs.additional_annual_expenses
+            base_expenses += inputs.healthcare_annual_estimate
+            base_expenses += inputs.additional_annual_expenses
+
         r.annual_income_needed_today = base_expenses
 
         inflation_mult = (1 + inputs.inflation_rate_pct / 100) ** r.years_to_retirement
@@ -172,17 +209,45 @@ class RetirementCalculator:
 
         # --- Step 3: Target nest egg (present value of withdrawals) ---
         real_return = (1 + inputs.post_retirement_return_pct / 100) / (1 + inputs.inflation_rate_pct / 100) - 1
-        if real_return > 0 and r.years_in_retirement > 0:
-            pv_factor = (1 - (1 + real_return) ** (-r.years_in_retirement)) / real_return
+
+        # If retiring before SS starts, we need two phases:
+        # Phase 1: retirement to SS start — full expenses, no SS income
+        # Phase 2: SS start to life expectancy — reduced expenses with SS
+        ss_gap_years = max(0, inputs.social_security_start_age - inputs.retirement_age)
+
+        if ss_gap_years > 0 and r.social_security_annual > 0:
+            years_with_ss = max(0, inputs.life_expectancy - inputs.social_security_start_age)
+
+            # Phase 1: full expenses from portfolio (no SS yet)
+            full_annual = r.annual_income_needed_at_retirement  # pre-tax, inflated
+            # Subtract pension/other (assumed available from retirement day 1)
+            phase1_annual = max(0, full_annual - r.pension_annual - r.other_income_annual)
+            if real_return > 0 and ss_gap_years > 0:
+                pv1 = (1 - (1 + real_return) ** (-ss_gap_years)) / real_return
+            else:
+                pv1 = ss_gap_years
+
+            # Phase 2: expenses minus all guaranteed income (with SS)
+            phase2_annual = r.portfolio_income_needed_annual
+            if real_return > 0 and years_with_ss > 0:
+                pv2_at_ss = (1 - (1 + real_return) ** (-years_with_ss)) / real_return
+                # Discount phase 2 PV back to retirement start
+                pv2 = pv2_at_ss / ((1 + real_return) ** ss_gap_years)
+            else:
+                pv2 = years_with_ss
+
+            r.target_nest_egg = phase1_annual * pv1 + phase2_annual * pv2
         else:
-            pv_factor = r.years_in_retirement
+            # SS available from day 1 of retirement (or no SS)
+            if real_return > 0 and r.years_in_retirement > 0:
+                pv_factor = (1 - (1 + real_return) ** (-r.years_in_retirement)) / real_return
+            else:
+                pv_factor = r.years_in_retirement
+            r.target_nest_egg = r.portfolio_income_needed_annual * pv_factor
 
-        r.target_nest_egg = r.portfolio_income_needed_annual * pv_factor
-
-        # --- Step 4: FIRE numbers ---
+        # --- Step 4: Independence numbers (25x rule) ---
         annual_expenses_today = r.annual_income_needed_today
         r.fire_number = annual_expenses_today * 25
-        r.lean_fire_number = annual_expenses_today * 0.7 * 25
         if r.years_to_retirement > 0 and inputs.pre_retirement_return_pct > 0:
             r.coast_fire_number = r.target_nest_egg / (
                 (1 + inputs.pre_retirement_return_pct / 100) ** r.years_to_retirement
@@ -206,8 +271,10 @@ class RetirementCalculator:
         current_income = inputs.current_annual_income
 
         for yr in range(r.years_to_retirement):
+            age_this_year = inputs.current_age + yr
             growth = balance * annual_return_rate
-            balance += growth + annual_contribution
+            second_contrib = RetirementCalculator._second_income_contribution(inputs, age_this_year, income_growth)
+            balance += growth + annual_contribution + second_contrib
             # Grow income and recalculate contribution with match for next year
             current_income *= (1 + income_growth)
             base_contribution = inputs.monthly_retirement_contribution * (1 + income_growth) ** (yr + 1)
@@ -261,6 +328,9 @@ class RetirementCalculator:
         # --- Step 11: Year-by-year projection for charting ---
         r.yearly_projection = RetirementCalculator._build_yearly_projection(inputs, r, debts)
 
+        # --- Step 12: What-if retire-earlier scenarios ---
+        r.retire_earlier_scenarios = RetirementCalculator._compute_earlier_scenarios(inputs, debts)
+
         return r
 
     @staticmethod
@@ -284,6 +354,47 @@ class RetirementCalculator:
         return months_lasted / 12
 
     @staticmethod
+    def _compute_target_at_age(
+        inputs: RetirementInputs, debts: list[DebtPayoff], retire_age: int,
+    ) -> float:
+        """Compute target nest egg for a given retirement age, using two-phase PV
+        when retiring before Social Security starts."""
+        ytr = retire_age - inputs.current_age
+        yir = max(0, inputs.life_expectancy - retire_age)
+
+        base_expenses = RetirementCalculator._base_expenses(inputs, debts, retire_age)
+        infl = (1 + inputs.inflation_rate_pct / 100) ** ytr
+        needed_at_retire = base_expenses * infl / (1 - inputs.tax_rate_in_retirement_pct / 100)
+
+        ss_annual = inputs.expected_social_security_monthly * infl * 12
+        pension_annual = inputs.pension_monthly * infl * 12
+        other_annual = inputs.other_retirement_income_monthly * infl * 12
+
+        real_ret = (1 + inputs.post_retirement_return_pct / 100) / (1 + inputs.inflation_rate_pct / 100) - 1
+        ss_gap_years = max(0, inputs.social_security_start_age - retire_age)
+
+        if ss_gap_years > 0 and ss_annual > 0:
+            years_with_ss = max(0, inputs.life_expectancy - inputs.social_security_start_age)
+            # Phase 1: retirement to SS start — no SS income
+            phase1_annual = max(0, needed_at_retire - pension_annual - other_annual)
+            if real_ret > 0 and ss_gap_years > 0:
+                pv1 = (1 - (1 + real_ret) ** (-ss_gap_years)) / real_ret
+            else:
+                pv1 = ss_gap_years
+            # Phase 2: SS start to life expectancy — with SS
+            phase2_annual = max(0, needed_at_retire - ss_annual - pension_annual - other_annual)
+            if real_ret > 0 and years_with_ss > 0:
+                pv2_at_ss = (1 - (1 + real_ret) ** (-years_with_ss)) / real_ret
+                pv2 = pv2_at_ss / ((1 + real_ret) ** ss_gap_years)
+            else:
+                pv2 = years_with_ss
+            return phase1_annual * pv1 + phase2_annual * pv2
+        else:
+            portfolio_need = max(0, needed_at_retire - ss_annual - pension_annual - other_annual)
+            pv = (1 - (1 + real_ret) ** (-yir)) / real_ret if real_ret > 0 and yir > 0 else yir
+            return portfolio_need * pv
+
+    @staticmethod
     def _find_earliest_retirement(inputs: RetirementInputs) -> int:
         """Binary-search for earliest age where projected savings cover retirement."""
         debts = RetirementCalculator._parse_debt_payoffs(inputs.debt_payoffs)
@@ -303,26 +414,8 @@ class RetirementCalculator:
             if mid <= inputs.current_age:
                 lo = mid + 1
                 continue
-            test_inputs = RetirementInputs(**{
-                f.name: getattr(inputs, f.name) for f in inputs.__dataclass_fields__.values()
-            })
-            test_inputs.retirement_age = mid
-            ytr = mid - inputs.current_age
-            yir = max(0, inputs.life_expectancy - mid)
 
-            # Compute target for this retirement age
-            base_expenses = RetirementCalculator._base_expenses(test_inputs, debts, mid)
-            infl = (1 + inputs.inflation_rate_pct / 100) ** ytr
-            needed_at_retire = base_expenses * infl / (1 - inputs.tax_rate_in_retirement_pct / 100)
-            ss = inputs.expected_social_security_monthly * infl * 12 if mid >= inputs.social_security_start_age else 0
-            pension = inputs.pension_monthly * infl * 12
-            other = inputs.other_retirement_income_monthly * infl * 12
-            portfolio_need = max(0, needed_at_retire - ss - pension - other)
-            real_ret = (1 + inputs.post_retirement_return_pct / 100) / (1 + inputs.inflation_rate_pct / 100) - 1
-            pv = (1 - (1 + real_ret) ** (-yir)) / real_ret if real_ret > 0 and yir > 0 else yir
-            target = portfolio_need * pv
-
-            # Compute projected savings at this age
+            target = RetirementCalculator._compute_target_at_age(inputs, debts, mid)
             projected = RetirementCalculator._project_savings_at_age(inputs, mid)
 
             if projected >= target:
@@ -335,6 +428,11 @@ class RetirementCalculator:
 
     @staticmethod
     def _base_expenses(inputs: RetirementInputs, debts: list[DebtPayoff], retire_age: int) -> float:
+        # Priority matches the main calculate() method:
+        # retirement_budget_annual > desired_annual > current_annual_expenses > income_replacement_pct
+        if inputs.retirement_budget_annual and inputs.retirement_budget_annual > 0:
+            # Retirement budget already includes healthcare and debt adjustments
+            return inputs.retirement_budget_annual
         if inputs.desired_annual_retirement_income and inputs.desired_annual_retirement_income > 0:
             base = inputs.desired_annual_retirement_income
         elif inputs.current_annual_expenses and inputs.current_annual_expenses > 0:
@@ -362,7 +460,9 @@ class RetirementCalculator:
         current_income = inputs.current_annual_income
 
         for yr in range(years):
-            balance += balance * annual_return + annual_contribution
+            age_this_year = inputs.current_age + yr
+            second_contrib = RetirementCalculator._second_income_contribution(inputs, age_this_year, income_growth)
+            balance += balance * annual_return + annual_contribution + second_contrib
             current_income *= (1 + income_growth)
             base_c = inputs.monthly_retirement_contribution * (1 + income_growth) ** (yr + 1)
             m = RetirementCalculator._compute_employer_match(
@@ -370,6 +470,44 @@ class RetirementCalculator:
             )
             annual_contribution = (base_c + m) * 12
         return balance
+
+    @staticmethod
+    def _compute_earlier_scenarios(
+        inputs: RetirementInputs, debts: list[DebtPayoff],
+    ) -> list[dict]:
+        """Lightweight what-if for retiring 5 and 10 years earlier."""
+        scenarios = []
+        for delta in [5, 10]:
+            target_age = inputs.retirement_age - delta
+            if target_age <= inputs.current_age:
+                continue
+
+            ytr = target_age - inputs.current_age
+
+            target = RetirementCalculator._compute_target_at_age(inputs, debts, target_age)
+            projected = RetirementCalculator._project_savings_at_age(inputs, target_age)
+
+            gap = projected - target
+            readiness = min(100, (projected / target * 100) if target > 0 else 0)
+
+            months = ytr * 12
+            monthly_return = inputs.pre_retirement_return_pct / 100 / 12
+            if gap < 0 and months > 0 and monthly_return > 0:
+                extra = abs(gap) * monthly_return / ((1 + monthly_return) ** months - 1)
+            else:
+                extra = 0
+
+            scenarios.append({
+                "years_earlier": delta,
+                "retirement_age": target_age,
+                "target_nest_egg": round(target, 0),
+                "projected_nest_egg": round(projected, 0),
+                "readiness_pct": round(readiness, 1),
+                "monthly_savings_needed": round(extra, 0),
+                "on_track": gap >= 0,
+            })
+
+        return scenarios
 
     @staticmethod
     def _build_yearly_projection(
@@ -389,7 +527,8 @@ class RetirementCalculator:
 
             if phase == "accumulation":
                 growth = balance * (inputs.pre_retirement_return_pct / 100)
-                balance = balance + growth + annual_contribution
+                second_contrib = RetirementCalculator._second_income_contribution(inputs, age, income_growth)
+                balance = balance + growth + annual_contribution + second_contrib
                 # Grow income and recalculate contributions for next year
                 current_income *= (1 + income_growth)
                 base_c = inputs.monthly_retirement_contribution * (1 + income_growth) ** (year_offset + 1)
@@ -408,9 +547,11 @@ class RetirementCalculator:
                         base_exp -= d.monthly_payment * 12
                 base_exp = max(0, base_exp)
                 needed = base_exp * inflation_factor
-                guaranteed = results.total_guaranteed_income_annual * (
-                    1 if age >= inputs.social_security_start_age else 0
-                )
+                # SS only available after SS start age; pension/other from day 1
+                if age >= inputs.social_security_start_age:
+                    guaranteed = results.total_guaranteed_income_annual
+                else:
+                    guaranteed = results.pension_annual + results.other_income_annual
                 withdrawal = max(0, needed - guaranteed)
                 balance = balance + growth - withdrawal
                 balance = max(0, balance)
@@ -494,9 +635,11 @@ class RetirementCalculator:
 
                 if yr < years_to_ret:
                     # Accumulation phase
-                    balance = balance * (1 + annual_return) + annual_contribution
-                    current_income *= (1 + inputs.expected_income_growth_pct / 100)
-                    base_c = inputs.monthly_retirement_contribution * (1 + inputs.expected_income_growth_pct / 100) ** (yr + 1)
+                    ig = inputs.expected_income_growth_pct / 100
+                    second_contrib = RetirementCalculator._second_income_contribution(inputs, age, ig)
+                    balance = balance * (1 + annual_return) + annual_contribution + second_contrib
+                    current_income *= (1 + ig)
+                    base_c = inputs.monthly_retirement_contribution * (1 + ig) ** (yr + 1)
                     m = RetirementCalculator._compute_employer_match(
                         base_c, current_income, inputs.employer_match_pct, inputs.employer_match_limit_pct,
                     )

@@ -13,6 +13,7 @@ import type { EconomicIndicator, MarketQuote } from "@/types/api";
 import { getErrorMessage } from "@/lib/errors";
 import Card from "@/components/ui/Card";
 import PageHeader from "@/components/ui/PageHeader";
+import SirHenryName from "@/components/ui/SirHenryName";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, LineChart, Line,
@@ -91,7 +92,7 @@ export default function MarketPage() {
             onClick={() => window.dispatchEvent(new CustomEvent("ask-henry", { detail: { message: "How do current market conditions affect my portfolio? Any adjustments I should consider?" } }))}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-[#16A34A]/10 text-[#16A34A] hover:bg-[#16A34A]/20 transition-colors"
           >
-            <MessageCircle size={14} /> Ask Sir Henry
+            <MessageCircle size={14} /> Ask <SirHenryName />
           </button>
         }
       />

@@ -7,13 +7,13 @@ import {
 import {
   TrendingUp, DollarSign, Receipt, AlertCircle,
   Loader2, Wallet, Target, RotateCcw, PieChart,
-  ChevronRight, Calendar,
+  ChevronRight, Calendar, Lightbulb,
 } from "lucide-react";
-import { getDashboard, getBudgetSummary, getRecurringSummary, getGoals, getBenchmarkSnapshot, getOrderOfOperations } from "@/lib/api";
+import { getDashboard, getBudgetSummary, getRecurringSummary, getGoals, getBenchmarkSnapshot, getOrderOfOperations, getProactiveInsights } from "@/lib/api";
 import { getFamilyMembers } from "@/lib/api-household";
 import { getLifeEvents } from "@/lib/api-life-events";
 import { formatCurrency, formatDate, monthName, segmentColor } from "@/lib/utils";
-import type { Dashboard, BudgetSummary, RecurringSummary, Goal, BenchmarkData, FOOStep } from "@/types/api";
+import type { Dashboard, BudgetSummary, RecurringSummary, Goal, BenchmarkData, FOOStep, ProactiveInsight } from "@/types/api";
 import type { FamilyMember } from "@/types/household";
 import type { LifeEvent } from "@/types/life-events";
 import Badge from "@/components/ui/Badge";
@@ -21,7 +21,7 @@ import Card from "@/components/ui/Card";
 import ProgressBar from "@/components/ui/ProgressBar";
 import TrajectoryChart from "@/components/TrajectoryChart";
 import Link from "next/link";
-import { StatusCard, CashFlowWidget, ActionPlanWidget } from "@/components/dashboard";
+import { StatusCard, CashFlowWidget, ActionPlanWidget, InsightsSection } from "@/components/dashboard";
 import SetupBanner from "@/components/setup/SetupBanner";
 
 const now = new Date();
@@ -41,6 +41,9 @@ export default function DashboardPage() {
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const [primaryName, setPrimaryName] = useState<string | null>(null);
   const [upcomingEvents, setUpcomingEvents] = useState<LifeEvent[]>([]);
+  const [insights, setInsights] = useState<ProactiveInsight[]>([]);
+  const [dismissedInsights, setDismissedInsights] = useState<Set<string>>(new Set());
+  const [activeTab, setActiveTab] = useState<"overview" | "insights">("overview");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -90,6 +93,14 @@ export default function DashboardPage() {
         .slice(0, 3);
       setUpcomingEvents(upcoming);
     }).catch(() => {});
+
+    getProactiveInsights().then((r) => setInsights(r.insights)).catch(() => {});
+
+    // Load dismissed insights from localStorage
+    try {
+      const dismissed = localStorage.getItem("dismissed-insights");
+      if (dismissed) setDismissedInsights(new Set(JSON.parse(dismissed)));
+    } catch {}
   }, []);
 
   if (loading) {
@@ -165,8 +176,88 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* TABS */}
+      <div className="flex items-center gap-1 bg-stone-100 rounded-lg p-1 w-fit">
+        <button
+          onClick={() => setActiveTab("overview")}
+          className={`text-sm font-medium px-4 py-1.5 rounded-md transition-all ${activeTab === "overview" ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700"}`}
+        >
+          Overview
+        </button>
+        <button
+          onClick={() => setActiveTab("insights")}
+          className={`text-sm font-medium px-4 py-1.5 rounded-md transition-all ${activeTab === "insights" ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700"}`}
+        >
+          Insights
+        </button>
+      </div>
+
+      {activeTab === "insights" ? (
+        <InsightsSection selectedYear={selectedYear} />
+      ) : (
+      <>
       {/* SETUP PROMPT */}
       <SetupBanner />
+
+      {/* ACTION ITEMS */}
+      {(() => {
+        const visible = insights.filter((i) => !dismissedInsights.has(i.type + i.title));
+        if (visible.length === 0) return null;
+        const severityIcon = (s: string) => {
+          if (s === "action") return <AlertCircle size={14} className="text-red-500" />;
+          if (s === "warning") return <AlertCircle size={14} className="text-amber-500" />;
+          return <Lightbulb size={14} className="text-blue-500" />;
+        };
+        const severityBg = (s: string) => {
+          if (s === "action") return "bg-red-50";
+          if (s === "warning") return "bg-amber-50";
+          return "bg-blue-50";
+        };
+        return (
+          <Card padding="none">
+            <div className="flex items-center justify-between px-5 pt-5 pb-3">
+              <div className="flex items-center gap-2">
+                <Lightbulb size={16} className="text-[#16A34A]" />
+                <h2 className="text-sm font-semibold text-stone-700">Action Items</h2>
+              </div>
+              <span className="text-xs text-stone-400">{visible.length} item{visible.length !== 1 ? "s" : ""}</span>
+            </div>
+            <div className="divide-y divide-stone-50">
+              {visible.slice(0, 5).map((insight) => (
+                <div key={insight.type + insight.title} className="flex items-center gap-3 px-5 py-3 hover:bg-stone-50/50">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${severityBg(insight.severity)}`}>
+                    {severityIcon(insight.severity)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-stone-800">{insight.title}</p>
+                    <p className="text-xs text-stone-500 mt-0.5">{insight.message}</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {insight.link_to && (
+                      <Link href={insight.link_to} className="text-xs text-[#16A34A] hover:underline font-medium">
+                        Review
+                      </Link>
+                    )}
+                    <button
+                      onClick={() => {
+                        const key = insight.type + insight.title;
+                        const next = new Set(dismissedInsights);
+                        next.add(key);
+                        setDismissedInsights(next);
+                        try { localStorage.setItem("dismissed-insights", JSON.stringify([...next])); } catch {}
+                      }}
+                      className="text-stone-300 hover:text-stone-500 p-1"
+                      title="Dismiss"
+                    >
+                      <ChevronRight size={12} className="rotate-90" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        );
+      })()}
 
       {/* STATUS */}
       <StatusCard effectiveSavingsRate={effectiveSavingsRate} effectiveNetWorth={effectiveNetWorth} targetSavingsRate={targetSavingsRate} />
@@ -306,13 +397,13 @@ export default function DashboardPage() {
           <Card padding="lg">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-semibold text-stone-700">Tax Strategies</h2>
-              <Link href="/tax" className="text-xs text-[#16A34A] hover:underline font-medium">View All →</Link>
+              <Link href="/tax-strategy" className="text-xs text-[#16A34A] hover:underline font-medium">View All →</Link>
             </div>
             {data.top_strategies_count === 0 ? (
               <div className="text-center py-4">
                 <Receipt className="mx-auto text-stone-200 mb-2" size={24} />
                 <p className="text-stone-400 text-sm">No strategies yet.</p>
-                <Link href="/tax" className="text-xs text-[#16A34A] hover:underline mt-1 block">Run tax analysis →</Link>
+                <Link href="/tax-strategy" className="text-xs text-[#16A34A] hover:underline mt-1 block">Run tax analysis →</Link>
               </div>
             ) : (
               <div className="flex items-center gap-4">
@@ -333,7 +424,7 @@ export default function DashboardPage() {
             { href: "/budget", label: "Budget", icon: Wallet, color: "text-blue-500" },
             { href: "/recurring", label: "Recurring", icon: RotateCcw, color: "text-purple-500" },
             { href: "/goals", label: "Goals", icon: Target, color: "text-amber-500" },
-            { href: "/investments", label: "Investments", icon: PieChart, color: "text-cyan-500" },
+            { href: "/portfolio", label: "Portfolio", icon: PieChart, color: "text-cyan-500" },
             { href: "/import", label: "Import", icon: TrendingUp, color: "text-[#16A34A]" },
           ].map((link) => (
             <Link key={link.href} href={link.href} className="bg-white rounded-xl border border-stone-100 shadow-sm p-4 text-center hover:border-stone-200 hover:shadow-md transition-all group">
@@ -343,6 +434,8 @@ export default function DashboardPage() {
           ))}
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 }

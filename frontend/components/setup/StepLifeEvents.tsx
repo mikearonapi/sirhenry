@@ -5,6 +5,7 @@ import Card from "@/components/ui/Card";
 import type { SetupData } from "./SetupWizard";
 import { createLifeEvent } from "@/lib/api-life-events";
 import { getErrorMessage } from "@/lib/errors";
+import SirHenryName from "@/components/ui/SirHenryName";
 
 // Life event categories organized by user relevance, with clear explanations of
 // WHY each event matters for taxes, cash flow, wealth, and insurance.
@@ -270,7 +271,7 @@ export default function StepLifeEvents({ data, onRefresh }: Props) {
               className="flex items-center gap-1 mt-1.5 text-[11px] text-[#16A34A] hover:underline"
             >
               <MessageCircle size={10} />
-              Not sure what to log? Ask Sir Henry
+              Not sure what to log? Ask <SirHenryName />
             </button>
           </div>
         </div>

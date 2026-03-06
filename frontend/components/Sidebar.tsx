@@ -7,11 +7,14 @@ import {
   RotateCcw, Target, Building2,
   PieChart, ChevronLeft, ChevronRight, Activity, X,
   Compass, FileText, ChevronDown,
-  Briefcase, Users, Settings, Zap, Landmark, Calendar, ShieldCheck,
-  ChevronUp, Sparkles, MessageCircle,
+  Briefcase, Users, Settings, Zap, Landmark,
+  ChevronUp, Sparkles, MessageCircle, Brain,
+  MessageSquarePlus,
 } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
+import FeedbackModal from "@/components/ui/FeedbackModal";
 import { request } from "@/lib/api-client";
+import SirHenryBrand from "@/components/landing/SirHenryBrand";
 
 interface FamilyMember {
   id: number;
@@ -42,11 +45,11 @@ const NAV_SECTIONS = [
     label: "Wealth & Planning",
     items: [
       { href: "/goals", label: "Goals", icon: Target },
+      { href: "/life-planner", label: "Life Planner", icon: Compass },
       { href: "/portfolio", label: "Portfolio", icon: PieChart },
-      { href: "/retirement", label: "Retirement", icon: Landmark },
       { href: "/market", label: "Market Pulse", icon: Activity },
       { href: "/equity-comp", label: "Equity Comp", icon: Briefcase },
-      { href: "/life-planner", label: "Life Planner", icon: Compass },
+      { href: "/retirement", label: "Retirement", icon: Landmark },
     ],
   },
   {
@@ -59,16 +62,21 @@ const NAV_SECTIONS = [
   },
 ];
 
-const SETUP_MENU_ITEMS = [
+// User menu: Setup & Profile section
+const PROFILE_MENU_ITEMS = [
   { href: "/setup", label: "Setup Wizard", icon: Sparkles },
-  { href: "/accounts", label: "Accounts", icon: Building2 },
   { href: "/household", label: "Household", icon: Users },
-  { href: "/life-events", label: "Life Events", icon: Calendar },
-  { href: "/insurance", label: "Policies", icon: ShieldCheck },
+  { href: "/accounts", label: "Accounts", icon: Building2 },
 ];
 
-const UTILITY_MENU_ITEMS = [
+// User menu: Tools section
+const TOOLS_MENU_ITEMS = [
   { href: "/import", label: "Import", icon: Upload },
+  { href: "/rules", label: "Rules & Learning", icon: Brain },
+];
+
+// User menu: Settings (bottom)
+const SETTINGS_MENU_ITEMS = [
   { href: "/admin", label: "Settings", icon: Settings },
 ];
 
@@ -112,6 +120,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
   const [collapsed, setCollapsed] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const [userName, setUserName] = useState<string | null>(null);
 
@@ -207,6 +216,18 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
     );
   }
 
+  function MenuButton({ label, icon: Icon, onClick }: { label: string; icon: typeof MessageCircle; onClick: () => void }) {
+    return (
+      <button
+        onClick={onClick}
+        className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 transition-colors"
+      >
+        <Icon size={15} className="shrink-0" />
+        <span>{label}</span>
+      </button>
+    );
+  }
+
   return (
     <>
     {isOpen && <div className="fixed inset-0 bg-black/50 z-10 lg:hidden" onClick={onClose} />}
@@ -218,15 +239,20 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
         <X size={20} />
       </button>
 
-      {/* Logo */}
-      <div className={`flex items-center ${collapsed ? "justify-center" : "px-5"} h-16 border-b border-zinc-800`}>
+      {/* Logo + collapse toggle */}
+      <div className={`flex items-center justify-between ${collapsed ? "justify-center px-3" : "px-5"} h-16 border-b border-zinc-800`}>
         {collapsed ? (
           <span className="text-white text-lg font-extrabold" style={{ fontFamily: "var(--font-display, sans-serif)" }}>H</span>
         ) : (
-          <p className="text-white text-xl font-semibold tracking-tight" style={{ fontFamily: "var(--font-display, sans-serif)" }}>
-            Sir<span className="tracking-wide font-extrabold">HENRY</span>
-          </p>
+          <SirHenryBrand className="text-white text-xl font-bold" />
         )}
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="hidden lg:flex items-center justify-center w-7 h-7 rounded-lg hover:bg-zinc-800 transition-colors"
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {collapsed ? <ChevronRight size={14} className="text-zinc-500" /> : <ChevronLeft size={14} className="text-zinc-500" />}
+        </button>
       </div>
 
       {/* Nav */}
@@ -293,11 +319,17 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
         {/* User menu popup — expanded sidebar */}
         {userMenuOpen && !collapsed && (
           <div className="absolute bottom-[72px] left-3 right-3 bg-zinc-900 border border-zinc-700 rounded-xl shadow-xl overflow-hidden z-40">
-            {SETUP_MENU_ITEMS.map((item) => (
+            <p className="px-3 pt-2.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-600">Setup & Profile</p>
+            {PROFILE_MENU_ITEMS.map((item) => (
               <MenuLink key={item.href} {...item} />
             ))}
             <div className="border-t border-zinc-700 my-0.5" />
-            {UTILITY_MENU_ITEMS.map((item) => (
+            <p className="px-3 pt-2.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-600">Tools</p>
+            {TOOLS_MENU_ITEMS.map((item) => (
+              <MenuLink key={item.href} {...item} />
+            ))}
+            <div className="border-t border-zinc-700 my-0.5" />
+            {SETTINGS_MENU_ITEMS.map((item) => (
               <MenuLink key={item.href} {...item} />
             ))}
           </div>
@@ -305,11 +337,17 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
         {/* User menu popup — collapsed sidebar */}
         {userMenuOpen && collapsed && (
           <div className="absolute bottom-[72px] left-[72px] w-48 bg-zinc-900 border border-zinc-700 rounded-xl shadow-xl overflow-hidden z-40">
-            {SETUP_MENU_ITEMS.map((item) => (
+            <p className="px-3 pt-2.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-600">Setup & Profile</p>
+            {PROFILE_MENU_ITEMS.map((item) => (
               <MenuLink key={item.href} {...item} />
             ))}
             <div className="border-t border-zinc-700 my-0.5" />
-            {UTILITY_MENU_ITEMS.map((item) => (
+            <p className="px-3 pt-2.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-600">Tools</p>
+            {TOOLS_MENU_ITEMS.map((item) => (
+              <MenuLink key={item.href} {...item} />
+            ))}
+            <div className="border-t border-zinc-700 my-0.5" />
+            {SETTINGS_MENU_ITEMS.map((item) => (
               <MenuLink key={item.href} {...item} />
             ))}
           </div>
@@ -319,7 +357,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
           className={`w-full flex items-center ${collapsed ? "justify-center" : "gap-2.5"} rounded-lg hover:bg-zinc-800 transition-colors p-1.5 -mx-1.5`}
           title={collapsed ? displayName : undefined}
         >
-          <div className="w-8 h-8 rounded-full bg-[#EAB308] flex items-center justify-center text-[#0a0a0b] text-xs font-bold shrink-0" style={{ fontFamily: "var(--font-display, sans-serif)" }}>
+          <div className="w-8 h-8 rounded-full bg-[#16A34A] flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ fontFamily: "var(--font-display, sans-serif)" }}>
             {displayInitial}
           </div>
           {!collapsed && (
@@ -334,13 +372,6 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
         </button>
       </div>
 
-      {/* Collapse toggle */}
-      <button
-        onClick={() => setCollapsed(!collapsed)}
-        className="absolute -right-3 top-20 w-6 h-6 bg-white border border-stone-200 rounded-full hidden lg:flex items-center justify-center shadow-sm hover:bg-stone-50 z-30"
-      >
-        {collapsed ? <ChevronRight size={12} className="text-zinc-500" /> : <ChevronLeft size={12} className="text-zinc-500" />}
-      </button>
     </aside>
     </>
   );

@@ -5,6 +5,7 @@ import Card from "@/components/ui/Card";
 import ProgressBar from "@/components/ui/ProgressBar";
 import { request } from "@/lib/api-client";
 import { getErrorMessage } from "@/lib/errors";
+import SirHenryName from "@/components/ui/SirHenryName";
 
 const COLORS: Record<string, string> = {
   stock: "#3b82f6",
@@ -133,7 +134,7 @@ export default function TargetAllocationEditor({ onSaved }: TargetAllocationEdit
           className="flex items-center gap-1.5 text-xs text-[#16A34A] hover:text-[#15803D] transition-colors"
         >
           <MessageCircle size={12} />
-          Ask Sir Henry
+          Ask <SirHenryName />
         </button>
       </div>
 

@@ -4,6 +4,7 @@ import { ChevronDown, ChevronUp, MessageCircle, X, Shield, Info } from "lucide-r
 import { formatCurrency, priorityColor, priorityLabel } from "@/lib/utils";
 import type { TaxStrategy } from "@/types/api";
 import Badge from "@/components/ui/Badge";
+import SirHenryName from "@/components/ui/SirHenryName";
 
 const STRATEGY_TYPE_SIMULATOR: Record<string, string> = {
   retirement: "roth-conversion",
@@ -113,7 +114,7 @@ export default function StrategyCard({ strategy, onDismiss, onOpenSimulator }: {
               </button>
             )}
             <button type="button" onClick={(e) => { e.stopPropagation(); askHenry(`Tell me more about this tax strategy: "${strategy.title}". Is it a good fit for my situation?`); }} className="flex items-center gap-1 text-xs text-[#16A34A] hover:underline">
-              <MessageCircle size={11} /> Ask Sir Henry
+              <MessageCircle size={11} /> Ask <SirHenryName />
             </button>
           </div>
         </div>

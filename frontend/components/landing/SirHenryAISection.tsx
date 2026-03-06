@@ -1,3 +1,5 @@
+import SirHenryName from "@/components/ui/SirHenryName";
+
 const EXCHANGES = [
   {
     question:
@@ -37,10 +39,10 @@ export default function SirHenryAISection() {
             fontSize: "clamp(1.75rem, 3.5vw, 2.25rem)",
           }}
         >
-          Meet Sir Henry
+          Meet <SirHenryName />
         </h2>
         <p className="text-center text-[#9CA3AF] text-base leading-relaxed max-w-2xl mx-auto mb-16">
-          Not a chatbot. Not a generic calculator. Sir Henry is the AI advisor
+          Not a chatbot. Not a generic calculator. <SirHenryName /> is the AI advisor
           woven through every part of the app — and available to answer any
           financial question, right now, based on your actual numbers.
         </p>
@@ -81,7 +83,7 @@ export default function SirHenryAISection() {
           </p>
           <p className="text-[#6B7280] text-sm max-w-lg mx-auto">
             Not &ldquo;housing is a personal decision that depends on many
-            factors.&rdquo; Sir Henry gives you the answer — and shows its
+            factors.&rdquo; <SirHenryName /> gives you the answer — and shows its
             work.
           </p>
         </div>

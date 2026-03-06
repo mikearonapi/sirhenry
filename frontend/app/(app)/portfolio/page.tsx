@@ -25,6 +25,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import ProgressBar from "@/components/ui/ProgressBar";
 import OverviewTab from "@/components/portfolio/OverviewTab";
 import TargetAllocationEditor from "@/components/portfolio/TargetAllocationEditor";
+import SirHenryName from "@/components/ui/SirHenryName";
 import {
   PieChart as RePie, Pie, Cell, ResponsiveContainer, Tooltip,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -225,7 +226,7 @@ export default function PortfolioPage() {
               className="flex items-center gap-1.5 text-xs text-[#16A34A] hover:text-[#15803D] transition-colors"
             >
               <MessageCircle size={14} />
-              Ask Sir Henry
+              Ask <SirHenryName />
             </button>
             <button
               onClick={loadHarvest}

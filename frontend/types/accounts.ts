@@ -66,6 +66,7 @@ export interface PlaidAccount {
 export interface PlaidExchangeResult {
   item_id: string;
   status: string;
+  accounts_matched?: number;
 }
 
 export interface ImportResult {
@@ -74,6 +75,7 @@ export interface ImportResult {
   status: string;
   transactions_imported: number;
   transactions_skipped: number;
+  transactions_split?: number;
   message: string;
 }
 

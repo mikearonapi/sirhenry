@@ -127,6 +127,9 @@ class Transaction(Base):
     reimbursement_status = Column(String(20), nullable=True)
     reimbursement_match_id = Column(Integer, ForeignKey("transactions.id"), nullable=True)
 
+    # Split transaction tracking (Amazon item-level splits)
+    parent_transaction_id = Column(Integer, ForeignKey("transactions.id"), nullable=True)
+
     # AI-assigned categorization
     category = Column(String(100), nullable=True)
     # IRS Schedule / line item reference (e.g., "Schedule C Line 14 - Employee Benefits")
@@ -167,6 +170,8 @@ class Transaction(Base):
 
     notes = Column(Text, nullable=True)
     is_excluded = Column(Boolean, nullable=False, default=False)  # hide from reports
+    # expense | income | transfer | refund — auto-classified, user-overridable
+    flow_type = Column(String(20), nullable=True)
     # plaid | csv | manual | monarch | amazon
     data_source = Column(String(20), nullable=False, default="csv")
 
@@ -177,6 +182,7 @@ class Transaction(Base):
         Index("ix_transaction_hash", "transaction_hash"),
         Index("ix_transaction_period", "period_year", "period_month"),
         Index("ix_transaction_segment_category", "effective_segment", "effective_category"),
+        Index("ix_transaction_parent", "parent_transaction_id"),
     )
 
     account = relationship("Account", back_populates="transactions")
@@ -184,6 +190,8 @@ class Transaction(Base):
     business_entity = relationship("BusinessEntity", foreign_keys=[business_entity_id])
     effective_entity = relationship("BusinessEntity", foreign_keys=[effective_business_entity_id])
     reimbursement_match = relationship("Transaction", remote_side=[id], foreign_keys=[reimbursement_match_id])
+    parent_transaction = relationship("Transaction", remote_side=[id], foreign_keys=[parent_transaction_id])
+    children = relationship("Transaction", foreign_keys=[parent_transaction_id], back_populates="parent_transaction")
 
 
 class BusinessEntity(Base):
@@ -399,6 +407,35 @@ class OutlierFeedback(Base):
     transaction = relationship("Transaction")
 
 
+class CategoryRule(Base):
+    """
+    Learned categorization rules from user overrides. When a user corrects
+    a transaction category, the merchant pattern is stored as a rule and
+    applied to future (and optionally past) transactions automatically.
+    """
+    __tablename__ = "category_rules"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    merchant_pattern = Column(String(255), nullable=False)
+    category = Column(String(100), nullable=True)
+    tax_category = Column(String(200), nullable=True)
+    segment = Column(String(20), nullable=True)
+    business_entity_id = Column(Integer, ForeignKey("business_entities.id"), nullable=True)
+    source = Column(String(20), nullable=False, default="user_override")
+    match_count = Column(Integer, nullable=False, default=0)
+    is_active = Column(Boolean, nullable=False, default=True)
+    effective_from = Column(Date, nullable=True)
+    effective_to = Column(Date, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("merchant_pattern", name="uq_category_rule_merchant"),
+        Index("ix_category_rule_active", "is_active"),
+    )
+
+    business_entity = relationship("BusinessEntity", foreign_keys=[business_entity_id])
+
+
 class FinancialPeriod(Base):
     """
     Pre-computed monthly/annual financial period summaries for fast dashboard reads.
@@ -499,6 +536,53 @@ class PlaidAccount(Base):
     mask = Column(String(4), nullable=True)
 
     plaid_item = relationship("PlaidItem", back_populates="plaid_accounts")
+
+
+class PayrollConnection(Base):
+    """Tracks a Plaid Income payroll connection."""
+    __tablename__ = "payroll_connections"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    plaid_user_token = Column(String(200), nullable=True)   # Fernet-encrypted (legacy)
+    plaid_user_id = Column(String(100), nullable=True)      # New Plaid user_id (post Dec 2025)
+    plaid_item_id = Column(String(100), nullable=True)
+    employer_name = Column(String(255), nullable=True)
+    status = Column(String(20), nullable=False, default="pending")
+    income_source_type = Column(String(20), nullable=False, default="payroll")
+    last_synced_at = Column(DateTime, nullable=True)
+    raw_data_json = Column(Text, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    pay_stubs = relationship("PayStubRecord", back_populates="connection", cascade="all, delete-orphan")
+
+
+class PayStubRecord(Base):
+    """Individual pay stub from a payroll connection."""
+    __tablename__ = "pay_stub_records"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    connection_id = Column(Integer, ForeignKey("payroll_connections.id", ondelete="CASCADE"), nullable=False)
+    pay_date = Column(Date, nullable=False)
+    pay_period_start = Column(Date, nullable=True)
+    pay_period_end = Column(Date, nullable=True)
+    pay_frequency = Column(String(20), nullable=True)
+    gross_pay = Column(Float, nullable=True)
+    gross_pay_ytd = Column(Float, nullable=True)
+    net_pay = Column(Float, nullable=True)
+    net_pay_ytd = Column(Float, nullable=True)
+    deductions_json = Column(Text, nullable=True)
+    employer_name = Column(String(255), nullable=True)
+    employer_ein = Column(String(20), nullable=True)
+    employer_address_json = Column(Text, nullable=True)
+    work_state = Column(String(2), nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    connection = relationship("PayrollConnection", back_populates="pay_stubs")
+
+    __table_args__ = (
+        Index("ix_pay_stub_date", "connection_id", "pay_date"),
+    )
 
 
 class Budget(Base):
@@ -641,6 +725,11 @@ class ManualAsset(Base):
     annual_return_pct = Column(Float, nullable=True)
     allocation_json = Column(Text, nullable=True)
     beneficiary = Column(String(255), nullable=True)
+    # Valuation tracking
+    vin = Column(String(17), nullable=True)
+    valuation_source = Column(String(30), nullable=True)  # manual | nhtsa | rentcast
+    valuation_date = Column(DateTime, nullable=True)
+    valuation_api_data_json = Column(Text, nullable=True)
     # Bridge to Account table (investment ManualAssets become proper Accounts)
     linked_account_id = Column(Integer, ForeignKey("accounts.id"), nullable=True)
 
@@ -1024,7 +1113,7 @@ class HouseholdProfile(Base):
     spouse_b_employer = Column(String(255), nullable=True)
     spouse_b_work_state = Column(String(2), nullable=True)
     spouse_b_start_date = Column(Date, nullable=True)
-    combined_income = Column(Float, nullable=False, default=0.0)
+    combined_income = Column(Float, nullable=False, default=0.0)  # W-2 only (spouse_a + spouse_b); use + other_income_annual for total
     other_income_annual = Column(Float, nullable=True, default=0.0)
     other_income_sources_json = Column(Text, nullable=True)
     estate_will_status = Column(String(20), nullable=True)
@@ -1036,6 +1125,7 @@ class HouseholdProfile(Base):
     is_primary = Column(Boolean, nullable=False, default=False)
     notes = Column(Text, nullable=True)
     tax_strategy_profile_json = Column(Text, nullable=True)  # Interview answers for tax strategy
+    setup_completed_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -1134,7 +1224,7 @@ class LifeEvent(Base):
     __tablename__ = "life_events"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    household_id = Column(Integer, ForeignKey("household_profiles.id", ondelete="SET NULL"), nullable=True)
+    household_id = Column(Integer, ForeignKey("household_profiles.id", ondelete="CASCADE"), nullable=True)
     event_type = Column(String(50), nullable=False)
     event_subtype = Column(String(100), nullable=True)
     title = Column(String(255), nullable=False)
@@ -1158,7 +1248,7 @@ class InsurancePolicy(Base):
     __tablename__ = "insurance_policies"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    household_id = Column(Integer, ForeignKey("household_profiles.id", ondelete="SET NULL"), nullable=True)
+    household_id = Column(Integer, ForeignKey("household_profiles.id", ondelete="CASCADE"), nullable=True)
     owner_spouse = Column(String(1), nullable=True)
     policy_type = Column(String(50), nullable=False)
     provider = Column(String(255), nullable=True)
@@ -1300,6 +1390,50 @@ class ChatMessage(Base):
 
     __table_args__ = (
         Index("ix_chat_msg_conv", "conversation_id"),
+    )
+
+
+class UserContext(Base):
+    """
+    Learned facts about the user that persist across conversations.
+    Injected into the AI system prompt for personalization.
+    Examples: 'Primary business is AutoRev, a car dealership',
+              'Wife handles rental property management',
+              'Prefers aggressive tax optimization'.
+    """
+    __tablename__ = "user_context"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    # business | tax | preference | household | financial_goal | investment | career
+    category = Column(String(50), nullable=False)
+    key = Column(String(255), nullable=False)        # Short label for dedup
+    value = Column(Text, nullable=False)             # The fact itself
+    source = Column(String(20), nullable=False, default="chat")  # chat | manual | inferred
+    confidence = Column(Float, nullable=False, default=1.0)      # 0-1 for inferred facts
+    is_active = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("category", "key", name="uq_user_context_cat_key"),
+        Index("ix_user_context_active", "is_active"),
+    )
+
+
+class RetirementBudgetOverride(Base):
+    __tablename__ = "retirement_budget_overrides"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    profile_id = Column(Integer, ForeignKey("retirement_profiles.id"), nullable=True)
+    category = Column(String(100), nullable=False)
+    multiplier = Column(Float, nullable=True, default=1.0)
+    fixed_amount = Column(Float, nullable=True)
+    reason = Column(String(255), nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("profile_id", "category", name="uq_retirement_override_profile_cat"),
     )
 
 

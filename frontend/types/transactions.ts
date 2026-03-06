@@ -27,10 +27,12 @@ export interface Transaction {
   period_month: number | null;
   period_year: number | null;
   notes: string | null;
-  data_source: "plaid" | "csv" | "manual" | "monarch";
+  data_source: "plaid" | "csv" | "manual" | "monarch" | "amazon";
   is_excluded: boolean;
   merchant_name: string | null;
   merchant_logo_url: string | null;
+  parent_transaction_id: number | null;
+  children?: Transaction[];
   created_at: string;
 }
 

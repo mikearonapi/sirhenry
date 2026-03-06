@@ -5,3 +5,5 @@ export { default as NetWorthHeader } from "./NetWorthHeader";
 export { default as AccountGroupList } from "./AccountGroupList";
 export { default as SummarySidebar } from "./SummarySidebar";
 export { default as AddAccountModal } from "./AddAccountModal";
+export { default as ConnectEmployer } from "./ConnectEmployer";
+export { default as SetupBanner } from "./SetupBanner";

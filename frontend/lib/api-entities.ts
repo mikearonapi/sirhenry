@@ -3,6 +3,8 @@ import type {
   BusinessEntityCreateIn,
   EntityExpenseReport,
   EntityReassignIn,
+  EntityTransaction,
+  ReimbursementReport,
   VendorEntityRule,
   VendorEntityRuleCreateIn,
 } from "@/types/api";
@@ -74,6 +76,15 @@ export function reassignEntity(body: EntityReassignIn): Promise<{ reassigned: nu
 
 export function getEntityExpenseReport(entityId: number, year: number): Promise<EntityExpenseReport> {
   return request(`/entities/${entityId}/expenses?year=${year}`);
+}
+
+export function getEntityReimbursements(entityId: number): Promise<ReimbursementReport> {
+  return request(`/entities/${entityId}/reimbursements`);
+}
+
+export function getEntityTransactions(entityId: number, year: number, month?: number): Promise<EntityTransaction[]> {
+  const qs = month ? `&month=${month}` : "";
+  return request(`/entities/${entityId}/expenses/transactions?year=${year}${qs}`);
 }
 
 export function getEntityExpenseCsvUrl(entityId: number, year: number, month?: number): string {

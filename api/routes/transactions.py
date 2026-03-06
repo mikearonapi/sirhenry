@@ -18,6 +18,7 @@ from pipeline.db import (
     update_transaction_entity,
 )
 from pipeline.db.schema import Transaction
+from pipeline.ai.category_rules import learn_from_override
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/transactions", tags=["transactions"])
@@ -145,7 +146,20 @@ async def get_transaction(
     tx = result.scalar_one_or_none()
     if not tx:
         raise HTTPException(status_code=404, detail="Transaction not found")
-    return TransactionOut.model_validate(tx)
+
+    out = TransactionOut.model_validate(tx)
+
+    # Attach children if this is a split parent
+    children_result = await session.execute(
+        select(Transaction).where(
+            Transaction.parent_transaction_id == tx.id
+        ).order_by(Transaction.amount.asc())
+    )
+    children = children_result.scalars().all()
+    if children:
+        out.children = [TransactionOut.model_validate(c) for c in children]
+
+    return out
 
 
 @router.patch("/{transaction_id}", response_model=TransactionOut)

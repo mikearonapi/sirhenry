@@ -19,6 +19,8 @@ import {
   Sparkles,
   type LucideIcon,
 } from "lucide-react";
+import type { ReactNode } from "react";
+import SirHenryName from "@/components/ui/SirHenryName";
 
 interface Callout {
   icon: LucideIcon;
@@ -29,7 +31,7 @@ interface Callout {
 interface Feature {
   id: string;
   tag: string;
-  title: string;
+  title: ReactNode;
   description: string;
   dark: boolean;
   screenshot: string;
@@ -40,7 +42,7 @@ const FEATURES: Feature[] = [
   {
     id: "ai-advisor",
     tag: "Your AI advisor",
-    title: "Meet Sir Henry.",
+    title: <>Meet <SirHenryName />.</>,
     description: "An AI financial advisor that knows your numbers. Ask anything \u2014 get specific, personalized answers backed by your actual financial data.",
     dark: true,
     screenshot: "/screenshots/sir-henry.png",
@@ -54,12 +56,12 @@ const FEATURES: Feature[] = [
     id: "retirement",
     tag: "Retirement planning",
     title: "See your future, clearly.",
-    description: "Monte Carlo simulations model 10,000 possible outcomes. Know your FIRE number, earliest retirement age, and exactly what to do next.",
+    description: "Monte Carlo simulations model 10,000 possible outcomes. Know your retirement target, earliest retirement age, and exactly what to do next.",
     dark: false,
     screenshot: "/screenshots/retirement.png",
     callouts: [
       { icon: LineChart, title: "10,000 simulations", description: "P10/P50/P90 confidence intervals \u2014 not just one projection" },
-      { icon: Target, title: "FIRE & Coast FIRE", description: "Know your number and when you can stop saving" },
+      { icon: Target, title: "Retire earlier?", description: "See what it takes to retire 5 or 10 years sooner" },
       { icon: TrendingUp, title: "What-if scenarios", description: "Model career changes, home purchases, and market downturns" },
     ],
   },

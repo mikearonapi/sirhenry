@@ -76,16 +76,13 @@ tests/                  # pytest test suite
 
 ### Run locally
 ```bash
-# API (Docker)
-docker compose up api -d
+# Both API + Frontend (recommended)
+./dev.sh
+# → API: http://localhost:8000, Frontend: http://localhost:3000
 
-# Frontend (native)
-cd frontend && npm install && npm run dev
-# → http://localhost:3000
-
-# Or full stack via Docker
-docker compose up --build -d
-# → API: http://localhost:8000, Frontend: http://localhost:3001
+# Or separately:
+.venv/bin/uvicorn api.main:app --reload --host 127.0.0.1 --port 8000
+cd frontend && npm run dev
 ```
 
 ### Run tests

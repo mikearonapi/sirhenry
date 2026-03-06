@@ -52,6 +52,27 @@ async def sync_all_items(session: AsyncSession, run_categorize: bool = True) -> 
 
     # Post-sync tasks: best-effort, each with its own timeout protection
     if run_categorize and total_added > 0:
+        # 1. Apply entity rules first (assigns business entities via vendor patterns)
+        try:
+            from pipeline.db.models import apply_entity_rules
+            ent_count = await asyncio.wait_for(apply_entity_rules(session), timeout=30)
+            logger.info(f"Entity rules applied to {ent_count} transactions after Plaid sync.")
+        except asyncio.TimeoutError:
+            logger.warning("Post-sync entity rules timed out after 30s")
+        except Exception as e:
+            logger.warning(f"Post-sync entity rules failed: {e}")
+
+        # 2. Apply category rules (handles known merchants without AI)
+        try:
+            from pipeline.ai.category_rules import apply_rules
+            cat_rules = await asyncio.wait_for(apply_rules(session), timeout=30)
+            logger.info(f"Category rules applied to {cat_rules['applied']} transactions after Plaid sync.")
+        except asyncio.TimeoutError:
+            logger.warning("Post-sync category rules timed out after 30s")
+        except Exception as e:
+            logger.warning(f"Post-sync category rules failed: {e}")
+
+        # 3. AI categorization for remaining uncategorized transactions
         try:
             from pipeline.ai.categorizer import categorize_transactions
             cat = await asyncio.wait_for(categorize_transactions(session), timeout=120)
@@ -114,6 +135,7 @@ async def sync_item(
     sync_result = sync_transactions(token, cursor=item.plaid_cursor)
 
     added = await _process_new_transactions(session, item, sync_result["added"])
+    await _update_modified_transactions(session, item, sync_result.get("modified", []))
     await _remove_transactions(session, sync_result["removed"])
 
     if sync_result.get("next_cursor"):
@@ -213,9 +235,106 @@ async def _process_new_transactions(
             "data_source": "plaid",
         })
 
+    # Pre-filter: batch-check for cross-source duplicates before calling
+    # bulk_create_transactions (reduces N individual queries).
+    if rows:
+        account_ids = {r["account_id"] for r in rows}
+        existing_csv = await session.execute(
+            select(
+                Transaction.account_id,
+                sqlfunc.date(Transaction.date).label("tx_date"),
+                Transaction.amount,
+            ).where(
+                Transaction.account_id.in_(account_ids),
+                Transaction.data_source != "plaid",
+                Transaction.is_excluded.is_(False),
+            )
+        )
+        csv_keys = {(r.account_id, str(r.tx_date), r.amount) for r in existing_csv}
+
+        pre_filter_count = len(rows)
+        rows = [
+            r for r in rows
+            if (
+                r["account_id"],
+                str(r["date"].date() if hasattr(r["date"], "date") else r["date"]),
+                r["amount"],
+            ) not in csv_keys
+        ]
+        skipped = pre_filter_count - len(rows)
+        if skipped:
+            logger.info(f"Cross-source dedup: skipped {skipped} Plaid transactions already in CSV")
+
     inserted = await bulk_create_transactions(session, rows)
     logger.info(f"Inserted {inserted} new transactions from {item.institution_name}")
     return inserted
+
+
+async def _update_modified_transactions(
+    session: AsyncSession,
+    item: PlaidItem,
+    modified: list[dict[str, Any]],
+) -> int:
+    """Apply Plaid-reported modifications to existing transactions.
+
+    Plaid sends modified transactions when a pending transaction posts with
+    different details (amount, date, merchant name, etc.). We update the
+    stored transaction to reflect the authoritative posted data.
+    """
+    if not modified:
+        return 0
+
+    import hashlib
+
+    updated = 0
+    for tx in modified:
+        if tx.get("pending"):
+            continue
+
+        tx_hash = hashlib.sha256(tx["transaction_hash"].encode()).hexdigest() if "transaction_hash" in tx else None
+        # Plaid transaction IDs are hashed in _normalize_transaction; match on that
+        plaid_id = tx.get("plaid_transaction_id") or tx.get("transaction_id", "")
+        if not tx_hash and plaid_id:
+            tx_hash = hashlib.sha256(plaid_id.encode()).hexdigest()
+
+        if not tx_hash:
+            continue
+
+        result = await session.execute(
+            select(Transaction).where(Transaction.transaction_hash == tx_hash)
+        )
+        existing = result.scalar_one_or_none()
+        if not existing:
+            continue
+
+        # Update fields that Plaid may have corrected
+        if "amount" in tx and tx["amount"] != existing.amount:
+            existing.amount = tx["amount"]
+        if "date" in tx:
+            existing.date = tx["date"]
+        if "description" in tx:
+            existing.description = tx["description"]
+        if tx.get("merchant_name"):
+            existing.merchant_name = tx["merchant_name"]
+        if tx.get("authorized_date"):
+            existing.authorized_date = tx["authorized_date"]
+        if tx.get("payment_channel"):
+            existing.payment_channel = tx["payment_channel"]
+        if tx.get("plaid_pfc_primary"):
+            existing.plaid_pfc_primary = tx["plaid_pfc_primary"]
+        if tx.get("plaid_pfc_detailed"):
+            existing.plaid_pfc_detailed = tx["plaid_pfc_detailed"]
+        if tx.get("plaid_pfc_confidence"):
+            existing.plaid_pfc_confidence = tx["plaid_pfc_confidence"]
+        if tx.get("merchant_logo_url"):
+            existing.merchant_logo_url = tx["merchant_logo_url"]
+        if tx.get("merchant_website"):
+            existing.merchant_website = tx["merchant_website"]
+        updated += 1
+
+    if updated:
+        logger.info(f"Updated {updated} modified transactions from {item.institution_name}")
+    return updated
 
 
 async def _remove_transactions(session: AsyncSession, removed_ids: list[str]) -> None:
@@ -233,6 +352,12 @@ async def _remove_transactions(session: AsyncSession, removed_ids: list[str]) ->
 
 
 def _map_plaid_type(plaid_type: str) -> str:
+    """Map Plaid account type to our account_type.
+
+    Note: loan and mortgage map to 'personal' because they are personal
+    financial accounts. The finer-grained distinction is preserved in
+    PlaidAccount.type and Account.subtype for display grouping.
+    """
     mapping = {
         "depository": "personal",
         "credit": "personal",

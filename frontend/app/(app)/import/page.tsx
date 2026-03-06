@@ -14,12 +14,12 @@ import {
   Search,
   Database,
 } from "lucide-react";
-import { getDocuments, deleteDocument, runCategorization, uploadFile } from "@/lib/api";
+import { getDocuments, deleteDocument, runCategorization, uploadFile, detectDocumentType } from "@/lib/api";
 import { formatDate, statusColor } from "@/lib/utils";
 import type { Document, ImportResult } from "@/types/api";
 import { getErrorMessage } from "@/lib/errors";
 
-type DocumentType = "credit_card" | "tax_document" | "investment" | "amazon" | "monarch";
+type DocumentType = "credit_card" | "tax_document" | "investment" | "amazon" | "monarch" | "insurance" | "pay_stub";
 
 const DOC_TYPE_OPTIONS: { value: DocumentType; label: string; accept: string; hint: string }[] = [
   {
@@ -52,6 +52,18 @@ const DOC_TYPE_OPTIONS: { value: DocumentType; label: string; accept: string; hi
     accept: ".csv",
     hint: "Monarch Money transaction export. Accounts auto-created; duplicates with card CSVs auto-detected.",
   },
+  {
+    value: "insurance",
+    label: "Insurance Policy",
+    accept: ".pdf,.jpg,.jpeg,.png",
+    hint: "Insurance declarations — life, auto, home, umbrella, disability. AI extracts coverage details.",
+  },
+  {
+    value: "pay_stub",
+    label: "Pay Stub",
+    accept: ".pdf,.jpg,.jpeg,.png",
+    hint: "Earnings statements. AI extracts income, deductions, benefits for household profile updates.",
+  },
 ];
 
 const STATUS_ICONS: Record<string, React.ReactNode> = {
@@ -81,6 +93,9 @@ export default function ImportPage() {
   const [error, setError] = useState<string | null>(null);
 
   // Document vault state
+  const [autoDetecting, setAutoDetecting] = useState(false);
+  const [detectedType, setDetectedType] = useState<{ type: string; confidence: number } | null>(null);
+
   const [vaultSearch, setVaultSearch] = useState("");
   const [vaultTypeFilter, setVaultTypeFilter] = useState("");
   const [vaultStatusFilter, setVaultStatusFilter] = useState("");
@@ -124,8 +139,30 @@ export default function ImportPage() {
 
   useEffect(() => { loadDocuments(); }, [loadDocuments]);
 
+  async function handleAutoDetect(file: File) {
+    setAutoDetecting(true);
+    try {
+      const detection = await detectDocumentType(file);
+      if (detection.detected_type && detection.detected_type !== "unknown" && detection.confidence >= 0.6) {
+        const validTypes = DOC_TYPE_OPTIONS.map((d) => d.value);
+        if (validTypes.includes(detection.detected_type as DocumentType)) {
+          setDocType(detection.detected_type as DocumentType);
+          setDetectedType({ type: detection.detected_type, confidence: detection.confidence });
+        }
+      }
+    } catch {
+      // Auto-detect failed silently, user keeps their selection
+    } finally {
+      setAutoDetecting(false);
+    }
+  }
+
   async function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
+    // Auto-detect type for the first file if only one file
+    if (files.length === 1) {
+      await handleAutoDetect(files[0]);
+    }
     setUploading(true);
     const newResults: ImportResult[] = [];
     for (const file of Array.from(files)) {
@@ -301,6 +338,26 @@ export default function ImportPage() {
             </div>
           </div>
 
+          {/* Auto-detect indicator */}
+          {autoDetecting && (
+            <div className="bg-violet-50 border border-violet-100 rounded-xl px-4 py-3 flex items-center gap-3">
+              <Loader2 size={14} className="animate-spin text-violet-500" />
+              <p className="text-sm text-violet-700">Detecting document type...</p>
+            </div>
+          )}
+          {detectedType && !autoDetecting && (
+            <div className="bg-green-50 border border-green-100 rounded-xl px-4 py-3 flex items-center gap-3">
+              <Sparkles size={14} className="text-green-600" />
+              <p className="text-sm text-green-700">
+                Auto-detected as <strong>{DOC_TYPE_OPTIONS.find((d) => d.value === detectedType.type)?.label ?? detectedType.type}</strong>
+                {detectedType.confidence >= 0.9 && " (high confidence)"}
+              </p>
+              <button onClick={() => setDetectedType(null)} className="ml-auto text-green-400 hover:text-green-600">
+                <XCircle size={14} />
+              </button>
+            </div>
+          )}
+
           {/* Drop zone */}
           <div
             onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
@@ -359,6 +416,7 @@ export default function ImportPage() {
                       {r.transactions_imported > 0 && (
                         <p className="text-xs text-green-600 mt-0.5">
                           {r.transactions_imported} imported · {r.transactions_skipped} skipped
+                          {r.transactions_split ? ` · ${r.transactions_split} split into categories` : ""}
                         </p>
                       )}
                     </div>

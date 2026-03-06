@@ -1,7 +1,14 @@
 import type { NextConfig } from "next";
 
+const isDesktop = process.env.TAURI_ENV === "1";
+
 const nextConfig: NextConfig = {
-  // output: "standalone" is for Docker only — do not enable on Vercel
+  ...(isDesktop && {
+    output: "export",
+    trailingSlash: true,
+  }),
+  images: { unoptimized: true },
+  allowedDevOrigins: ["127.0.0.1"],
 };
 
 export default nextConfig;

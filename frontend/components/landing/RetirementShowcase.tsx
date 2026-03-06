@@ -17,7 +17,7 @@ export default function RetirementShowcase() {
       {/* Key metrics row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
         <div className="bg-[#F0FDF4] rounded-lg p-3 border border-[#DCFCE7]">
-          <p className="text-[#6B7280] text-[10px] font-semibold uppercase tracking-wider mb-1">FIRE Number</p>
+          <p className="text-[#6B7280] text-[10px] font-semibold uppercase tracking-wider mb-1">Retirement Target</p>
           <p className="text-[#111827] text-lg font-bold" style={{ fontFamily: "var(--font-mono)" }}>
             {fmtM(r.fireNumber)}
           </p>
@@ -68,9 +68,9 @@ export default function RetirementShowcase() {
             {/* Median line */}
             <path d="M0,124 Q60,117 120,98 Q200,65 280,32 Q340,11 400,3" stroke="#16A34A" strokeWidth="2.5" strokeLinecap="round" />
 
-            {/* FIRE target line */}
+            {/* Retirement target line */}
             <line x1="0" y1="30" x2="400" y2="30" stroke="#F59E0B" strokeWidth="1" strokeDasharray="6 4" />
-            <text x="4" y="26" fill="#F59E0B" fontSize="8" fontWeight="600">FIRE Target</text>
+            <text x="4" y="26" fill="#F59E0B" fontSize="8" fontWeight="600">Target</text>
 
             {/* Y-axis labels */}
             <text x="4" y="42" fill="#9CA3AF" fontSize="7">{fmtM(r.monteCarlo.p90)}</text>

@@ -48,11 +48,44 @@ async def get_all_accounts(session: AsyncSession) -> list[Account]:
 
 
 async def upsert_account(session: AsyncSession, data: dict[str, Any]) -> Account:
-    """Insert or update existing account matched by name + subtype."""
-    result = await session.execute(
-        select(Account).where(Account.name == data["name"], Account.subtype == data.get("subtype"))
-    )
-    existing = result.scalar_one_or_none()
+    """Insert or update existing account matched by name + subtype + institution + last_four.
+
+    Match priority:
+    1. Exact match on (name, subtype, institution, last_four) — strongest
+    2. Fallback: (name, subtype) when institution/last_four are both None in data
+    This prevents collisions between accounts at different institutions with the same name.
+    """
+    institution = data.get("institution")
+    last_four = data.get("last_four")
+
+    # Try exact match first (all four fields)
+    if institution or last_four:
+        filters = [Account.name == data["name"], Account.subtype == data.get("subtype")]
+        if institution:
+            filters.append(Account.institution == institution)
+        if last_four:
+            filters.append(Account.last_four == last_four)
+        result = await session.execute(select(Account).where(*filters))
+        existing = result.scalar_one_or_none()
+        if not existing:
+            # Fallback: match by name + subtype for Plaid upgrade of CSV/manual accounts
+            # that may not have had institution/last_four set initially
+            result = await session.execute(
+                select(Account).where(
+                    Account.name == data["name"],
+                    Account.subtype == data.get("subtype"),
+                )
+            )
+            existing = result.scalar_one_or_none()
+    else:
+        result = await session.execute(
+            select(Account).where(
+                Account.name == data["name"],
+                Account.subtype == data.get("subtype"),
+            )
+        )
+        existing = result.scalar_one_or_none()
+
     if existing:
         for key in ("institution", "last_four", "currency", "notes"):
             if key in data and data[key] is not None:
@@ -151,9 +184,10 @@ async def create_transaction(session: AsyncSession, data: dict[str, Any]) -> Tra
 async def bulk_create_transactions(
     session: AsyncSession, rows: list[dict[str, Any]]
 ) -> int:
-    """Insert many transactions; skip duplicates by transaction_hash."""
+    """Insert many transactions; skip duplicates by hash AND cross-source dedup."""
     inserted = 0
     for row in rows:
+        # 1. Hash-based dedup (same source)
         if row.get("transaction_hash"):
             existing = await session.execute(
                 select(Transaction.id).where(
@@ -162,6 +196,29 @@ async def bulk_create_transactions(
             )
             if existing.scalar_one_or_none():
                 continue
+
+        # 2. Cross-source dedup: skip if a matching transaction from a
+        #    different data_source already exists (same account, date, amount).
+        #    This prevents CSV+Plaid duplicates where hashes differ.
+        row_source = row.get("data_source")
+        if row_source and row.get("account_id") and row.get("date") and row.get("amount") is not None:
+            from sqlalchemy import and_, cast, Date
+            tx_date = row["date"]
+            cross_q = select(Transaction.id).where(
+                Transaction.account_id == row["account_id"],
+                Transaction.amount == row["amount"],
+                Transaction.is_excluded.is_(False),
+                Transaction.data_source != row_source,
+                cast(Transaction.date, Date) == (tx_date.date() if hasattr(tx_date, "date") else tx_date),
+            ).limit(1)
+            cross_match = await session.execute(cross_q)
+            if cross_match.scalar_one_or_none():
+                logger.debug(
+                    f"Cross-source dedup: skipping {row_source} tx "
+                    f"({row['date']}, {row['amount']}) — already exists from another source"
+                )
+                continue
+
         tx = Transaction(**row)
         session.add(tx)
         inserted += 1
@@ -606,7 +663,8 @@ async def apply_entity_rules(
                 segment_from_rule = rule.segment_override
                 break
 
-        if entity_id is None:
+        if entity_id is None and tx.business_entity_id is None:
+            # Only apply account defaults to transactions with no existing entity
             acct = accounts_by_id.get(tx.account_id)
             if acct and acct.default_business_entity_id:
                 entity_id = acct.default_business_entity_id
@@ -950,4 +1008,57 @@ async def delete_insurance_policy(session: AsyncSession, policy_id: int) -> bool
         return False
     await session.delete(policy)
     await session.flush()
+    return True
+
+
+# ---------------------------------------------------------------------------
+# User Context (learned facts)
+# ---------------------------------------------------------------------------
+
+async def upsert_user_context(session: AsyncSession, data: dict[str, Any]) -> "UserContext":
+    """Upsert a user context entry, matched by category+key."""
+    from .schema import UserContext
+    result = await session.execute(
+        select(UserContext).where(
+            UserContext.category == data["category"],
+            UserContext.key == data["key"],
+        )
+    )
+    existing = result.scalar_one_or_none()
+    if existing:
+        existing.value = data["value"]
+        existing.source = data.get("source", existing.source)
+        existing.confidence = data.get("confidence", existing.confidence)
+        existing.is_active = True
+        existing.updated_at = datetime.now(timezone.utc)
+        return existing
+    ctx = UserContext(**data)
+    session.add(ctx)
+    await session.flush()
+    return ctx
+
+
+async def get_active_user_context(
+    session: AsyncSession,
+    category: Optional[str] = None,
+) -> list["UserContext"]:
+    """List active user context entries, optionally filtered by category."""
+    from .schema import UserContext
+    q = select(UserContext).where(UserContext.is_active == True)
+    if category:
+        q = q.where(UserContext.category == category)
+    q = q.order_by(UserContext.category, UserContext.key)
+    result = await session.execute(q)
+    return list(result.scalars().all())
+
+
+async def delete_user_context(session: AsyncSession, context_id: int) -> bool:
+    """Soft-delete a user context entry."""
+    from .schema import UserContext
+    result = await session.execute(select(UserContext).where(UserContext.id == context_id))
+    ctx = result.scalar_one_or_none()
+    if not ctx:
+        return False
+    ctx.is_active = False
+    ctx.updated_at = datetime.now(timezone.utc)
     return True

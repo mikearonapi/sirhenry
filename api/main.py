@@ -16,12 +16,12 @@ from api.routes import (
     documents, entities,
     equity_comp, family_members, goal_suggestions, goals,
     household, household_optimization,
-    import_routes, insights, insurance,
+    import_routes, income, insights, insurance,
     life_events, market, plaid, privacy,
     portfolio, portfolio_analytics, portfolio_crypto,
-    recurring, reminders, reports, retirement, retirement_scenarios,
-    scenarios, scenarios_calc, setup_status, tax, tax_analysis, tax_strategies,
-    tax_modeling, transactions,
+    recurring, reminders, reports, retirement, retirement_scenarios, rules,
+    scenarios, scenarios_calc, setup_status, smart_defaults, tax, tax_analysis,
+    tax_strategies, tax_modeling, transactions, user_context, valuations,
 )
 from pipeline.db import init_db  # importing pipeline.db also registers all extended models
 
@@ -263,6 +263,11 @@ app.include_router(privacy.router)
 app.include_router(setup_status.router)
 app.include_router(tax_modeling.router)
 app.include_router(benchmarks.router)
+app.include_router(smart_defaults.router)
+app.include_router(income.router)
+app.include_router(rules.router)
+app.include_router(user_context.router)
+app.include_router(valuations.router)
 
 
 @app.get("/health")

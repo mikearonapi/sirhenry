@@ -8,7 +8,7 @@ import calendar
 import logging
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pipeline.db.schema import Account, BusinessEntity, Transaction
@@ -44,9 +44,12 @@ async def compute_entity_expense_report(
         Transaction.is_excluded == False,
         Transaction.amount < 0,  # Only expenses (negative amounts)
     ]
-    # Exclude internal movements
+    # Exclude internal movements (handle NULL categories)
     for cat in _EXCLUDED_CATEGORIES:
-        base_filter.append(Transaction.effective_category.not_ilike(f"%{cat}%"))
+        base_filter.append(or_(
+            Transaction.effective_category.not_ilike(f"%{cat}%"),
+            Transaction.effective_category.is_(None),
+        ))
 
     monthly_result = await session.execute(
         select(
@@ -163,3 +166,131 @@ async def get_entity_transactions(
         })
 
     return transactions
+
+
+# ---------------------------------------------------------------------------
+# Reimbursement Tracking
+# ---------------------------------------------------------------------------
+
+async def compute_reimbursement_report(
+    session: AsyncSession,
+    entity_id: int,
+) -> dict[str, Any]:
+    """Compare expenses on accounts linked to an entity vs reimbursement income.
+
+    Finds accounts whose default_business_entity_id matches, sums their charges,
+    and compares against income (positive-amount transactions) tagged to the entity
+    with reimbursement-like categories.
+    """
+    # Verify entity
+    ent_result = await session.execute(
+        select(BusinessEntity).where(BusinessEntity.id == entity_id)
+    )
+    entity = ent_result.scalar_one_or_none()
+    if not entity:
+        return {"error": f"Entity {entity_id} not found"}
+
+    # Find accounts linked to this entity (e.g., corporate card)
+    acct_result = await session.execute(
+        select(Account).where(Account.default_business_entity_id == entity_id)
+    )
+    linked_accounts = list(acct_result.scalars().all())
+    linked_account_ids = [a.id for a in linked_accounts]
+
+    # --- Expenses ---
+    # If linked accounts exist (e.g., corporate card), track charges on those accounts.
+    # Otherwise, track all negative-amount transactions tagged to this entity.
+    expense_q = (
+        select(
+            func.strftime("%Y-%m", Transaction.date).label("month"),
+            func.sum(Transaction.amount).label("total"),
+            func.count(Transaction.id).label("cnt"),
+        )
+        .where(
+            Transaction.amount < 0,
+            Transaction.is_excluded == False,
+        )
+        .group_by(func.strftime("%Y-%m", Transaction.date))
+    )
+    if linked_account_ids:
+        expense_q = expense_q.where(Transaction.account_id.in_(linked_account_ids))
+    else:
+        expense_q = expense_q.where(Transaction.effective_business_entity_id == entity_id)
+    # Exclude internal movements (handle NULL categories)
+    for cat in _EXCLUDED_CATEGORIES:
+        expense_q = expense_q.where(or_(
+            Transaction.effective_category.not_ilike(f"%{cat}%"),
+            Transaction.effective_category.is_(None),
+        ))
+
+    expense_result = await session.execute(expense_q)
+    expense_by_month = {r[0]: (abs(r[1]), r[2]) for r in expense_result.all()}
+
+    # --- Reimbursements: income tagged to this entity from non-linked accounts ---
+    # These are deposits to checking/savings categorized as entity expenses.
+    # Exclude the linked accounts themselves (card payment credits aren't reimbursements).
+    reimb_q = (
+        select(
+            func.strftime("%Y-%m", Transaction.date).label("month"),
+            func.sum(Transaction.amount).label("total"),
+            func.count(Transaction.id).label("cnt"),
+        )
+        .where(
+            Transaction.effective_business_entity_id == entity_id,
+            Transaction.amount > 0,
+            Transaction.is_excluded == False,
+        )
+        .group_by(func.strftime("%Y-%m", Transaction.date))
+    )
+    if linked_account_ids:
+        reimb_q = reimb_q.where(Transaction.account_id.not_in(linked_account_ids))
+    # Exclude paychecks/salary — only want expense reimbursements and partner payments
+    reimb_q = reimb_q.where(or_(
+        Transaction.effective_category.not_ilike("%paycheck%"),
+        Transaction.effective_category.is_(None),
+    ))
+    reimb_q = reimb_q.where(or_(
+        Transaction.effective_category.not_ilike("%salary%"),
+        Transaction.effective_category.is_(None),
+    ))
+    # Exclude credit card payments (those are from the user paying their own card)
+    reimb_q = reimb_q.where(or_(
+        Transaction.effective_category.not_ilike("%credit card payment%"),
+        Transaction.effective_category.is_(None),
+    ))
+
+    reimb_result = await session.execute(reimb_q)
+    reimb_by_month = {r[0]: (r[1], r[2]) for r in reimb_result.all()}
+
+    # Merge months
+    all_months = sorted(set(expense_by_month.keys()) | set(reimb_by_month.keys()))
+    monthly = []
+    running_balance = 0.0
+    total_expenses = 0.0
+    total_reimbursed = 0.0
+    for m in all_months:
+        exp_amt, exp_cnt = expense_by_month.get(m, (0.0, 0))
+        reimb_amt, reimb_cnt = reimb_by_month.get(m, (0.0, 0))
+        net = reimb_amt - exp_amt
+        running_balance += net
+        total_expenses += exp_amt
+        total_reimbursed += reimb_amt
+        monthly.append({
+            "month": m,
+            "expenses": round(exp_amt, 2),
+            "expense_count": exp_cnt,
+            "reimbursed": round(reimb_amt, 2),
+            "reimbursement_count": reimb_cnt,
+            "net": round(net, 2),
+            "running_balance": round(running_balance, 2),
+        })
+
+    return {
+        "entity_id": entity.id,
+        "entity_name": entity.name,
+        "linked_accounts": [{"id": a.id, "name": a.name, "institution": a.institution} for a in linked_accounts],
+        "monthly": monthly,
+        "total_expenses": round(total_expenses, 2),
+        "total_reimbursed": round(total_reimbursed, 2),
+        "balance": round(total_reimbursed - total_expenses, 2),
+    }

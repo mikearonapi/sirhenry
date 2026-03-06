@@ -16,6 +16,7 @@ import ChatMessage, { SirHenryAvatar, renderMarkdown, renderStreamingMarkdown, t
 import ChatSuggestions from "./ChatSuggestions";
 import ConsentModal from "./ConsentModal";
 import { TOOL_ICONS, TOOL_LABELS, TOOL_DONE_LABELS } from "./constants";
+import SirHenryName from "@/components/ui/SirHenryName";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -27,7 +28,7 @@ function derivePageContext(pathname: string): string | null {
     "goals", "budget", "cashflow", "transactions", "recurring",
     "portfolio", "retirement", "market", "equity-comp", "life-planner",
     "tax-strategy", "tax-documents", "setup", "accounts", "household",
-    "life-events", "business", "insurance", "dashboard",
+    "life-events", "business", "insurance", "dashboard", "rules",
   ]);
   return KNOWN.has(segment) ? segment : null;
 }
@@ -52,6 +53,7 @@ export default function ChatWindow() {
   const [error, setError] = useState<string | null>(null);
   const [showConsent, setShowConsent] = useState(false);
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
+  const [learningMsg, setLearningMsg] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -194,6 +196,10 @@ export default function ChatWindow() {
               setConversationId(event.conversation_id);
             }
           }
+          if (event.type === "learning" && event.message) {
+            setLearningMsg(event.message);
+            setTimeout(() => setLearningMsg(null), 4000);
+          }
           if (event.type === "error") {
             setError(event.message ?? "Something went wrong.");
           }
@@ -264,9 +270,9 @@ export default function ChatWindow() {
           className="fixed bottom-6 right-6 group z-50"
         >
           <div className="relative">
-            <div className="absolute inset-0 bg-[#EAB308] rounded-full blur-lg opacity-20 group-hover:opacity-40 transition-opacity" />
-            <div className="relative w-14 h-14 bg-[#0a0a0b] border border-[#EAB308]/50 text-white rounded-full shadow-xl hover:shadow-2xl transition-all hover:scale-105 flex items-center justify-center">
-              <span className="text-[#EAB308] text-xl font-bold leading-none" style={{ fontFamily: "var(--font-display, sans-serif)" }}>H</span>
+            <div className="absolute inset-0 bg-[#16A34A] rounded-full blur-lg opacity-20 group-hover:opacity-40 transition-opacity" />
+            <div className="relative w-14 h-14 bg-[#0a0a0b] border border-zinc-700 text-white rounded-full shadow-xl hover:shadow-2xl transition-all hover:scale-105 flex items-center justify-center">
+              <span className="text-white text-xl font-extrabold leading-none" style={{ fontFamily: "var(--font-display, sans-serif)" }}>H</span>
             </div>
             {messages.length > 0 && (
               <span className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-sm ring-2 ring-white">
@@ -295,7 +301,7 @@ export default function ChatWindow() {
               <div className="flex items-center gap-3">
                 <SirHenryAvatar size={9} />
                 <div>
-                  <p className="font-semibold text-[14px] leading-tight" style={{ fontFamily: "var(--font-display, sans-serif)" }}>Sir Henry</p>
+                  <p className="font-semibold text-[14px] leading-tight" style={{ fontFamily: "var(--font-display, sans-serif)" }}><SirHenryName /></p>
                   <p className="text-[11px] text-zinc-500">Your AI financial advisor</p>
                 </div>
               </div>
@@ -343,6 +349,14 @@ export default function ChatWindow() {
                           );
                         })}
                       </div>
+                    </div>
+                  )}
+
+                  {/* Learning indicator */}
+                  {learningMsg && (
+                    <div className="flex items-center gap-2 text-[12px] px-3 py-1.5 rounded-lg bg-purple-900/20 text-purple-300 animate-in fade-in slide-in-from-bottom-1 ml-11">
+                      <Sparkles size={12} className="text-purple-400 flex-shrink-0" />
+                      <span>{learningMsg}</span>
                     </div>
                   )}
 
@@ -401,7 +415,7 @@ export default function ChatWindow() {
 
             {/* Input area */}
             <div className="border-t border-zinc-800 px-4 py-3 bg-[#0a0a0b]">
-              <div className="flex items-end gap-2.5 bg-[#141416] rounded-xl border border-zinc-700 focus-within:border-[#16A34A] focus-within:ring-2 focus-within:ring-green-900/30 transition-all px-3 py-2">
+              <div className="flex items-end gap-2.5 bg-[#141416] rounded-xl border border-zinc-700 focus-within:border-zinc-500 focus-within:shadow-[0_0_0_3px_rgba(255,255,255,0.04)] transition-all px-3 py-2">
                 <textarea
                   ref={inputRef}
                   value={input}
@@ -423,7 +437,7 @@ export default function ChatWindow() {
               </div>
               <div className="flex items-center justify-between mt-1.5 px-1">
                 <p className="text-[10px] text-zinc-700">Shift + Enter for new line</p>
-                <p className="text-[10px] text-zinc-700 flex items-center gap-1"><Sparkles size={9} /> Sir Henry · Powered by Claude</p>
+                <p className="text-[10px] text-zinc-700 flex items-center gap-1"><Sparkles size={9} /> <SirHenryName /> · Powered by Claude</p>
               </div>
             </div>
           </div>

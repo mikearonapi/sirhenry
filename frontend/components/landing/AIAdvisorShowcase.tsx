@@ -1,5 +1,6 @@
 import { DEMO_CHAT_EXCHANGES } from "./demo-data";
 import MockupFrame from "./MockupFrame";
+import SirHenryName from "@/components/ui/SirHenryName";
 
 export default function AIAdvisorShowcase() {
   const chat = DEMO_CHAT_EXCHANGES[1]; // RSU vest question — most impressive
@@ -44,7 +45,7 @@ export default function AIAdvisorShowcase() {
               <span className="text-[10px] font-bold text-[#22C55E]">H</span>
             </div>
             <div className="flex-1">
-              <p className="text-[10px] text-[#6B7280] mb-1">Sir Henry</p>
+              <p className="text-[10px] text-[#6B7280] mb-1"><SirHenryName /></p>
               <div className="bg-[#1C1C1F] rounded-lg rounded-tl-sm p-3 border border-[#22C55E]/20">
                 <p className="text-[#D1D5DB] text-sm leading-relaxed">{chat.answer}</p>
               </div>

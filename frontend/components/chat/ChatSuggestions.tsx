@@ -14,6 +14,7 @@ import {
   SETUP_SUGGESTION_CATEGORY,
   SETUP_SUGGESTION_CATEGORY_DARK,
 } from "./constants";
+import SirHenryName from "@/components/ui/SirHenryName";
 
 // ---------------------------------------------------------------------------
 // WelcomeScreen — shown when there are no messages yet
@@ -45,10 +46,10 @@ export default function ChatSuggestions({ onSend, dark = true, onPrivacy }: Chat
     return (
       <div className="flex flex-col items-center justify-center h-full px-6 py-8">
         {/* Hero */}
-        <div className="w-16 h-16 rounded-2xl bg-white border border-stone-200 flex items-center justify-center mb-4 shadow-sm">
-          <span className="text-[#EAB308] text-3xl font-bold leading-none" style={{ fontFamily: "var(--font-display, sans-serif)" }}>H</span>
+        <div className="w-16 h-16 rounded-2xl bg-[#0a0a0b] border border-zinc-200 flex items-center justify-center mb-4 shadow-sm">
+          <span className="text-white text-3xl font-extrabold leading-none" style={{ fontFamily: "var(--font-display, sans-serif)" }}>H</span>
         </div>
-        <h2 className="text-lg font-bold text-stone-900 mb-1" style={{ fontFamily: "var(--font-display, sans-serif)" }}>Sir Henry</h2>
+        <h2 className="text-lg font-bold text-stone-900 mb-1" style={{ fontFamily: "var(--font-display, sans-serif)" }}><SirHenryName /></h2>
         <p className="text-sm text-stone-500 text-center max-w-sm mb-6">
           {isSetup
             ? "Need help setting up? I can guide you through filing status, entity formation, insurance, and more."
@@ -78,16 +79,16 @@ export default function ChatSuggestions({ onSend, dark = true, onPrivacy }: Chat
         </div>
 
         {/* Suggestions */}
-        <div className="w-full max-w-md space-y-1.5">
+        <div className="w-full max-w-lg space-y-1.5">
           {categories[activeCategory]?.suggestions.map((s) => (
             <button
               key={s}
               onClick={() => onSend(s)}
-              className="w-full flex items-center gap-3 text-left text-[13px] px-4 py-2.5 rounded-xl bg-white border border-stone-200 text-stone-700 hover:border-green-300 hover:bg-green-50 hover:text-green-800 transition-all group shadow-sm"
+              className="w-full flex items-center gap-3 text-left text-[13px] px-4 py-2.5 rounded-xl bg-white border border-stone-200 text-stone-600 hover:border-stone-300 hover:bg-stone-50 hover:text-stone-800 transition-all group"
             >
-              <Lightbulb size={14} className="text-stone-400 group-hover:text-green-500 flex-shrink-0 transition-colors" />
+              <Lightbulb size={14} className="text-stone-300 group-hover:text-stone-500 flex-shrink-0 transition-colors" />
               <span className="flex-1">{s}</span>
-              <ChevronRight size={14} className="text-stone-300 group-hover:text-green-500 transition-colors" />
+              <ChevronRight size={14} className="text-stone-300 group-hover:text-stone-500 transition-colors" />
             </button>
           ))}
         </div>
@@ -115,10 +116,10 @@ export default function ChatSuggestions({ onSend, dark = true, onPrivacy }: Chat
   return (
     <div className="flex flex-col items-center justify-center h-full px-6 py-8 bg-[#0a0a0b]">
       {/* Hero */}
-      <div className="w-16 h-16 rounded-2xl bg-[#141416] border border-[#EAB308]/30 flex items-center justify-center mb-4 shadow-lg shadow-yellow-900/20">
-        <span className="text-[#EAB308] text-3xl font-bold leading-none" style={{ fontFamily: "var(--font-display, sans-serif)" }}>H</span>
+      <div className="w-16 h-16 rounded-2xl bg-[#0a0a0b] border border-zinc-700 flex items-center justify-center mb-4 shadow-lg">
+        <span className="text-white text-3xl font-extrabold leading-none" style={{ fontFamily: "var(--font-display, sans-serif)" }}>H</span>
       </div>
-      <h2 className="text-lg font-bold text-zinc-100 mb-1" style={{ fontFamily: "var(--font-display, sans-serif)" }}>Sir Henry</h2>
+      <h2 className="text-lg font-bold text-zinc-100 mb-1" style={{ fontFamily: "var(--font-display, sans-serif)" }}><SirHenryName /></h2>
       <p className="text-sm text-zinc-500 text-center max-w-sm mb-6">
         {isSetup
           ? "Need help setting up? I can guide you through filing status, entity formation, insurance, and more."

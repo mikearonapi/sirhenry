@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="44%" r="65%">
+      <stop offset="0%" stop-color="#121212"/>
+      <stop offset="100%" stop-color="#060606"/>
+    </radialGradient>
+    <radialGradient id="ambient" cx="50%" cy="50%" r="38%">
+      <stop offset="0%" stop-color="#16A34A" stop-opacity="0.20"/>
+      <stop offset="45%" stop-color="#16A34A" stop-opacity="0.06"/>
+      <stop offset="100%" stop-color="#16A34A" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="edge-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="22" result="blur"/>
+      <feColorMatrix in="blur" type="matrix"
+        values="0 0 0 0 0.086
+                0 0 0 0 0.639
+                0 0 0 0 0.290
+                0 0 0 0.55 0"/>
+    </filter>
+    <linearGradient id="h-fill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#E8E8E8"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="224" fill="url(#bg)"/>
+  <rect width="1024" height="1024" rx="224" fill="url(#ambient)"/>
+  <path d="M232,212 h126 v237 h308 v-237 h126 v600 h-126 v-237 h-308 v237 h-126z"
+        fill="white" filter="url(#edge-glow)"/>
+  <path d="M232,212 h126 v237 h308 v-237 h126 v600 h-126 v-237 h-308 v237 h-126z"
+        fill="url(#h-fill)"/>
+</svg>

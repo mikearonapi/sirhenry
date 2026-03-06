@@ -1,9 +1,14 @@
 "use client";
-import { useState } from "react";
-import { Building2, Plus, Check, Landmark, CreditCard, Home, Car, PiggyBank, ExternalLink } from "lucide-react";
+import { useState, useCallback, useEffect } from "react";
+import {
+  Building2, Plus, Check, Landmark, CreditCard, Home, Car,
+  PiggyBank, ExternalLink, CheckCircle, Loader2, AlertCircle, X,
+} from "lucide-react";
+import { usePlaidLink } from "react-plaid-link";
+import type { PlaidLinkOnSuccessMetadata, PlaidLinkError } from "react-plaid-link";
 import Card from "@/components/ui/Card";
 import type { SetupData } from "./SetupWizard";
-import { createManualAsset } from "@/lib/api-assets";
+import { createManualAsset, getPlaidLinkToken, exchangePlaidPublicToken } from "@/lib/api";
 import { getErrorMessage } from "@/lib/errors";
 import type { ManualAssetType } from "@/types/portfolio";
 
@@ -36,6 +41,62 @@ export default function StepAccounts({ data, onRefresh }: Props) {
   const [addValue, setAddValue] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Plaid Link state
+  const [linkToken, setLinkToken] = useState<string | null>(null);
+  const [connectingPlaid, setConnectingPlaid] = useState(false);
+  const [plaidSuccess, setPlaidSuccess] = useState<string | null>(null);
+  const [plaidError, setPlaidError] = useState<string | null>(null);
+
+  const onPlaidSuccess = useCallback(
+    async (publicToken: string, metadata: PlaidLinkOnSuccessMetadata) => {
+      setConnectingPlaid(false);
+      const institutionName = metadata?.institution?.name ?? "Unknown Institution";
+      try {
+        const result = await exchangePlaidPublicToken(publicToken, institutionName);
+        const matchMsg = result.accounts_matched
+          ? ` (${result.accounts_matched} account${result.accounts_matched > 1 ? "s" : ""} linked)`
+          : "";
+        setPlaidSuccess(`Connected to ${institutionName}!${matchMsg}`);
+        setLinkToken(null);
+        onRefresh();
+      } catch (e: unknown) {
+        setPlaidError(`Failed to connect ${institutionName}: ${getErrorMessage(e)}`);
+      }
+    },
+    [onRefresh],
+  );
+
+  const onPlaidExit = useCallback((err: PlaidLinkError | null) => {
+    setConnectingPlaid(false);
+    setLinkToken(null);
+    if (err) {
+      setPlaidError(err.display_message || err.error_message || "Bank connection was cancelled.");
+    }
+  }, []);
+
+  const { open, ready } = usePlaidLink({
+    token: linkToken,
+    onSuccess: onPlaidSuccess,
+    onExit: onPlaidExit,
+  });
+
+  useEffect(() => {
+    if (linkToken && ready) open();
+  }, [linkToken, ready, open]);
+
+  async function handleConnectBank() {
+    setConnectingPlaid(true);
+    setPlaidError(null);
+    setPlaidSuccess(null);
+    try {
+      const tokenData = await getPlaidLinkToken();
+      setLinkToken(tokenData.link_token);
+    } catch {
+      setConnectingPlaid(false);
+      setPlaidError("Failed to initialize Plaid Link. Check that PLAID_CLIENT_ID and PLAID_SECRET are set.");
+    }
+  }
 
   const existingAccounts = data.accounts.filter((a) => a.is_active);
   const hasAccounts = existingAccounts.length > 0 || quickAssets.length > 0;
@@ -79,6 +140,9 @@ export default function StepAccounts({ data, onRefresh }: Props) {
         <p className="text-sm text-stone-500 mt-0.5">
           These form your net worth picture and help track cash flow, investments, and debt.
         </p>
+        <p className="text-[10px] text-stone-400 mt-1">
+          Unlocks: Cash Flow Tracking &middot; Budget Insights &middot; Net Worth Dashboard
+        </p>
       </div>
 
       {/* Existing accounts */}
@@ -107,27 +171,59 @@ export default function StepAccounts({ data, onRefresh }: Props) {
         </Card>
       )}
 
-      {/* Plaid link CTA */}
-      <a
-        href="/accounts"
-        className="block"
+      {/* Plaid Link inline */}
+      {plaidSuccess && (
+        <div className="bg-green-50 text-green-700 rounded-xl p-3 flex items-center gap-2 border border-green-100">
+          <CheckCircle size={16} className="flex-shrink-0" />
+          <p className="text-sm font-medium flex-1">{plaidSuccess}</p>
+          <button onClick={() => setPlaidSuccess(null)} className="text-green-400 hover:text-green-600">
+            <X size={14} />
+          </button>
+        </div>
+      )}
+      {plaidError && (
+        <div className="bg-red-50 text-red-700 rounded-xl p-3 flex items-center gap-2 border border-red-100">
+          <AlertCircle size={16} className="flex-shrink-0" />
+          <p className="text-xs flex-1">{plaidError}</p>
+          <button onClick={() => setPlaidError(null)} className="text-red-400 hover:text-red-600">
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
+      <button
+        onClick={handleConnectBank}
+        disabled={connectingPlaid}
+        className="w-full block"
       >
         <Card padding="md" hover className="border-dashed border-[#16A34A]/30 bg-green-50/50">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-[#16A34A]/10 flex items-center justify-center">
-              <CreditCard size={20} className="text-[#16A34A]" />
+              {connectingPlaid ? (
+                <Loader2 size={20} className="text-[#16A34A] animate-spin" />
+              ) : (
+                <CreditCard size={20} className="text-[#16A34A]" />
+              )}
             </div>
-            <div className="flex-1">
+            <div className="flex-1 text-left">
               <p className="text-sm font-medium text-stone-800">
-                Connect bank accounts via Plaid
+                {connectingPlaid ? "Opening Plaid Link..." : "Connect bank accounts via Plaid"}
               </p>
               <p className="text-xs text-stone-500 mt-0.5">
-                Automatically imports transactions, balances, and account details. Go to Accounts page to connect.
+                Automatically imports transactions, balances, and account details
               </p>
             </div>
-            <ExternalLink size={14} className="text-stone-400" />
           </div>
         </Card>
+      </button>
+
+      {/* Secondary link to full Accounts page */}
+      <a
+        href="/accounts"
+        className="flex items-center justify-center gap-1.5 text-xs text-stone-400 hover:text-stone-600 transition-colors"
+      >
+        <ExternalLink size={11} />
+        Or manage accounts on the full Accounts page
       </a>
 
       {/* Quick add section */}
@@ -196,7 +292,7 @@ export default function StepAccounts({ data, onRefresh }: Props) {
                 className={DOLLAR}
               />
             </div>
-            {error && <p className="text-xs text-red-600">{error}</p>}
+            {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
             <div className="flex gap-2">
               <button
                 onClick={handleAddAsset}

@@ -27,6 +27,7 @@ import { request } from "@/lib/api-client";
 import Card from "@/components/ui/Card";
 import PageHeader from "@/components/ui/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
+import SirHenryName from "@/components/ui/SirHenryName";
 
 const ICONS: Record<string, React.ElementType> = {
   home: Home, car: Car, hammer: Hammer, "graduation-cap": GraduationCap,
@@ -310,7 +311,7 @@ export default function LifePlannerPage() {
             onClick={() => window.dispatchEvent(new CustomEvent("ask-henry", { detail: { message: "What major financial decisions should I be planning for? Review my scenarios and life events and give me advice." } }))}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-[#16A34A]/10 text-[#16A34A] hover:bg-[#16A34A]/20 transition-colors"
           >
-            <MessageCircle size={14} /> Ask Sir Henry
+            <MessageCircle size={14} /> Ask <SirHenryName />
           </button>
         }
       />
@@ -508,11 +509,11 @@ export default function LifePlannerPage() {
                                   <p className="font-medium text-stone-800">{ret.new_retirement_age}</p>
                                 </div>
                                 <div>
-                                  <p className="text-stone-500">New FIRE number</p>
+                                  <p className="text-stone-500">New retirement target</p>
                                   <p className="font-medium text-stone-800">{formatCurrency(ret.new_fire_number)}</p>
                                 </div>
                                 <div>
-                                  <p className="text-stone-500">Current FIRE number</p>
+                                  <p className="text-stone-500">Current retirement target</p>
                                   <p className="font-medium text-stone-800">{formatCurrency(ret.current_fire_number)}</p>
                                 </div>
                               </div>
@@ -522,7 +523,7 @@ export default function LifePlannerPage() {
                             <div className="mt-3 pt-3 border-t border-stone-200 bg-green-50/50 rounded-lg p-3">
                               <div className="flex items-center gap-2 mb-2">
                                 <Sparkles size={14} className="text-[#16A34A]" />
-                                <p className="text-xs font-semibold text-[#16A34A]">Sir Henry&apos;s Analysis</p>
+                                <p className="text-xs font-semibold text-[#16A34A]"><SirHenryName />{"'"}s Analysis</p>
                               </div>
                               <div className="text-xs text-stone-700 leading-relaxed whitespace-pre-wrap">
                                 {aiAnalysisResults[s.id] || s.ai_analysis}

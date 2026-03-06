@@ -1,14 +1,17 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { Loader2, AlertCircle, Info, Printer, MessageCircle, ArrowLeftRight, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { Loader2, AlertCircle, Info, Printer, MessageCircle, ArrowLeftRight, TrendingUp, TrendingDown, Minus, FileCheck, CheckCircle } from "lucide-react";
 import {
   getTaxSummary, getTaxItems, getTaxEstimate, getTaxChecklist, getDocuments,
+  getTaxCarryForward,
 } from "@/lib/api";
 import type {
   TaxSummary, TaxItem, TaxEstimate, TaxChecklist, Document as DocType,
+  TaxCarryForwardItem,
 } from "@/types/api";
 import PageHeader from "@/components/ui/PageHeader";
+import SirHenryName from "@/components/ui/SirHenryName";
 import Card from "@/components/ui/Card";
 import {
   TaxEstimateSection,
@@ -43,6 +46,10 @@ export default function TaxDocumentsPage() {
   const [prevEstimate, setPrevEstimate] = useState<TaxEstimate | null>(null);
   const [compareLoading, setCompareLoading] = useState(false);
 
+  // Carry-forward expectations
+  const [carryForward, setCarryForward] = useState<TaxCarryForwardItem[]>([]);
+  const [receivedDocs, setReceivedDocs] = useState<Set<string>>(new Set());
+
   const load = useCallback(async (y: number, signal?: AbortSignal) => {
     setLoading(true);
     setError(null);
@@ -73,6 +80,10 @@ export default function TaxDocumentsPage() {
     setShowCompare(false);
     setPrevSummary(null);
     setPrevEstimate(null);
+    // Load carry-forward expectations from prior year
+    getTaxCarryForward(year - 1, year)
+      .then((r) => setCarryForward(r.items))
+      .catch(() => setCarryForward([]));
     return () => controller.abort();
   }, [year, load]);
 
@@ -178,6 +189,49 @@ export default function TaxDocumentsPage() {
             </div>
           )}
 
+          {/* Prior Year Carry-Forward Checklist */}
+          {carryForward.length > 0 && (
+            <Card padding="lg" className="print:hidden">
+              <div className="flex items-center gap-2 mb-3">
+                <FileCheck size={16} className="text-[#16A34A]" />
+                <h3 className="text-sm font-semibold text-stone-800">Expected Documents for {year}</h3>
+                <span className="text-xs text-stone-400 ml-auto">Based on {year - 1} tax data</span>
+              </div>
+              <p className="text-xs text-stone-500 mb-3">These payers sent you tax documents last year. Track which ones you&apos;ve received.</p>
+              <div className="space-y-2">
+                {carryForward.map((item) => {
+                  const key = `${item.form_type}-${item.payer_name}`;
+                  const isReceived = receivedDocs.has(key);
+                  return (
+                    <div key={key} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-colors ${isReceived ? "bg-green-50/50 border-green-100" : "bg-stone-50 border-stone-100"}`}>
+                      <button
+                        onClick={() => {
+                          setReceivedDocs((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(key)) next.delete(key);
+                            else next.add(key);
+                            return next;
+                          });
+                        }}
+                        className={`w-5 h-5 rounded border flex items-center justify-center shrink-0 transition-colors ${isReceived ? "bg-[#16A34A] border-[#16A34A]" : "border-stone-300 hover:border-stone-400"}`}
+                      >
+                        {isReceived && <CheckCircle size={12} className="text-white" />}
+                      </button>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-medium ${isReceived ? "text-stone-400 line-through" : "text-stone-700"}`}>{item.payer_name}</p>
+                        <p className="text-xs text-stone-400">{item.form_type.toUpperCase().replace("_", "-")} &middot; {year - 1}: {formatCurrency(item.prior_year_amount)}</p>
+                      </div>
+                      <Link href="/import" className="text-xs text-[#16A34A] hover:underline font-medium shrink-0">Upload</Link>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-stone-400 mt-3">
+                {receivedDocs.size} of {carryForward.length} received
+              </p>
+            </Card>
+          )}
+
           {/* Year-over-Year Comparison */}
           {showCompare && prevSummary && prevEstimate && estimate && summary && (
             <YearOverYearComparison
@@ -233,7 +287,7 @@ export default function TaxDocumentsPage() {
                   onClick={() => askHenry(`Based on my ${year} tax report, what should I discuss with my CPA? What are the key things to flag?`)}
                   className="flex items-center gap-1.5 text-xs text-[#16A34A] hover:underline mt-2"
                 >
-                  <MessageCircle size={12} /> Ask Sir Henry what to discuss with your CPA
+                  <MessageCircle size={12} /> Ask <SirHenryName /> what to discuss with your CPA
                 </button>
               </div>
             </div>

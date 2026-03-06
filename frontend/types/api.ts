@@ -20,3 +20,7 @@ export * from "./life-events";
 export * from "./insurance";
 export * from "./dashboard";
 export * from "./benchmarks";
+export * from "./smart-defaults";
+export * from "./income";
+export * from "./valuations";
+export * from "./rules";

@@ -403,6 +403,235 @@ async def _017_business_entity_enrichment(session: AsyncSession) -> None:
     logger.info("Added description, expected_expenses to business_entities.")
 
 
+async def _018_category_rules_table(session: AsyncSession) -> None:
+    """Create category_rules table for learned categorization patterns."""
+    d = _ddl(session)
+    await session.execute(text(f"""
+        CREATE TABLE IF NOT EXISTS category_rules (
+            id {d['pk']},
+            merchant_pattern VARCHAR(255) NOT NULL,
+            category VARCHAR(100),
+            tax_category VARCHAR(200),
+            segment VARCHAR(20),
+            business_entity_id INTEGER REFERENCES business_entities(id),
+            source VARCHAR(20) NOT NULL DEFAULT 'user_override',
+            match_count INTEGER NOT NULL DEFAULT 0,
+            is_active {d['bool_false']},
+            created_at {d['ts_now']},
+            CONSTRAINT uq_category_rule_merchant UNIQUE (merchant_pattern)
+        )
+    """))
+    # Fix: is_active should default to TRUE
+    try:
+        await session.execute(text(
+            "UPDATE category_rules SET is_active = 1 WHERE is_active = 0"
+        ))
+    except Exception:
+        pass
+    logger.info("Created category_rules table.")
+
+
+async def _019_payroll_connection_tables(session: AsyncSession) -> None:
+    """Create payroll_connections and pay_stub_records tables."""
+    d = _ddl(session)
+    await session.execute(text(f"""
+        CREATE TABLE IF NOT EXISTS payroll_connections (
+            id {d['pk']},
+            plaid_user_token VARCHAR(200) NOT NULL,
+            plaid_item_id VARCHAR(100),
+            employer_name VARCHAR(255),
+            status VARCHAR(20) NOT NULL DEFAULT 'pending',
+            income_source_type VARCHAR(20) NOT NULL DEFAULT 'payroll',
+            last_synced_at {d['ts_null']},
+            raw_data_json TEXT,
+            created_at {d['ts_now']},
+            updated_at {d['ts_now']}
+        )
+    """))
+    await session.execute(text(f"""
+        CREATE TABLE IF NOT EXISTS pay_stub_records (
+            id {d['pk']},
+            connection_id INTEGER NOT NULL REFERENCES payroll_connections(id) ON DELETE CASCADE,
+            pay_date DATE NOT NULL,
+            pay_period_start DATE,
+            pay_period_end DATE,
+            pay_frequency VARCHAR(20),
+            gross_pay FLOAT,
+            gross_pay_ytd FLOAT,
+            net_pay FLOAT,
+            net_pay_ytd FLOAT,
+            deductions_json TEXT,
+            employer_name VARCHAR(255),
+            employer_ein VARCHAR(20),
+            employer_address_json TEXT,
+            work_state VARCHAR(2),
+            created_at {d['ts_now']}
+        )
+    """))
+    await session.execute(text(
+        "CREATE INDEX IF NOT EXISTS ix_pay_stub_date ON pay_stub_records(connection_id, pay_date)"
+    ))
+
+
+async def _020_manual_asset_valuation_columns(session: AsyncSession) -> None:
+    """Add valuation tracking columns to manual_assets."""
+    for col, col_type in [
+        ("vin", "VARCHAR(17)"),
+        ("valuation_source", "VARCHAR(30)"),
+        ("valuation_date", "DATETIME"),
+        ("valuation_api_data_json", "TEXT"),
+    ]:
+        try:
+            await session.execute(text(f"ALTER TABLE manual_assets ADD COLUMN {col} {col_type}"))
+        except Exception:
+            pass
+
+
+async def _021_setup_completed_tracking(session: AsyncSession) -> None:
+    """Add setup_completed_at to household_profiles."""
+    try:
+        await session.execute(text(
+            "ALTER TABLE household_profiles ADD COLUMN setup_completed_at DATETIME"
+        ))
+    except Exception:
+        pass
+
+
+async def _022_payroll_user_id_column(session: AsyncSession) -> None:
+    """Add plaid_user_id column and make plaid_user_token nullable (Plaid Dec 2025 change)."""
+    try:
+        await session.execute(text(
+            "ALTER TABLE payroll_connections ADD COLUMN plaid_user_id VARCHAR(100)"
+        ))
+    except Exception:
+        pass
+
+
+async def _023_dedup_plaid_csv_duplicates(session: AsyncSession) -> None:
+    """Mark Plaid transactions as excluded when a matching CSV transaction
+    already exists (same account, date, amount).  This fixes double-counting
+    caused by the same real-world transaction being imported via both CSV
+    and Plaid with different hashes."""
+    # Find Plaid transactions that duplicate a CSV transaction.
+    # For each (account_id, date, amount) combo that has BOTH a csv and plaid
+    # row, mark the plaid row as excluded.
+    result = await session.execute(text("""
+        UPDATE transactions
+        SET is_excluded = 1,
+            notes = COALESCE(notes, '') || ' [excluded: cross-source duplicate of CSV]'
+        WHERE id IN (
+            SELECT p.id
+            FROM transactions p
+            INNER JOIN transactions c
+                ON c.account_id = p.account_id
+                AND DATE(c.date) = DATE(p.date)
+                AND c.amount = p.amount
+                AND c.data_source != 'plaid'
+                AND c.is_excluded = 0
+            WHERE p.data_source = 'plaid'
+              AND p.is_excluded = 0
+        )
+    """))
+    count = result.rowcount
+    logger.info(f"Cross-source dedup: excluded {count} Plaid duplicate transactions.")
+
+
+async def _024_user_context_table(session: AsyncSession) -> None:
+    """Create user_context table for persistent learned facts."""
+    d = _ddl(session)
+    await session.execute(text(f"""
+        CREATE TABLE IF NOT EXISTS user_context (
+            id {d['pk']},
+            category VARCHAR(50) NOT NULL,
+            key VARCHAR(255) NOT NULL,
+            value TEXT NOT NULL,
+            source VARCHAR(20) NOT NULL DEFAULT 'chat',
+            confidence FLOAT NOT NULL DEFAULT 1.0,
+            is_active BOOLEAN NOT NULL DEFAULT 1,
+            created_at {d['ts_now']},
+            updated_at {d['ts_now']},
+            UNIQUE(category, key)
+        )
+    """))
+    await session.execute(text(
+        "CREATE INDEX IF NOT EXISTS ix_user_context_active ON user_context(is_active)"
+    ))
+
+
+async def _025_retirement_budget_overrides_table(session: AsyncSession) -> None:
+    """Create retirement_budget_overrides table for per-category retirement adjustments."""
+    await session.execute(text("""
+        CREATE TABLE IF NOT EXISTS retirement_budget_overrides (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            profile_id INTEGER REFERENCES retirement_profiles(id),
+            category VARCHAR(100) NOT NULL,
+            multiplier FLOAT DEFAULT 1.0,
+            fixed_amount FLOAT,
+            reason VARCHAR(255),
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(profile_id, category)
+        )
+    """))
+
+
+async def _026_category_rule_date_fields(session: AsyncSession) -> None:
+    """Add effective_from and effective_to date columns to category_rules."""
+    for col in ("effective_from", "effective_to"):
+        try:
+            await session.execute(text(
+                f"ALTER TABLE category_rules ADD COLUMN {col} DATE"
+            ))
+        except Exception:
+            pass  # Column already exists
+
+
+async def _027_transaction_parent_id(session: AsyncSession) -> None:
+    """Add parent_transaction_id column for Amazon split transactions."""
+    try:
+        await session.execute(text(
+            "ALTER TABLE transactions ADD COLUMN parent_transaction_id INTEGER REFERENCES transactions(id)"
+        ))
+    except Exception:
+        pass  # Column already exists
+    await session.execute(text(
+        "CREATE INDEX IF NOT EXISTS ix_transaction_parent ON transactions(parent_transaction_id)"
+    ))
+
+
+async def _028_flow_type_column_and_backfill(session: AsyncSession) -> None:
+    """Add flow_type column and classify all existing transactions."""
+    try:
+        await session.execute(text(
+            "ALTER TABLE transactions ADD COLUMN flow_type VARCHAR(20)"
+        ))
+    except Exception:
+        pass  # Column already exists
+
+    from pipeline.db.flow_classifier import classify_flow_type
+
+    result = await session.execute(text(
+        "SELECT id, amount, coalesce(effective_category, category), description "
+        "FROM transactions WHERE flow_type IS NULL"
+    ))
+    rows = result.fetchall()
+    batch: list[dict] = []
+    for txn_id, amount, category, description in rows:
+        ft = classify_flow_type(amount or 0, category, description)
+        batch.append({"id": txn_id, "ft": ft})
+        if len(batch) >= 500:
+            await session.execute(
+                text("UPDATE transactions SET flow_type = :ft WHERE id = :id"),
+                batch,
+            )
+            batch = []
+    if batch:
+        await session.execute(
+            text("UPDATE transactions SET flow_type = :ft WHERE id = :id"),
+            batch,
+        )
+
+
 MIGRATIONS: list[tuple[str, callable]] = [
     ("001_family_members_table", _001_family_members_table),
     ("002_household_columns", _002_household_columns),
@@ -421,6 +650,17 @@ MIGRATIONS: list[tuple[str, callable]] = [
     ("015_target_allocations_table", _015_target_allocations_table),
     ("016_chat_tables", _016_chat_tables),
     ("017_business_entity_enrichment", _017_business_entity_enrichment),
+    ("018_category_rules_table", _018_category_rules_table),
+    ("019_payroll_connection_tables", _019_payroll_connection_tables),
+    ("020_manual_asset_valuation_columns", _020_manual_asset_valuation_columns),
+    ("021_setup_completed_tracking", _021_setup_completed_tracking),
+    ("022_payroll_user_id_column", _022_payroll_user_id_column),
+    ("023_dedup_plaid_csv_duplicates", _023_dedup_plaid_csv_duplicates),
+    ("024_user_context_table", _024_user_context_table),
+    ("025_retirement_budget_overrides_table", _025_retirement_budget_overrides_table),
+    ("026_category_rule_date_fields", _026_category_rule_date_fields),
+    ("027_transaction_parent_id", _027_transaction_parent_id),
+    ("028_flow_type_column_and_backfill", _028_flow_type_column_and_backfill),
 ]
 
 

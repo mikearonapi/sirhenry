@@ -1,10 +1,12 @@
 import { BarChart3, TrendingUp, Brain, MessageSquare } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import SirHenryBrand from "./SirHenryBrand";
+import SirHenryName from "@/components/ui/SirHenryName";
+import type { ReactNode } from "react";
 
 interface Capability {
   icon: LucideIcon;
-  title: string;
+  title: ReactNode;
   tag: string;
   description: string;
 }
@@ -33,7 +35,7 @@ const CAPABILITIES: Capability[] = [
   },
   {
     icon: MessageSquare,
-    title: "Sir Henry",
+    title: <SirHenryName />,
     tag: "Your AI financial advisor",
     description:
       "Ask anything. Sir Henry knows your complete financial picture and gives specific, numbers-backed answers \u2014 not generic advice. Available right now, not in 3 weeks. Thinks like a CFP, talks like a smart friend.",
@@ -64,7 +66,7 @@ export default function CapabilitiesSection() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {CAPABILITIES.map((cap) => (
             <div
-              key={cap.title}
+              key={cap.tag}
               className="border border-[#E5E7EB] rounded-xl p-7 hover:border-[#16A34A]/30 hover:bg-[#F0FDF4]/30 transition-colors"
             >
               <div className="flex items-start gap-4 mb-4">
