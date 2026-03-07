@@ -26,7 +26,7 @@ interface Props {
 
 function varianceColor(variance: number, section: BudgetSection): string {
   if (section === "expense") return variance >= 0 ? "text-green-600" : "text-red-600";
-  return variance <= 0 ? "text-green-600" : "text-stone-500";
+  return variance <= 0 ? "text-green-600" : "text-text-muted";
 }
 
 export default function BudgetGroupedSection({
@@ -40,10 +40,10 @@ export default function BudgetGroupedSection({
   return (
     <div>
       <div className="flex items-center px-4 py-2 mb-1">
-        <span className="flex-1 text-xs font-semibold text-stone-500 uppercase tracking-wider">Expenses</span>
-        <span className="w-24 text-right text-xs font-semibold text-stone-400 uppercase tracking-wider">Budget</span>
-        <span className="w-24 text-right text-xs font-semibold text-stone-400 uppercase tracking-wider">Actual</span>
-        <span className="w-28 text-right text-xs font-semibold text-stone-400 uppercase tracking-wider">Remaining</span>
+        <span className="flex-1 text-xs font-semibold text-text-muted uppercase tracking-wider">Expenses</span>
+        <span className="w-24 text-right text-xs font-semibold text-text-muted uppercase tracking-wider">Budget</span>
+        <span className="w-24 text-right text-xs font-semibold text-text-muted uppercase tracking-wider">Actual</span>
+        <span className="w-28 text-right text-xs font-semibold text-text-muted uppercase tracking-wider">Remaining</span>
         <span className="w-12" />
       </div>
 
@@ -55,16 +55,16 @@ export default function BudgetGroupedSection({
             <Card key={group} padding="none">
               <button
                 onClick={() => onToggleGroup(group)}
-                className="w-full flex items-center justify-between px-4 py-3 hover:bg-stone-50/50"
+                className="w-full flex items-center justify-between px-4 py-3 hover:bg-surface/50"
               >
                 <div className="flex items-center gap-2">
-                  {collapsed ? <ChevronRight size={14} className="text-stone-400" /> : <ChevronDown size={14} className="text-stone-400" />}
+                  {collapsed ? <ChevronRight size={14} className="text-text-muted" /> : <ChevronDown size={14} className="text-text-muted" />}
                   <span className="text-sm mr-1">{icon}</span>
-                  <span className="text-sm font-semibold text-stone-700">{group}</span>
+                  <span className="text-sm font-semibold text-text-secondary">{group}</span>
                 </div>
                 <div className="flex items-center text-xs tabular-nums">
-                  <span className="w-24 text-right text-stone-500">{formatCurrency(totalBudget)}</span>
-                  <span className="w-24 text-right text-stone-500">{formatCurrency(totalActual)}</span>
+                  <span className="w-24 text-right text-text-muted">{formatCurrency(totalBudget)}</span>
+                  <span className="w-24 text-right text-text-muted">{formatCurrency(totalActual)}</span>
                   <span className={`w-28 text-right font-semibold ${varianceColor(totalVariance, "expense")}`}>
                     {formatCurrency(totalVariance)}
                   </span>
@@ -73,7 +73,7 @@ export default function BudgetGroupedSection({
               </button>
 
               {!collapsed && (
-                <div className="border-t border-stone-50 divide-y divide-stone-50">
+                <div className="border-t border-card-border divide-y divide-border">
                   {items.map((b) => (
                     <BudgetCategoryRow
                       key={b.id}
@@ -91,10 +91,10 @@ export default function BudgetGroupedSection({
 
         {/* Expense total */}
         <Card padding="none">
-          <div className="flex items-center px-4 py-3 border-t-2 border-stone-200 bg-stone-50/30">
-            <span className="flex-1 text-sm font-bold text-stone-800">Total Expenses</span>
-            <span className="w-24 text-right text-sm font-bold tabular-nums text-stone-800">{formatCurrency(totalExpenseBudget)}</span>
-            <span className="w-24 text-right text-sm font-bold tabular-nums text-stone-600">{formatCurrency(totalExpenseActual)}</span>
+          <div className="flex items-center px-4 py-3 border-t-2 border-border bg-surface/30">
+            <span className="flex-1 text-sm font-bold text-text-primary">Total Expenses</span>
+            <span className="w-24 text-right text-sm font-bold tabular-nums text-text-primary">{formatCurrency(totalExpenseBudget)}</span>
+            <span className="w-24 text-right text-sm font-bold tabular-nums text-text-secondary">{formatCurrency(totalExpenseActual)}</span>
             <span className={`w-28 text-right text-sm font-bold tabular-nums ${totalColor}`}>
               {formatCurrency(totalExpenseVariance)}
             </span>

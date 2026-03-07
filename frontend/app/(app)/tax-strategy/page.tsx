@@ -12,8 +12,8 @@ import SirHenryName from "@/components/ui/SirHenryName";
 const currentYear = new Date().getFullYear();
 const YEARS = [currentYear, currentYear - 1, currentYear - 2];
 
-const inputCls = "w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A]";
-const btnCls = "bg-[#16A34A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#15803D] disabled:opacity-60";
+const inputCls = "w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent";
+const btnCls = "bg-accent text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-60";
 
 export default function TaxStrategyPage() {
   const [year, setYear] = useState(currentYear - 1);
@@ -72,7 +72,7 @@ export default function TaxStrategyPage() {
   }, []);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
         title="Tax Strategy"
         subtitle="Optimize your taxes — find deductions, model scenarios, minimize what you pay"
@@ -82,7 +82,7 @@ export default function TaxStrategyPage() {
               {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
             </select>
             {hasInterviewProfile !== false && (
-              <button onClick={() => setShowInterview(true)} className="flex items-center gap-2 whitespace-nowrap text-sm font-medium text-[#16A34A] border border-[#16A34A]/30 px-3 py-2 rounded-lg hover:bg-[#DCFCE7]/30">
+              <button onClick={() => setShowInterview(true)} className="flex items-center gap-2 whitespace-nowrap text-sm font-medium text-accent border border-accent/30 px-3 py-2 rounded-lg hover:bg-accent-light/30">
                 <ClipboardList size={15} />
                 {hasInterviewProfile ? "Refine" : "Personalize"}
               </button>
@@ -103,11 +103,11 @@ export default function TaxStrategyPage() {
 
       {/* Interview CTA banner (shown if no profile yet and not currently in interview) */}
       {hasInterviewProfile === false && !showInterview && (
-        <div className="bg-gradient-to-r from-[#DCFCE7] to-emerald-50 rounded-xl border border-[#16A34A]/20 px-5 py-4 flex items-center gap-4">
-          <ClipboardList size={20} className="text-[#16A34A] flex-shrink-0" />
+        <div className="bg-gradient-to-r from-[#DCFCE7] to-emerald-50 rounded-xl border border-accent/20 px-5 py-4 flex items-center gap-4">
+          <ClipboardList size={20} className="text-accent flex-shrink-0" />
           <div className="flex-1">
-            <p className="text-sm font-medium text-stone-800">Get personalized tax strategies</p>
-            <p className="text-xs text-stone-500 mt-0.5">Answer 5 quick questions and <SirHenryName /> will generate strategies tailored to your situation.</p>
+            <p className="text-sm font-medium text-text-primary">Get personalized tax strategies</p>
+            <p className="text-xs text-text-secondary mt-0.5">Answer 5 quick questions and <SirHenryName /> will generate strategies tailored to your situation.</p>
           </div>
           <button onClick={() => setShowInterview(true)} className={`whitespace-nowrap ${btnCls}`}>
             Start Interview
@@ -131,7 +131,7 @@ export default function TaxStrategyPage() {
       )}
 
       {loading ? (
-        <div className="flex items-center gap-3 text-stone-400 justify-center h-32">
+        <div className="flex items-center gap-3 text-text-muted justify-center h-32">
           <Loader2 className="animate-spin" size={20} /> Loading...
         </div>
       ) : (

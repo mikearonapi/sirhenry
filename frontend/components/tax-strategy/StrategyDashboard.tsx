@@ -19,17 +19,17 @@ export default function StrategyDashboard({ strategies, onDismiss, onOpenSimulat
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xs font-semibold uppercase tracking-wide text-stone-400">
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-text-muted">
         AI Tax Strategies ({strategies.length})
       </h2>
       {strategies.length === 0 ? (
-        <div className="bg-white rounded-xl border border-stone-100 shadow-sm p-8 text-center">
-          <DollarSign className="mx-auto text-stone-200 mb-3" size={36} />
-          <p className="text-stone-500 text-sm">No strategies yet. Click &quot;Run AI Analysis&quot; to generate personalized tax strategies.</p>
+        <div className="bg-card rounded-xl border border-card-border shadow-sm p-8 text-center">
+          <DollarSign className="mx-auto text-text-muted mb-3" size={36} />
+          <p className="text-text-secondary text-sm">No strategies yet. Click &quot;Run AI Analysis&quot; to generate personalized tax strategies.</p>
           <button
             type="button"
             onClick={() => askHenry("What are my best tax optimization strategies for this year? Consider my income, business, and household situation.")}
-            className="flex items-center gap-1.5 text-xs text-[#16A34A] hover:underline mt-3 mx-auto"
+            className="flex items-center gap-1.5 text-xs text-accent hover:underline mt-3 mx-auto"
           >
             <MessageCircle size={12} /> Or ask <SirHenryName /> for advice
           </button>

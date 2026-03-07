@@ -7,7 +7,7 @@ import SimulatorCard from "../shared/SimulatorCard";
 import LabeledInput from "../shared/LabeledInput";
 import CalcButton from "../shared/CalcButton";
 
-const INPUT_CLS = "w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A]";
+const INPUT_CLS = "w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent";
 
 export default function StudentLoanSim({ defaultMonthlyIncome, defaultFilingStatus }: {
   defaultMonthlyIncome?: string;
@@ -46,7 +46,7 @@ export default function StudentLoanSim({ defaultMonthlyIncome, defaultFilingStat
         <LabeledInput label="Interest Rate (%)" value={rate} onChange={setRate} />
         <LabeledInput label="Monthly Income" value={monthlyIncome} onChange={setMonthlyIncome} />
         <div>
-          <label className="block text-xs text-stone-500 mb-1">Filing Status</label>
+          <label className="block text-xs text-text-secondary mb-1">Filing Status</label>
           <select value={filingStatus} onChange={(e) => setFilingStatus(e.target.value)} className={INPUT_CLS}>
             <option value="single">Single</option>
             <option value="mfj">Married Filing Jointly</option>
@@ -55,8 +55,8 @@ export default function StudentLoanSim({ defaultMonthlyIncome, defaultFilingStat
           </select>
         </div>
         <div className="flex items-center gap-2">
-          <input type="checkbox" id="pslf" checked={pslf} onChange={(e) => setPslf(e.target.checked)} className="rounded border-stone-300" />
-          <label htmlFor="pslf" className="text-sm text-stone-600">Public Service Loan Forgiveness Eligible</label>
+          <input type="checkbox" id="pslf" checked={pslf} onChange={(e) => setPslf(e.target.checked)} className="rounded border-border" />
+          <label htmlFor="pslf" className="text-sm text-text-secondary">Public Service Loan Forgiveness Eligible</label>
         </div>
       </div>
       <CalcButton loading={loading} onClick={handleCalc} />
@@ -64,14 +64,14 @@ export default function StudentLoanSim({ defaultMonthlyIncome, defaultFilingStat
         <div className="mt-4 space-y-3">
           <table className="w-full text-sm">
             <caption className="sr-only">Repayment strategies</caption>
-            <thead className="bg-stone-50">
+            <thead className="bg-surface">
               <tr>
                 {["Strategy", "Monthly", "Total Paid", "Interest", "Payoff Yrs", "Forgiveness"].map((h) => (
-                  <th key={h} className={`${h === "Strategy" ? "text-left" : "text-right"} px-3 py-2 text-xs font-semibold text-stone-500`}>{h}</th>
+                  <th key={h} className={`${h === "Strategy" ? "text-left" : "text-right"} px-3 py-2 text-xs font-semibold text-text-secondary`}>{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-stone-100">
+            <tbody className="divide-y divide-card-border">
               {result.strategies.map((s, i) => (
                 <tr key={i}>
                   <td className="px-3 py-2 font-medium">{s.name}</td>
@@ -85,7 +85,7 @@ export default function StudentLoanSim({ defaultMonthlyIncome, defaultFilingStat
             </tbody>
           </table>
           {result.recommendation && (
-            <p className="text-sm text-stone-700 bg-blue-50 rounded-lg p-3">{result.recommendation}</p>
+            <p className="text-sm text-text-secondary bg-blue-50 rounded-lg p-3">{result.recommendation}</p>
           )}
         </div>
       )}

@@ -32,8 +32,8 @@ export default function TaxCoordinationTab({ profile }: TaxCoordinationTabProps)
   if (!profile) {
     return (
       <div className="text-center py-12">
-        <Calculator size={32} className="mx-auto text-stone-300 mb-3" />
-        <p className="text-sm text-stone-500">Create a household profile on the Profile tab first.</p>
+        <Calculator size={32} className="mx-auto text-text-muted mb-3" />
+        <p className="text-sm text-text-muted">Create a household profile on the Profile tab first.</p>
       </div>
     );
   }
@@ -76,8 +76,8 @@ export default function TaxCoordinationTab({ profile }: TaxCoordinationTabProps)
           <button key={s.id} onClick={() => setActiveSection(s.id as typeof activeSection)}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               activeSection === s.id
-                ? "bg-stone-900 text-white"
-                : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+                ? "bg-stone-900 dark:bg-stone-700 text-white"
+                : "bg-surface text-text-secondary hover:bg-surface-hover"
             }`}>
             {s.label}
           </button>
@@ -102,7 +102,7 @@ export default function TaxCoordinationTab({ profile }: TaxCoordinationTabProps)
             <Card key={s.name} padding="lg">
               <div className="flex items-center gap-2 mb-3">
                 <MapPin size={16} className="text-blue-500" />
-                <h3 className="text-sm font-semibold text-stone-900">{s.name} — {s.home} Resident / {s.work} Nonresident</h3>
+                <h3 className="text-sm font-semibold text-text-primary">{s.name} — {s.home} Resident / {s.work} Nonresident</h3>
               </div>
 
               {s.reciprocity ? (
@@ -126,7 +126,7 @@ export default function TaxCoordinationTab({ profile }: TaxCoordinationTabProps)
               )}
 
               <div className="space-y-3">
-                <p className="text-xs font-semibold text-stone-700 uppercase tracking-wide">Key Filing Checklist</p>
+                <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Key Filing Checklist</p>
                 {[
                   { label: `Determine if ${s.work} withholding is set up correctly on W-4` },
                   { label: `File Form ${s.work}-NR (nonresident) if no reciprocity` },
@@ -134,14 +134,14 @@ export default function TaxCoordinationTab({ profile }: TaxCoordinationTabProps)
                   { label: s.reciprocity ? `File reciprocity exemption with ${s.work} employer — stop double withholding` : `Review ${s.work} employer withholding for nonresident wages` },
                   { label: "Ensure both states are included in estimated tax payments if applicable" },
                 ].map((item, i) => (
-                  <div key={i} className="flex items-start gap-2 text-xs text-stone-700">
+                  <div key={i} className="flex items-start gap-2 text-xs text-text-secondary">
                     <Info size={13} className="text-blue-400 mt-0.5 shrink-0" />
                     {item.label}
                   </div>
                 ))}
               </div>
 
-              <div className="mt-4 p-3 bg-stone-50 rounded-xl border border-stone-100 text-xs text-stone-600">
+              <div className="mt-4 p-3 bg-surface rounded-xl border border-card-border text-xs text-text-secondary">
                 <strong>Note:</strong> State tax laws change. Confirm rules with a CPA licensed in both {s.home} and {s.work},
                 especially if income is above $500k (some states impose additional surtaxes).
               </div>
@@ -151,8 +151,8 @@ export default function TaxCoordinationTab({ profile }: TaxCoordinationTabProps)
           {multiStateSpouses.length === 0 && (
             <Card padding="lg">
               <div className="text-center py-8">
-                <MapPin size={28} className="mx-auto text-stone-300 mb-2" />
-                <p className="text-sm text-stone-500">No multi-state situation detected. If a spouse works in a different state, add it to their profile on the Profile tab.</p>
+                <MapPin size={28} className="mx-auto text-text-muted mb-2" />
+                <p className="text-sm text-text-muted">No multi-state situation detected. If a spouse works in a different state, add it to their profile on the Profile tab.</p>
               </div>
             </Card>
           )}

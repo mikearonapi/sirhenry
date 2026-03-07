@@ -26,7 +26,7 @@ export default function TransactionRow({ tx, entityMap, onSelect, selected, onTo
   return (
     <button
       onClick={() => onSelect(tx)}
-      className={`flex items-center w-full text-left px-4 py-2 hover:bg-stone-50/70 transition-colors ${tx.is_excluded ? "opacity-40" : ""} ${selected ? "bg-green-50/50" : ""}`}
+      className={`flex items-center w-full text-left px-4 py-2 hover:bg-surface/70 transition-colors ${tx.is_excluded ? "opacity-40" : ""} ${selected ? "bg-green-50/50" : ""}`}
     >
       {onToggleSelect && (
         <input
@@ -34,7 +34,7 @@ export default function TransactionRow({ tx, entityMap, onSelect, selected, onTo
           checked={selected ?? false}
           onChange={(e) => { e.stopPropagation(); onToggleSelect(tx.id); }}
           onClick={(e) => e.stopPropagation()}
-          className="mr-2 rounded border-stone-300 text-[#16A34A] focus:ring-[#16A34A]/20 shrink-0"
+          className="mr-2 rounded border-border text-accent focus:ring-accent/20 shrink-0"
         />
       )}
       {logoUrl ? (
@@ -46,52 +46,52 @@ export default function TransactionRow({ tx, entityMap, onSelect, selected, onTo
         />
       ) : (
         <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs shrink-0 mr-3 ${
-          tx.amount >= 0 ? "bg-green-50 text-green-600" : "bg-stone-100 text-stone-500"
+          tx.amount >= 0 ? "bg-green-50 text-green-600" : "bg-surface text-text-secondary"
         }`}>
           {catIcon || displayName.charAt(0).toUpperCase()}
         </div>
       )}
 
       <div className="flex-1 min-w-0 mr-3">
-        <p className="text-[13px] font-medium text-stone-800 truncate leading-tight">
+        <p className="text-[13px] font-medium text-text-primary truncate leading-tight">
           {displayName}
         </p>
         <div className="flex items-center gap-1.5 mt-0.5">
           {isUncategorized ? (
-            <span className="text-[11px] text-amber-600 font-medium flex items-center gap-0.5">
+            <span className="text-xs text-amber-600 font-medium flex items-center gap-0.5">
               <AlertTriangle size={9} /> Uncategorized
             </span>
           ) : (
-            <span className="text-[11px] text-stone-400 flex items-center gap-0.5">
+            <span className="text-xs text-text-muted flex items-center gap-0.5">
               <Tag size={8} /> {cat}
             </span>
           )}
           {entityName && (
             <>
-              <span className="text-stone-300">&middot;</span>
-              <span className="text-[11px] text-blue-500 flex items-center gap-0.5">
+              <span className="text-text-muted">&middot;</span>
+              <span className="text-xs text-blue-500 flex items-center gap-0.5">
                 <Building2 size={8} /> {entityName}
               </span>
             </>
           )}
           {tx.category_override && (
             <>
-              <span className="text-stone-300">&middot;</span>
-              <span className="text-[11px] text-violet-500">edited</span>
+              <span className="text-text-muted">&middot;</span>
+              <span className="text-xs text-violet-500">edited</span>
             </>
           )}
           {tx.data_source === "amazon" && tx.parent_transaction_id && (
             <>
-              <span className="text-stone-300">&middot;</span>
-              <span className="text-[11px] text-orange-500 flex items-center gap-0.5">
+              <span className="text-text-muted">&middot;</span>
+              <span className="text-xs text-orange-500 flex items-center gap-0.5">
                 <Package size={8} /> Amazon
               </span>
             </>
           )}
           {hasLowConfidence && (
             <>
-              <span className="text-stone-300">&middot;</span>
-              <span className="text-[11px] text-amber-500 flex items-center gap-0.5">
+              <span className="text-text-muted">&middot;</span>
+              <span className="text-xs text-amber-500 flex items-center gap-0.5">
                 <Bot size={8} /> Low confidence
               </span>
             </>
@@ -99,17 +99,17 @@ export default function TransactionRow({ tx, entityMap, onSelect, selected, onTo
         </div>
       </div>
 
-      <Badge className={`mr-3 text-[10px] px-1.5 py-0.5 ${segmentColor(tx.effective_segment)}`}>
+      <Badge className={`mr-3 text-xs px-1.5 py-0.5 ${segmentColor(tx.effective_segment)}`}>
         {tx.effective_segment ?? tx.segment}
       </Badge>
 
       <span className={`text-[13px] font-semibold tabular-nums min-w-[90px] text-right mr-2 ${
-        tx.amount >= 0 ? "text-green-600" : "text-stone-800"
+        tx.amount >= 0 ? "text-green-600" : "text-text-primary"
       }`}>
         {tx.amount >= 0 ? "+" : ""}{formatCurrency(tx.amount)}
       </span>
 
-      <ChevronRight size={14} className="text-stone-300 shrink-0" />
+      <ChevronRight size={14} className="text-text-muted shrink-0" />
     </button>
   );
 }

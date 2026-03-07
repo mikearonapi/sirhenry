@@ -37,21 +37,21 @@ export default function OtherIncomeWidget({ sources, onChange }: OtherIncomeWidg
   return (
     <div className="space-y-2">
       {sources.length === 0 && !showAdd && (
-        <p className="text-xs text-stone-400 italic">No other income sources saved.</p>
+        <p className="text-xs text-text-muted italic">No other income sources saved.</p>
       )}
 
       {sources.map((s, i) => (
-        <div key={i} className="flex items-center justify-between text-xs bg-stone-50 rounded-lg px-3 py-2 border border-stone-100">
+        <div key={i} className="flex items-center justify-between text-xs bg-surface rounded-lg px-3 py-2 border border-card-border">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="font-medium text-stone-700 truncate">{s.label}</span>
-            <span className="text-stone-400 shrink-0">
+            <span className="font-medium text-text-secondary truncate">{s.label}</span>
+            <span className="text-text-muted shrink-0">
               {OTHER_INCOME_TYPES.find((t) => t.value === s.type)?.label}
             </span>
-            {s.notes && <span className="text-stone-400 truncate hidden md:inline">{s.notes}</span>}
+            {s.notes && <span className="text-text-muted truncate hidden md:inline">{s.notes}</span>}
           </div>
           <div className="flex items-center gap-2 shrink-0 ml-3">
-            <span className="font-semibold text-stone-800">{formatCurrency(s.amount)}</span>
-            <button onClick={() => removeSource(i)} className="text-stone-300 hover:text-red-400">
+            <span className="font-semibold text-text-primary">{formatCurrency(s.amount)}</span>
+            <button onClick={() => removeSource(i)} className="text-text-muted hover:text-red-400">
               <Trash2 size={11} />
             </button>
           </div>
@@ -59,9 +59,9 @@ export default function OtherIncomeWidget({ sources, onChange }: OtherIncomeWidg
       ))}
 
       {sources.length > 1 && (
-        <div className="flex items-center justify-between text-xs px-3 py-1 text-stone-500 font-semibold border-t border-stone-200">
+        <div className="flex items-center justify-between text-xs px-3 py-1 text-text-secondary font-semibold border-t border-border">
           <span>Total other income</span>
-          <span className="text-stone-800">{formatCurrency(total)}/yr</span>
+          <span className="text-text-primary">{formatCurrency(total)}/yr</span>
         </div>
       )}
 
@@ -69,56 +69,56 @@ export default function OtherIncomeWidget({ sources, onChange }: OtherIncomeWidg
         <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl space-y-2">
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-[11px] text-stone-500">Label</label>
+              <label className="text-xs text-text-secondary">Label</label>
               <input type="text" value={newLabel} onChange={(e) => setNewLabel(e.target.value)}
                 placeholder="e.g. Ripley Trust"
-                className="w-full mt-0.5 text-xs border border-stone-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20" />
+                className="w-full mt-0.5 text-xs border border-border rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-accent/20" />
             </div>
             <div>
-              <label className="text-[11px] text-stone-500">Type</label>
+              <label className="text-xs text-text-secondary">Type</label>
               <select value={newType} onChange={(e) => setNewType(e.target.value as OtherIncomeType)}
-                className="w-full mt-0.5 text-xs border border-stone-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none">
+                className="w-full mt-0.5 text-xs border border-border rounded-lg px-2 py-1.5 bg-card focus:outline-none">
                 {OTHER_INCOME_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </div>
           </div>
-          {hint && <p className="text-[11px] text-blue-600">{hint}</p>}
+          {hint && <p className="text-xs text-blue-600">{hint}</p>}
           {newType === "partnership_k1" && (
-            <div className="text-[11px] bg-amber-50 border border-amber-100 rounded-lg px-2 py-1.5 text-amber-700">
+            <div className="text-xs bg-amber-50 border border-amber-100 rounded-lg px-2 py-1.5 text-amber-700">
               Self-employment tax (15.3%) may apply. No withholding — use quarterly estimated payments (Form 1040-ES).
             </div>
           )}
           {newType === "business_1099" && (
-            <div className="text-[11px] bg-amber-50 border border-amber-100 rounded-lg px-2 py-1.5 text-amber-700">
+            <div className="text-xs bg-amber-50 border border-amber-100 rounded-lg px-2 py-1.5 text-amber-700">
               SE tax ~15.3% on net income. No withholding — use quarterly estimated payments.
             </div>
           )}
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-[11px] text-stone-500">Annual Amount</label>
+              <label className="text-xs text-text-secondary">Annual Amount</label>
               <input type="number" value={newAmount}
                 onChange={(e) => setNewAmount(e.target.value === "" ? "" : Number(e.target.value))}
                 placeholder="0"
-                className="w-full mt-0.5 text-xs border border-stone-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20" />
+                className="w-full mt-0.5 text-xs border border-border rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-accent/20" />
             </div>
             <div>
-              <label className="text-[11px] text-stone-500">Notes (optional)</label>
+              <label className="text-xs text-text-secondary">Notes (optional)</label>
               <input type="text" value={newNotes} onChange={(e) => setNewNotes(e.target.value)}
                 placeholder="e.g. ordinary income portion"
-                className="w-full mt-0.5 text-xs border border-stone-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20" />
+                className="w-full mt-0.5 text-xs border border-border rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-accent/20" />
             </div>
           </div>
           <div className="flex gap-2">
             <button onClick={addSource} disabled={!newLabel || !newAmount}
-              className="flex items-center gap-1.5 text-xs bg-[#16A34A] text-white px-3 py-1.5 rounded-lg font-medium hover:bg-[#15803d] disabled:opacity-60">
+              className="flex items-center gap-1.5 text-xs bg-accent text-white px-3 py-1.5 rounded-lg font-medium hover:bg-accent-hover disabled:opacity-60">
               <Plus size={11} /> Add
             </button>
-            <button onClick={() => setShowAdd(false)} className="text-xs text-stone-500 hover:text-stone-800 px-2">Cancel</button>
+            <button onClick={() => setShowAdd(false)} className="text-xs text-text-secondary hover:text-text-primary px-2">Cancel</button>
           </div>
         </div>
       ) : (
         <button onClick={() => setShowAdd(true)}
-          className="flex items-center gap-1.5 text-xs text-[#16A34A] hover:text-[#15803d] font-medium">
+          className="flex items-center gap-1.5 text-xs text-accent hover:text-accent-hover font-medium">
           <Plus size={12} /> Add income source
         </button>
       )}

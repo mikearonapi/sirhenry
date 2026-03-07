@@ -10,7 +10,7 @@ import logging
 import re
 from datetime import datetime
 
-from sqlalchemy import and_, func, select, update
+from sqlalchemy import and_, cast, func, or_, select, update, Date
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pipeline.db.schema import BusinessEntity, CategoryRule, Transaction
@@ -60,6 +60,29 @@ def _matches_merchant(pattern: str, merchant: str) -> bool:
     if re.search(r"(?:^|\s)" + re.escape(pattern) + r"(?:\s|$)", merchant):
         return True
     return False
+
+
+def _sql_merchant_like_filter(pattern: str):
+    """Build a SQLAlchemy OR filter that matches a merchant pattern against
+    LOWER(Transaction.description) using word-boundary-aware LIKE clauses.
+
+    Mirrors the logic of _matches_merchant() but at the SQL level:
+    - Pattern at start of description, followed by non-alpha or end
+    - Pattern preceded by non-alpha character, followed by non-alpha or end
+
+    Escape any LIKE wildcards in the pattern itself to avoid injection.
+    SQLite LIKE is case-insensitive by default for ASCII, so we use
+    func.lower() for safety with mixed-case data.
+    """
+    # Escape LIKE wildcards that might be in the pattern
+    safe = pattern.replace("%", r"\%").replace("_", r"\_")
+    desc_lower = func.lower(Transaction.description)
+    return or_(
+        # Pattern at start, followed by space or non-alpha char, or exact match
+        desc_lower.like(safe + "%", escape="\\"),
+        # Pattern after a space (word boundary)
+        desc_lower.like("% " + safe + "%", escape="\\"),
+    )
 
 
 def _sort_rules_by_specificity(rules: list[CategoryRule]) -> list[CategoryRule]:
@@ -177,8 +200,11 @@ async def apply_rules(session: AsyncSession, transaction_ids: list[int] | None =
     Call this BEFORE Claude categorization to handle known merchants cheaply.
     Rules are sorted by pattern length (longest first) so more specific
     patterns take priority over shorter, broader ones.
+
+    Uses SQL-level LIKE matching for each rule, issuing one UPDATE per rule
+    instead of loading all transactions into Python.
     """
-    # Load all active rules, sorted by specificity
+    # Load all active rules, sorted by specificity (longest pattern first)
     result = await session.execute(
         select(CategoryRule).where(CategoryRule.is_active.is_(True))
     )
@@ -186,38 +212,65 @@ async def apply_rules(session: AsyncSession, transaction_ids: list[int] | None =
     if not rules:
         return {"applied": 0}
 
-    # Get uncategorized transactions
-    q = select(Transaction).where(
-        Transaction.effective_category.is_(None),
-        Transaction.is_manually_reviewed.is_(False),
-        Transaction.is_excluded.is_(False),
-    )
-    if transaction_ids:
-        q = q.where(Transaction.id.in_(transaction_ids))
-
-    txn_result = await session.execute(q)
-    transactions = list(txn_result.scalars())
-
     applied = 0
-    for txn in transactions:
-        merchant = normalize_merchant(txn.description)
-        if not merchant:
+    for rule in rules:
+        if not rule.merchant_pattern:
             continue
-        td = _txn_date(txn)
-        for rule in rules:
-            if _matches_merchant(rule.merchant_pattern, merchant):
-                if not _rule_matches_date(rule, td):
-                    continue
-                _apply_rule_to_transaction(txn, rule)
-                rule.match_count = (rule.match_count or 0) + 1
-                applied += 1
-                break
+
+        # Base filter: uncategorized, not manually reviewed, not excluded
+        conditions = [
+            Transaction.effective_category.is_(None),
+            Transaction.is_manually_reviewed.is_(False),
+            Transaction.is_excluded.is_(False),
+        ]
+        if transaction_ids:
+            conditions.append(Transaction.id.in_(transaction_ids))
+
+        # Merchant LIKE matching at SQL level
+        conditions.append(_sql_merchant_like_filter(rule.merchant_pattern))
+
+        # Date range filter
+        if rule.effective_from:
+            conditions.append(
+                cast(Transaction.date, Date) >= rule.effective_from
+            )
+        if rule.effective_to:
+            conditions.append(
+                cast(Transaction.date, Date) <= rule.effective_to
+            )
+
+        # Build UPDATE values from the rule
+        values: dict = {"ai_confidence": 0.95}
+        if rule.category:
+            values["effective_category"] = rule.category
+            values["category"] = rule.category
+        if rule.tax_category:
+            values["effective_tax_category"] = rule.tax_category
+            values["tax_category"] = rule.tax_category
+        if rule.segment:
+            values["effective_segment"] = rule.segment
+            values["segment"] = rule.segment
+        if rule.business_entity_id:
+            values["effective_business_entity_id"] = rule.business_entity_id
+            values["business_entity_id"] = rule.business_entity_id
+
+        stmt = update(Transaction).where(and_(*conditions)).values(**values)
+        result_update = await session.execute(stmt)
+        matched = result_update.rowcount
+
+        if matched > 0:
+            rule.match_count = (rule.match_count or 0) + matched
+            applied += matched
 
     return {"applied": applied, "rules_checked": len(rules)}
 
 
 async def apply_rule_retroactively(session: AsyncSession, rule_id: int) -> dict:
-    """Apply a specific rule to all matching past transactions."""
+    """Apply a specific rule to all matching past transactions.
+
+    Uses a single SQL UPDATE with LIKE matching instead of loading all
+    transactions into Python.
+    """
     result = await session.execute(
         select(CategoryRule).where(CategoryRule.id == rule_id)
     )
@@ -225,24 +278,44 @@ async def apply_rule_retroactively(session: AsyncSession, rule_id: int) -> dict:
     if not rule:
         return {"applied": 0, "error": "Rule not found"}
 
-    # Find matching transactions (non-excluded, non-manually-reviewed)
-    txn_result = await session.execute(
-        select(Transaction).where(
-            Transaction.is_excluded.is_(False),
-            Transaction.is_manually_reviewed.is_(False),
+    if not rule.merchant_pattern:
+        return {"applied": 0, "rule_id": rule_id, "merchant": ""}
+
+    # Build SQL conditions
+    conditions = [
+        Transaction.is_excluded.is_(False),
+        Transaction.is_manually_reviewed.is_(False),
+        _sql_merchant_like_filter(rule.merchant_pattern),
+    ]
+
+    # Date range filter
+    if rule.effective_from:
+        conditions.append(
+            cast(Transaction.date, Date) >= rule.effective_from
         )
-    )
-    applied = 0
-    for txn in txn_result.scalars():
-        merchant = normalize_merchant(txn.description)
-        if not merchant:
-            continue
-        if _matches_merchant(rule.merchant_pattern, merchant):
-            td = _txn_date(txn)
-            if not _rule_matches_date(rule, td):
-                continue
-            _apply_rule_to_transaction(txn, rule)
-            applied += 1
+    if rule.effective_to:
+        conditions.append(
+            cast(Transaction.date, Date) <= rule.effective_to
+        )
+
+    # Build UPDATE values from the rule
+    values: dict = {"ai_confidence": 0.95}
+    if rule.category:
+        values["effective_category"] = rule.category
+        values["category"] = rule.category
+    if rule.tax_category:
+        values["effective_tax_category"] = rule.tax_category
+        values["tax_category"] = rule.tax_category
+    if rule.segment:
+        values["effective_segment"] = rule.segment
+        values["segment"] = rule.segment
+    if rule.business_entity_id:
+        values["effective_business_entity_id"] = rule.business_entity_id
+        values["business_entity_id"] = rule.business_entity_id
+
+    stmt = update(Transaction).where(and_(*conditions)).values(**values)
+    result_update = await session.execute(stmt)
+    applied = result_update.rowcount
 
     rule.match_count = (rule.match_count or 0) + applied
 

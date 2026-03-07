@@ -3,7 +3,7 @@ import WaitlistForm from "./WaitlistForm";
 
 export default function WaitlistSection() {
   return (
-    <section id="waitlist" className="bg-white py-28 px-6">
+    <section id="waitlist" className="bg-card py-28 px-6">
       <div className="max-w-xl mx-auto text-center">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-[#9CA3AF] mb-4">
           Early access &middot; Spring 2026

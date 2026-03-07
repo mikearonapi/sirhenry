@@ -29,6 +29,14 @@ def main():
     if os.path.exists(env_path):
         load_dotenv(env_path, override=True)
 
+    # Override settings that must differ in desktop context.
+    # DATABASE_URL: .env may have a relative dev path; force absolute path to ~/.sirhenry/data/
+    db_path = os.path.join(data_dir, "financials.db")
+    os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{db_path}"
+    # Remove dev-only vars that conflict with desktop sidecar
+    os.environ.pop("API_PORT", None)
+    os.environ.pop("NEXT_PUBLIC_API_URL", None)
+
     # Find free port (or use explicit override)
     port = int(os.environ.get("SIRHENRY_PORT", "0"))
     if port == 0:

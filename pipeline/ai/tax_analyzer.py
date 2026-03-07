@@ -279,7 +279,7 @@ async def _build_tax_household_context(session: AsyncSession) -> tuple[str, PIIS
     if household:
         try:
             benefit_result = await session.execute(
-                select(BenefitPackage).where(BenefitPackage.household_profile_id == household.id)
+                select(BenefitPackage).where(BenefitPackage.household_id == household.id)
             )
             benefits = benefit_result.scalars().all()
             for b in benefits:

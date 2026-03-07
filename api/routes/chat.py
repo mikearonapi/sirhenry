@@ -75,7 +75,10 @@ async def stream_message(
                 page_context=body.page_context,
             ):
                 yield f"data: {json.dumps(event)}\n\n"
-            # Commit the session after the generator finishes
+            # Intentional explicit commit: SSE streaming generator outlives the
+            # get_session() context manager, so the auto-commit in the dependency
+            # fires before streaming completes. We commit here to persist
+            # conversation data after the full stream has been sent.
             await session.commit()
         except Exception as exc:
             yield f"data: {json.dumps({'type': 'error', 'message': str(exc)})}\n\n"

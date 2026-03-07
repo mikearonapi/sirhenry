@@ -9,7 +9,7 @@ import LabeledInput from "../shared/LabeledInput";
 import CalcButton from "../shared/CalcButton";
 import ResultBox from "../shared/ResultBox";
 
-const INPUT_CLS = "w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A]";
+const INPUT_CLS = "w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent";
 
 export default function FilingStatusSim() {
   const [spouseAIncome, setSpouseAIncome] = useState("");
@@ -49,7 +49,7 @@ export default function FilingStatusSim() {
         <LabeledInput label="Total Itemized Deductions" value={itemizedDeductions} onChange={setItemizedDeductions} />
         <LabeledInput label="Annual Student Loan Payment" value={studentLoanPayment} onChange={setStudentLoanPayment} />
         <div>
-          <label className="block text-xs text-stone-500 mb-1">State</label>
+          <label className="block text-xs text-text-secondary mb-1">State</label>
           <select value={state} onChange={(e) => setState(e.target.value)} className={INPUT_CLS}>
             <option value="CA">California</option>
             <option value="NY">New York</option>
@@ -164,10 +164,10 @@ function ComparisonColumn({ title, data, isWinner }: {
   isWinner: boolean;
 }) {
   return (
-    <div className={`rounded-lg p-4 ${isWinner ? "bg-green-50 border-2 border-green-200" : "bg-stone-50 border border-stone-200"}`}>
+    <div className={`rounded-lg p-4 ${isWinner ? "bg-green-50 border-2 border-green-200" : "bg-surface border border-border"}`}>
       <div className="flex items-center gap-2 mb-3">
         {isWinner && <CheckCircle size={14} className="text-green-600" />}
-        <h4 className={`text-sm font-semibold ${isWinner ? "text-green-800" : "text-stone-800"}`}>{title}</h4>
+        <h4 className={`text-sm font-semibold ${isWinner ? "text-green-800" : "text-text-primary"}`}>{title}</h4>
       </div>
       <div className="space-y-2">
         <TaxRow label="Federal Tax" value={data.federal_tax} />
@@ -177,14 +177,14 @@ function ComparisonColumn({ title, data, isWinner }: {
         {data.student_loan_benefit > 0 && (
           <TaxRow label="Student Loan Deduction" value={-data.student_loan_benefit} isCredit />
         )}
-        <div className="border-t border-stone-200 pt-2 mt-2">
+        <div className="border-t border-border pt-2 mt-2">
           <TaxRow label="Total Tax" value={data.total_tax} bold />
         </div>
-        <div className="flex justify-between text-xs text-stone-500 pt-1">
+        <div className="flex justify-between text-xs text-text-secondary pt-1">
           <span>Effective Rate</span>
           <span className="font-mono tabular-nums">{(data.effective_rate * 100).toFixed(1)}%</span>
         </div>
-        <div className="flex justify-between text-xs text-stone-500">
+        <div className="flex justify-between text-xs text-text-secondary">
           <span>Deduction</span>
           <span className="font-mono tabular-nums">{formatCurrency(data.deduction_used)} ({data.itemizing ? "itemized" : "standard"})</span>
         </div>
@@ -196,8 +196,8 @@ function ComparisonColumn({ title, data, isWinner }: {
 function TaxRow({ label, value, bold, isCredit }: { label: string; value: number; bold?: boolean; isCredit?: boolean }) {
   return (
     <div className={`flex justify-between text-sm ${bold ? "font-semibold" : ""}`}>
-      <span className="text-stone-600">{label}</span>
-      <span className={`font-mono tabular-nums ${isCredit ? "text-green-600" : "text-stone-800"}`}>
+      <span className="text-text-secondary">{label}</span>
+      <span className={`font-mono tabular-nums ${isCredit ? "text-green-600" : "text-text-primary"}`}>
         {isCredit ? `-${formatCurrency(Math.abs(value))}` : formatCurrency(value)}
       </span>
     </div>

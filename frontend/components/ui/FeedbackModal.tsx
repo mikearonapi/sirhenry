@@ -29,7 +29,7 @@ const FEEDBACK_TYPES: {
     icon: Bug,
     placeholder: "What happened? What did you expect instead?",
     selectedClass: "border-red-300 bg-red-50 text-red-700",
-    defaultClass: "border-stone-200 text-stone-500 hover:border-stone-300 hover:text-stone-700",
+    defaultClass: "border-border text-text-secondary hover:border-border hover:text-text-secondary",
   },
   {
     value: "feature",
@@ -37,7 +37,7 @@ const FEEDBACK_TYPES: {
     icon: Lightbulb,
     placeholder: "What would you like to see? How would it help you?",
     selectedClass: "border-amber-300 bg-amber-50 text-amber-700",
-    defaultClass: "border-stone-200 text-stone-500 hover:border-stone-300 hover:text-stone-700",
+    defaultClass: "border-border text-text-secondary hover:border-border hover:text-text-secondary",
   },
   {
     value: "general",
@@ -45,7 +45,7 @@ const FEEDBACK_TYPES: {
     icon: MessageCircle,
     placeholder: "Tell us what you think...",
     selectedClass: "border-blue-300 bg-blue-50 text-blue-700",
-    defaultClass: "border-stone-200 text-stone-500 hover:border-stone-300 hover:text-stone-700",
+    defaultClass: "border-border text-text-secondary hover:border-border hover:text-text-secondary",
   },
 ];
 
@@ -104,20 +104,20 @@ export default function FeedbackModal({ onClose }: { onClose: () => void }) {
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4"
+        className="bg-card rounded-2xl shadow-2xl w-full max-w-lg mx-4"
         onClick={(e) => e.stopPropagation()}
       >
         {submitted ? (
           /* ── Success state ── */
           <div className="flex flex-col items-center py-12 px-6">
-            <CheckCircle2 size={40} className="text-[#16A34A] mb-3" />
+            <CheckCircle2 size={40} className="text-accent mb-3" />
             <h3
-              className="text-lg font-semibold text-stone-900"
+              className="text-lg font-semibold text-text-primary"
               style={{ fontFamily: "var(--font-display, sans-serif)" }}
             >
               Thank you!
             </h3>
-            <p className="text-sm text-stone-500 mt-1">
+            <p className="text-sm text-text-secondary mt-1">
               Your feedback helps us build a better SirHENRY.
             </p>
           </div>
@@ -130,18 +130,18 @@ export default function FeedbackModal({ onClose }: { onClose: () => void }) {
               </div>
               <div className="flex-1">
                 <h3
-                  className="text-base font-semibold text-stone-900"
+                  className="text-base font-semibold text-text-primary"
                   style={{ fontFamily: "var(--font-display, sans-serif)" }}
                 >
                   Send Feedback
                 </h3>
-                <p className="text-xs text-stone-400">
+                <p className="text-xs text-text-muted">
                   Help us improve SirHENRY
                 </p>
               </div>
               <button
                 onClick={onClose}
-                className="rounded-lg p-1.5 text-stone-400 hover:bg-stone-100 hover:text-stone-600 transition-colors"
+                className="rounded-lg p-1.5 text-text-muted hover:bg-surface hover:text-text-secondary transition-colors"
               >
                 <X size={16} />
               </button>
@@ -151,7 +151,7 @@ export default function FeedbackModal({ onClose }: { onClose: () => void }) {
             <div className="px-6 pb-2 space-y-4">
               {/* Type selector */}
               <div>
-                <label className="text-xs text-stone-500 block mb-1.5">
+                <label className="text-xs text-text-secondary block mb-1.5">
                   What kind of feedback?
                 </label>
                 <div className="flex gap-2">
@@ -176,7 +176,7 @@ export default function FeedbackModal({ onClose }: { onClose: () => void }) {
 
               {/* Message */}
               <div>
-                <label className="text-xs text-stone-500 block mb-1.5">
+                <label className="text-xs text-text-secondary block mb-1.5">
                   Message
                 </label>
                 <textarea
@@ -184,15 +184,15 @@ export default function FeedbackModal({ onClose }: { onClose: () => void }) {
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder={activeType.placeholder}
                   rows={4}
-                  className="w-full rounded-lg border border-stone-200 px-3 py-2.5 text-sm text-stone-900 placeholder:text-stone-400 resize-none focus:outline-none focus:ring-2 focus:ring-[#16A34A]/30 focus:border-[#16A34A] transition-colors"
+                  className="w-full rounded-lg border border-border px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted resize-none focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-colors"
                 />
               </div>
 
               {/* Email */}
               <div>
-                <label className="text-xs text-stone-500 block mb-1.5">
+                <label className="text-xs text-text-secondary block mb-1.5">
                   Email
-                  <span className="text-stone-400 ml-1">
+                  <span className="text-text-muted ml-1">
                     — optional, so we can follow up
                   </span>
                 </label>
@@ -201,7 +201,7 @@ export default function FeedbackModal({ onClose }: { onClose: () => void }) {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
-                  className="w-full rounded-lg border border-stone-200 px-3 py-2.5 text-sm text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/30 focus:border-[#16A34A] transition-colors"
+                  className="w-full rounded-lg border border-border px-3 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-colors"
                 />
               </div>
 
@@ -212,17 +212,17 @@ export default function FeedbackModal({ onClose }: { onClose: () => void }) {
             </div>
 
             {/* ── Footer ── */}
-            <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-stone-100">
+            <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-card-border">
               <button
                 onClick={onClose}
-                className="px-4 py-2 text-sm text-stone-600 hover:text-stone-800 transition-colors"
+                className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={!message.trim() || submitting}
-                className="flex items-center gap-1.5 bg-[#16A34A] text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-[#15803D] disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                className="flex items-center gap-1.5 bg-accent text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
               >
                 {submitting && <Loader2 size={14} className="animate-spin" />}
                 Send Feedback

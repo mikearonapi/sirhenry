@@ -237,10 +237,10 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-stone-900">Reports</h1>
-        <p className="text-stone-500 text-sm mt-0.5">Generate financial reports for your tax accountant and personal records</p>
+        <h1 className="text-2xl font-bold text-text-primary">Reports</h1>
+        <p className="text-text-secondary text-sm mt-0.5">Generate financial reports for your tax accountant and personal records</p>
       </div>
 
       {error && (
@@ -272,7 +272,7 @@ export default function ReportsPage() {
             icon: "📊",
             audience: "Personal archive",
             audienceIcon: User,
-            audienceColor: "text-stone-600 bg-stone-100",
+            audienceColor: "text-text-secondary bg-surface",
           },
           {
             type: "monthly_summary" as const,
@@ -281,7 +281,7 @@ export default function ReportsPage() {
             icon: "📅",
             audience: "Quick review",
             audienceIcon: User,
-            audienceColor: "text-stone-600 bg-stone-100",
+            audienceColor: "text-text-secondary bg-surface",
           },
           {
             type: "net_worth" as const,
@@ -298,12 +298,12 @@ export default function ReportsPage() {
             <button
               key={r.type}
               onClick={() => setConfig((c) => ({ ...c, type: r.type }))}
-              className={`text-left p-5 rounded-xl border transition-colors ${config.type === r.type ? "border-[#16A34A] bg-[#DCFCE7]" : "border-stone-100 bg-white hover:border-stone-200"}`}
+              className={`text-left p-5 rounded-xl border transition-colors ${config.type === r.type ? "border-accent bg-accent-light" : "border-card-border bg-card hover:border-border"}`}
             >
               <div className="text-2xl mb-2">{r.icon}</div>
-              <p className="font-semibold text-stone-800 text-sm">{r.title}</p>
-              <p className="text-xs text-stone-500 mt-1 mb-3">{r.desc}</p>
-              <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${r.audienceColor}`}>
+              <p className="font-semibold text-text-primary text-sm">{r.title}</p>
+              <p className="text-xs text-text-secondary mt-1 mb-3">{r.desc}</p>
+              <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${r.audienceColor}`}>
                 <AudienceIcon size={10} /> {r.audience}
               </span>
             </button>
@@ -312,11 +312,11 @@ export default function ReportsPage() {
       </div>
 
       {/* Config */}
-      <div className="bg-white rounded-xl border border-stone-100 shadow-sm p-5 flex items-end gap-4">
+      <div className="bg-card rounded-xl border border-card-border shadow-sm p-5 flex items-end gap-4">
         <div>
-          <label className="block text-xs text-stone-500 mb-1">Tax / Financial Year</label>
+          <label className="block text-xs text-text-secondary mb-1">Tax / Financial Year</label>
           <select value={config.year} onChange={(e) => setConfig((c) => ({ ...c, year: Number(e.target.value) }))}
-            className="text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A]">
+            className="text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent">
             {[now.getFullYear(), now.getFullYear() - 1, now.getFullYear() - 2].map((y) => (
               <option key={y} value={y}>{y}</option>
             ))}
@@ -324,9 +324,9 @@ export default function ReportsPage() {
         </div>
         {config.type === "monthly_summary" && (
           <div>
-            <label className="block text-xs text-stone-500 mb-1">Month</label>
+            <label className="block text-xs text-text-secondary mb-1">Month</label>
             <select value={config.month ?? now.getMonth() + 1} onChange={(e) => setConfig((c) => ({ ...c, month: Number(e.target.value) }))}
-              className="text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A]">
+              className="text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent">
               {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
                 <option key={m} value={m}>{monthName(m)}</option>
               ))}
@@ -336,7 +336,7 @@ export default function ReportsPage() {
         <button
           onClick={generateReport}
           disabled={generating}
-          className="flex items-center gap-2 bg-[#16A34A] text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-[#15803D] disabled:opacity-60"
+          className="flex items-center gap-2 bg-accent text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-60"
         >
           {generating ? <Loader2 size={15} className="animate-spin" /> : <FileText size={15} />}
           {generating ? "Generating…" : "Generate Report"}
@@ -345,23 +345,23 @@ export default function ReportsPage() {
 
       {/* Report output */}
       {reportContent && (
-        <div className="bg-white rounded-xl border border-stone-100 shadow-sm">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100">
+        <div className="bg-card rounded-xl border border-card-border shadow-sm">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-card-border">
             <div className="flex items-center gap-2">
               <CheckCircle size={16} className="text-green-500" />
-              <span className="text-sm font-medium text-stone-700">{reportName}</span>
+              <span className="text-sm font-medium text-text-secondary">{reportName}</span>
             </div>
             <div className="flex items-center gap-3">
-              <button onClick={handlePrint} className="flex items-center gap-2 text-sm text-stone-600 hover:text-stone-800 border border-stone-200 rounded-lg px-3 py-1.5 hover:bg-stone-50">
+              <button onClick={handlePrint} className="flex items-center gap-2 text-sm text-text-secondary hover:text-text-primary border border-border rounded-lg px-3 py-1.5 hover:bg-surface">
                 <Printer size={13} /> Print / PDF
               </button>
-              <button onClick={handleDownload} className="flex items-center gap-2 text-sm text-[#16A34A] hover:underline">
+              <button onClick={handleDownload} className="flex items-center gap-2 text-sm text-accent hover:underline">
                 <Download size={14} /> Download (.md)
               </button>
             </div>
           </div>
           <div className="p-5">
-            <pre className="text-xs text-stone-700 whitespace-pre-wrap font-mono leading-relaxed max-h-[600px] overflow-y-auto">
+            <pre className="text-xs text-text-secondary whitespace-pre-wrap font-mono leading-relaxed max-h-[600px] overflow-y-auto">
               {reportContent}
             </pre>
           </div>

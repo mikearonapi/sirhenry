@@ -21,7 +21,7 @@ const PARADOX_CARDS = [
 
 export default function HenryParadoxSection() {
   return (
-    <section className="bg-white py-24 px-6">
+    <section className="bg-card py-24 px-6">
       <div className="max-w-5xl mx-auto">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-[#9CA3AF] text-center mb-4">
           The HENRY paradox
@@ -48,7 +48,7 @@ export default function HenryParadoxSection() {
               className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl p-6"
             >
               <p
-                className="text-[#16A34A] font-extrabold mb-1"
+                className="text-accent font-extrabold mb-1"
                 style={{ fontSize: "clamp(2rem, 4vw, 2.5rem)", fontFamily: "var(--font-display)" }}
               >
                 {card.stat}

@@ -13,12 +13,14 @@ class TestEncryptionWithKey:
 
         self.test_key = Fernet.generate_key().decode()
         monkeypatch.setenv("PLAID_ENCRYPTION_KEY", self.test_key)
+        monkeypatch.setenv("PLAID_ENV", "sandbox")
 
         # Force reload of the module to pick up the new env var
         import pipeline.db.encryption as enc_mod
 
         monkeypatch.setattr(enc_mod, "_KEY", self.test_key)
         monkeypatch.setattr(enc_mod, "_fernet", None)  # Reset cached Fernet
+        monkeypatch.setattr(enc_mod, "_IS_PRODUCTION", False)
         self.enc = enc_mod
 
     def test_encrypt_decrypt_roundtrip(self):
@@ -71,11 +73,13 @@ class TestEncryptionWithoutKey:
     def _clear_encryption_key(self, monkeypatch):
         """Ensure no encryption key is set."""
         monkeypatch.delenv("PLAID_ENCRYPTION_KEY", raising=False)
+        monkeypatch.setenv("PLAID_ENV", "sandbox")
 
         import pipeline.db.encryption as enc_mod
 
         monkeypatch.setattr(enc_mod, "_KEY", "")
         monkeypatch.setattr(enc_mod, "_fernet", None)
+        monkeypatch.setattr(enc_mod, "_IS_PRODUCTION", False)
         self.enc = enc_mod
 
     def test_encrypt_returns_plaintext_when_no_key(self):
@@ -98,11 +102,13 @@ class TestBackwardCompatibility:
 
         self.test_key = Fernet.generate_key().decode()
         monkeypatch.setenv("PLAID_ENCRYPTION_KEY", self.test_key)
+        monkeypatch.setenv("PLAID_ENV", "sandbox")
 
         import pipeline.db.encryption as enc_mod
 
         monkeypatch.setattr(enc_mod, "_KEY", self.test_key)
         monkeypatch.setattr(enc_mod, "_fernet", None)
+        monkeypatch.setattr(enc_mod, "_IS_PRODUCTION", False)
         self.enc = enc_mod
 
     def test_plaintext_token_returned_as_is(self):

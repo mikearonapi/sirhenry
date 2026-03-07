@@ -13,3 +13,7 @@ from .calculator import (
     fica_tax, se_tax, niit_tax, amt_tax, state_tax,
     total_tax_estimate,
 )
+from .tax_estimate import compute_tax_estimate
+from .deductions import compute_deduction_opportunities
+from .checklist import compute_tax_checklist
+from .quarterly import compute_quarterly_estimate

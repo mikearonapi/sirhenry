@@ -32,11 +32,11 @@ pipeline/               # Business logic (NOT in routes)
   tax/                  # Tax calculator and constants (federal brackets, limits)
 frontend/               # Next.js app
   app/page.tsx          # Public landing page (waitlist)
-  app/(app)/            # Internal app pages (25 routes, behind middleware)
+  app/(app)/            # Internal app pages (25+ routes, gated by AppShell)
   components/           # React components (ui/, accounts/, household/, insights/)
+  hooks/                # Custom React hooks (useTabState, useInsights, etc.)
   lib/                  # API client functions (api-{domain}.ts → api.ts barrel)
   types/                # TypeScript type definitions ({domain}.ts → api.ts barrel)
-  middleware.ts         # Pre-launch: blocks all routes except landing page
 scripts/                # Utility scripts (data audit, migration, import helpers)
 data/                   # GITIGNORED — personal financial data, SQLite DB
 docs/                   # Architecture, features, design, brand docs
@@ -64,6 +64,8 @@ tests/                  # pytest test suite
 - NO `any` type — use `unknown` then narrow
 - Financial numbers: `font-mono` (JetBrains Mono); Headings: `font-display` (Plus Jakarta Sans)
 - Brand colors: Henry Green (#16A34A) for CTAs, Warm Gold for milestones only
+- **Tabbed pages**: Use `TabBar` (`components/ui/TabBar.tsx`) + `useTabState` (`hooks/useTabState.ts`) for pages with multiple content sections. Tab constants go in `components/{domain}/constants.ts`. Variants: "underline" (default) or "pill". URL hash persistence via `#tab=<id>`.
+- **Route gating**: `AppShell` handles client-side phase-based route gating (splash → auth → welcome → goals → setup → done). No server middleware needed for route blocking.
 
 ### Database
 - `pipeline/db/schema.py` = single source of truth for all models
@@ -107,7 +109,7 @@ Copy `.env.example` to `.env` and fill in:
 - Plaid tokens must be encrypted via `pipeline/db/encryption.py` before DB storage
 
 ## Pre-Launch State
-The app is in pre-launch mode. `frontend/middleware.ts` blocks all routes except the landing page (`/`). Only the waitlist page is publicly accessible. Internal pages are for development only.
+The app is in pre-launch mode. `AppShell` handles client-side route gating — unauthenticated users see the landing page. Internal pages are accessible in "Get Started" (test with own data) and "Demo" (pre-populated demo data) modes.
 
 ## Authoritative Docs (priority order)
 1. This file (CLAUDE.md) — project guide for AI coding assistants

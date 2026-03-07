@@ -29,6 +29,9 @@ router.include_router(seed_router)
 
 def _reminder_out(r: Reminder) -> ReminderOut:
     due = r.due_date if isinstance(r.due_date, datetime) else datetime.fromisoformat(str(r.due_date))
+    # SQLite strips timezone info — treat naive datetimes as UTC
+    if due.tzinfo is None:
+        due = due.replace(tzinfo=timezone.utc)
     now = datetime.now(timezone.utc)
     days_until = (due - now).days
     return ReminderOut(

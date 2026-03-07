@@ -3,10 +3,10 @@ import type { TaxSummary } from "@/types/api";
 
 function SummaryCell({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="bg-stone-50 rounded-lg p-3">
-      <p className="text-xs text-stone-500">{label}</p>
-      <p className="font-semibold text-stone-800 mt-0.5 tabular-nums">{value}</p>
-      {sub && <p className="text-[11px] text-stone-400 mt-0.5">{sub}</p>}
+    <div className="bg-surface rounded-lg p-3">
+      <p className="text-xs text-text-secondary">{label}</p>
+      <p className="font-semibold text-text-primary mt-0.5 tabular-nums">{value}</p>
+      {sub && <p className="text-xs text-text-muted mt-0.5">{sub}</p>}
     </div>
   );
 }
@@ -18,7 +18,7 @@ export default function IncomeSummaryGrid({ summary, year }: { summary: TaxSumma
 
   return (
     <div>
-      <h2 className="text-xs font-semibold uppercase tracking-wide text-stone-400 mb-3">
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-text-muted mb-3">
         Income Summary — {year}
       </h2>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">

@@ -52,7 +52,7 @@ export default function SCorpAnalysisSim() {
             <ResultBox label="Self-Employment Tax Savings" value={formatCurrency(result.se_tax_savings)} color="green" />
             <ResultBox label="Total Savings" value={formatCurrency(result.total_savings)} />
           </div>
-          <button type="button" onClick={() => askHenry(`I compared Schedule C vs. S-Corp. The S-Corp saves ${formatCurrency(result.total_savings)}. Should I elect S-Corp status? What are the pros and cons?`)} className="flex items-center gap-1.5 text-xs text-[#16A34A] hover:underline">
+          <button type="button" onClick={() => askHenry(`I compared Schedule C vs. S-Corp. The S-Corp saves ${formatCurrency(result.total_savings)}. Should I elect S-Corp status? What are the pros and cons?`)} className="flex items-center gap-1.5 text-xs text-accent hover:underline">
             <MessageCircle size={12} /> Should I elect S-Corp?
           </button>
         </div>

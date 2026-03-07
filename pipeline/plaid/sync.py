@@ -13,11 +13,11 @@ from sqlalchemy import and_, func as sqlfunc, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pipeline.db import (
-    ManualAsset, NetWorthSnapshot, PlaidAccount, PlaidItem, Transaction,
-    bulk_create_transactions, upsert_account,
+    InvestmentHolding, ManualAsset, NetWorthSnapshot, PlaidAccount, PlaidItem,
+    Transaction, bulk_create_transactions, upsert_account,
 )
 from pipeline.db.encryption import decrypt_token
-from pipeline.plaid.client import get_accounts, sync_transactions
+from pipeline.plaid.client import get_accounts, get_investment_holdings, sync_transactions
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +47,9 @@ async def sync_all_items(session: AsyncSession, run_categorize: bool = True) -> 
             logger.error(f"Sync failed for item {item.institution_name}: {e}")
             item.status = "error"
             item.error_code = str(e)[:100]
-        # Commit after each item so transactions are persisted immediately
+        # Intentional explicit commit: each PlaidItem is committed independently
+        # so that a failure on item N doesn't roll back items 1..N-1. This is a
+        # deliberate deviation from the auto-commit convention in get_session().
         await session.commit()
 
     # Post-sync tasks: best-effort, each with its own timeout protection
@@ -131,7 +133,18 @@ async def sync_item(
     accounts_data = get_accounts(token)
     accounts_updated = await _update_account_balances(session, item, accounts_data)
 
-    # 2. Sync transactions (incremental via cursor)
+    # 2. Sync investment holdings (if any investment accounts exist)
+    has_investment_accounts = any(
+        a.get("type") == "investment" for a in accounts_data
+    )
+    if has_investment_accounts:
+        try:
+            holdings_data = get_investment_holdings(token)
+            await _sync_investment_holdings(session, item, holdings_data)
+        except Exception as e:
+            logger.warning(f"Investment holdings sync failed for {item.institution_name}: {e}")
+
+    # 3. Sync transactions (incremental via cursor)
     sync_result = sync_transactions(token, cursor=item.plaid_cursor)
 
     added = await _process_new_transactions(session, item, sync_result["added"])
@@ -186,6 +199,131 @@ async def _update_account_balances(
 
     await session.flush()
     return updated
+
+
+async def _sync_investment_holdings(
+    session: AsyncSession,
+    item: PlaidItem,
+    holdings_data: dict[str, Any],
+) -> int:
+    """Sync investment holdings from Plaid into the InvestmentHolding table.
+
+    Uses plaid_security_id as the dedup key. On each sync:
+    - Updates existing Plaid-sourced holdings (price, value, shares)
+    - Creates new holdings for securities not yet tracked
+    - Deactivates Plaid holdings that no longer appear (sold positions)
+    """
+    raw_holdings = holdings_data.get("holdings", [])
+    if not raw_holdings:
+        return 0
+
+    # Map plaid_account_id → our account_id
+    result = await session.execute(
+        select(PlaidAccount).where(PlaidAccount.plaid_item_id == item.id)
+    )
+    plaid_accounts = {pa.plaid_account_id: pa for pa in result.scalars().all()}
+
+    # Load existing Plaid-sourced holdings for this item's accounts
+    account_ids = [pa.account_id for pa in plaid_accounts.values() if pa.account_id]
+    existing_result = await session.execute(
+        select(InvestmentHolding).where(
+            InvestmentHolding.account_id.in_(account_ids),
+            InvestmentHolding.data_source == "plaid",
+        )
+    )
+    existing_by_security = {
+        h.plaid_security_id: h
+        for h in existing_result.scalars().all()
+        if h.plaid_security_id
+    }
+
+    seen_security_ids: set[str] = set()
+    created = 0
+    updated = 0
+
+    PLAID_ASSET_CLASS_MAP = {
+        "equity": "stock",
+        "etf": "etf",
+        "mutual fund": "mutual_fund",
+        "fixed income": "bond",
+        "cash": "cash",
+        "derivative": "other",
+        "cryptocurrency": "crypto",
+    }
+
+    for h in raw_holdings:
+        plaid_acct = plaid_accounts.get(h["plaid_account_id"])
+        if not plaid_acct or not plaid_acct.account_id:
+            continue
+
+        sec_id = h.get("plaid_security_id")
+        if not sec_id:
+            continue
+        seen_security_ids.add(sec_id)
+
+        asset_class = PLAID_ASSET_CLASS_MAP.get(
+            (h.get("asset_type") or "equity").lower(), "stock"
+        )
+
+        existing = existing_by_security.get(sec_id)
+        if existing:
+            # Update existing holding
+            existing.shares = h["shares"]
+            existing.current_price = h.get("current_price")
+            existing.current_value = h.get("current_value")
+            existing.cost_basis_per_share = h.get("cost_basis_per_share")
+            existing.total_cost_basis = h.get("total_cost_basis")
+            existing.is_active = True
+            existing.last_price_update = datetime.now(timezone.utc)
+            if h.get("current_value") and h.get("total_cost_basis"):
+                existing.unrealized_gain_loss = h["current_value"] - h["total_cost_basis"]
+                if h["total_cost_basis"] != 0:
+                    existing.unrealized_gain_loss_pct = (
+                        (h["current_value"] - h["total_cost_basis"]) / h["total_cost_basis"] * 100
+                    )
+            updated += 1
+        else:
+            # Create new holding
+            unrealized_gl = None
+            unrealized_gl_pct = None
+            if h.get("current_value") and h.get("total_cost_basis"):
+                unrealized_gl = h["current_value"] - h["total_cost_basis"]
+                if h["total_cost_basis"] != 0:
+                    unrealized_gl_pct = unrealized_gl / h["total_cost_basis"] * 100
+
+            new_holding = InvestmentHolding(
+                account_id=plaid_acct.account_id,
+                ticker=h["ticker"],
+                name=h.get("name"),
+                asset_class=asset_class,
+                shares=h["shares"],
+                cost_basis_per_share=h.get("cost_basis_per_share"),
+                total_cost_basis=h.get("total_cost_basis"),
+                current_price=h.get("current_price"),
+                current_value=h.get("current_value"),
+                unrealized_gain_loss=unrealized_gl,
+                unrealized_gain_loss_pct=unrealized_gl_pct,
+                last_price_update=datetime.now(timezone.utc),
+                is_active=True,
+                data_source="plaid",
+                plaid_security_id=sec_id,
+                notes=f"Synced from {item.institution_name}",
+            )
+            session.add(new_holding)
+            created += 1
+
+    # Deactivate Plaid holdings that no longer appear (sold positions)
+    for sec_id, holding in existing_by_security.items():
+        if sec_id not in seen_security_ids and holding.is_active:
+            holding.is_active = False
+            holding.notes = (holding.notes or "") + " [position closed per Plaid]"
+
+    await session.flush()
+    logger.info(
+        f"Investment holdings sync for {item.institution_name}: "
+        f"{created} created, {updated} updated"
+    )
+    return created + updated
 
 
 async def _process_new_transactions(
@@ -291,8 +429,10 @@ async def _update_modified_transactions(
         if tx.get("pending"):
             continue
 
-        tx_hash = hashlib.sha256(tx["transaction_hash"].encode()).hexdigest() if "transaction_hash" in tx else None
-        # Plaid transaction IDs are hashed in _normalize_transaction; match on that
+        # transaction_hash is already a SHA-256 hex digest from _normalize_transaction —
+        # use it directly (do NOT re-hash)
+        tx_hash = tx.get("transaction_hash")
+        # Fallback: compute hash from raw Plaid transaction ID (same logic as _normalize_transaction)
         plaid_id = tx.get("plaid_transaction_id") or tx.get("transaction_id", "")
         if not tx_hash and plaid_id:
             tx_hash = hashlib.sha256(plaid_id.encode()).hexdigest()

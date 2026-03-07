@@ -117,7 +117,11 @@ class TaxLossHarvestEngine:
             tax_rate = long_term_rate if term == "long" else marginal_tax_rate
             estimated_savings = abs(gain_loss) * tax_rate
 
-            # Wash sale check
+            # Wash sale check — backward-looking only.
+            # NOTE: IRS wash sale rule applies to purchases 30 days BEFORE or
+            # AFTER the sale. We only check backward (recent_purchases). The
+            # forward window (buying back within 30 days after harvesting) must
+            # be tracked separately once the sale is actually executed.
             ticker = h.get("ticker", "").upper()
             wash_risk = False
             wash_end = None

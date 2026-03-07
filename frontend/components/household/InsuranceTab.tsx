@@ -41,13 +41,13 @@ export default function InsuranceTab({ profile }: InsuranceTabProps) {
       <Card padding="lg">
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h3 className="text-sm font-semibold text-stone-900">Insurance Coverage Snapshot</h3>
-            <p className="text-xs text-stone-500 mt-0.5">
+            <h3 className="text-sm font-semibold text-text-primary">Insurance Coverage Snapshot</h3>
+            <p className="text-xs text-text-muted mt-0.5">
               Pulls from your Insurance Hub. Analyzes coverage gaps and recommends actions.
             </p>
           </div>
           <button onClick={runAnalysis} disabled={loading}
-            className="flex items-center gap-2 bg-stone-800 text-white px-3 py-2 rounded-lg text-xs font-medium hover:bg-stone-700 disabled:opacity-60">
+            className="flex items-center gap-2 bg-stone-800 dark:bg-stone-700 text-white px-3 py-2 rounded-lg text-xs font-medium hover:bg-stone-700 dark:hover:bg-stone-600 disabled:opacity-60">
             {loading ? <Loader2 size={13} className="animate-spin" /> : <ShieldCheck size={13} />}
             Analyze
           </button>
@@ -64,13 +64,13 @@ export default function InsuranceTab({ profile }: InsuranceTabProps) {
         {gap ? (
           <div className="space-y-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div className="text-center p-3 bg-stone-50 rounded-xl border border-stone-100">
-                <p className="text-xl font-bold text-stone-900">{gap.total_policies}</p>
-                <p className="text-xs text-stone-500">Active Policies</p>
+              <div className="text-center p-3 bg-surface rounded-xl border border-card-border">
+                <p className="text-xl font-bold text-text-primary">{gap.total_policies}</p>
+                <p className="text-xs text-text-muted">Active Policies</p>
               </div>
-              <div className="text-center p-3 bg-stone-50 rounded-xl border border-stone-100">
-                <p className="text-lg font-bold text-stone-900">{formatCurrency(gap.total_monthly_premium)}</p>
-                <p className="text-xs text-stone-500">/mo premiums</p>
+              <div className="text-center p-3 bg-surface rounded-xl border border-card-border">
+                <p className="text-lg font-bold text-text-primary">{formatCurrency(gap.total_monthly_premium)}</p>
+                <p className="text-xs text-text-muted">/mo premiums</p>
               </div>
               <div className="text-center p-3 bg-red-50 rounded-xl border border-red-100">
                 <p className="text-xl font-bold text-red-600">{gap.high_severity_gaps}</p>
@@ -100,8 +100,8 @@ export default function InsuranceTab({ profile }: InsuranceTabProps) {
                 <div key={g.type} className={`p-3 rounded-xl border ${sev} flex items-start gap-3`}>
                   {icon}
                   <div>
-                    <p className="text-sm font-semibold text-stone-900">{g.label}</p>
-                    <p className="text-xs text-stone-600 mt-0.5">{g.note}</p>
+                    <p className="text-sm font-semibold text-text-primary">{g.label}</p>
+                    <p className="text-xs text-text-secondary mt-0.5">{g.note}</p>
                     {g.gap > 0 && (
                       <p className="text-xs text-red-600 mt-1">
                         Coverage gap: {formatCurrency(g.gap)}
@@ -113,7 +113,7 @@ export default function InsuranceTab({ profile }: InsuranceTabProps) {
             })}
           </div>
         ) : (
-          <p className="text-sm text-stone-400 text-center py-6">
+          <p className="text-sm text-text-muted text-center py-6">
             Click &quot;Analyze&quot; to see your household insurance coverage summary and gaps.
           </p>
         )}

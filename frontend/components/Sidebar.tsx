@@ -115,9 +115,8 @@ function sectionContainsActiveRoute(pathname: string, items: { href: string }[])
 // Component
 // ---------------------------------------------------------------------------
 
-export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+export default function Sidebar({ isOpen, onClose, collapsed, onToggleCollapse }: { isOpen: boolean; onClose: () => void; collapsed: boolean; onToggleCollapse: () => void }) {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
@@ -187,7 +186,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
         title={collapsed ? label : undefined}
         className={`flex items-center ${collapsed ? "justify-center" : "gap-2.5"} px-2.5 py-2 rounded-lg text-[13px] font-medium transition-all ${
           active
-            ? "bg-[#16A34A]/15 text-[#22C55E] border-l-2 border-[#16A34A]"
+            ? "bg-accent/15 text-[#22C55E] border-l-2 border-accent"
             : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 border-l-2 border-transparent"
         }`}
       >
@@ -206,7 +205,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
         onClick={() => { setUserMenuOpen(false); onClose(); }}
         className={`flex items-center gap-2.5 px-3 py-2 text-[13px] transition-colors ${
           active
-            ? "text-[#22C55E] bg-[#16A34A]/10"
+            ? "text-[#22C55E] bg-accent/10"
             : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
         }`}
       >
@@ -247,7 +246,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
           <SirHenryBrand className="text-white text-xl font-bold" />
         )}
         <button
-          onClick={() => setCollapsed(!collapsed)}
+          onClick={onToggleCollapse}
           className="hidden lg:flex items-center justify-center w-7 h-7 rounded-lg hover:bg-zinc-800 transition-colors"
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
@@ -279,7 +278,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
                   onClick={() => toggleSection(section.label)}
                   className="w-full flex items-center justify-between px-2.5 py-1.5 mb-0.5 group"
                 >
-                  <span className={`text-[10px] font-semibold uppercase tracking-wider transition-colors ${
+                  <span className={`text-xs font-semibold uppercase tracking-wider transition-colors ${
                     hasActiveChild ? "text-zinc-400" : "text-zinc-600 group-hover:text-zinc-400"
                   }`}>
                     {section.label}
@@ -319,16 +318,21 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
         {/* User menu popup — expanded sidebar */}
         {userMenuOpen && !collapsed && (
           <div className="absolute bottom-[72px] left-3 right-3 bg-zinc-900 border border-zinc-700 rounded-xl shadow-xl overflow-hidden z-40">
-            <p className="px-3 pt-2.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-600">Setup & Profile</p>
+            <p className="px-3 pt-2.5 pb-1 text-xs font-semibold uppercase tracking-wider text-zinc-600">Setup & Profile</p>
             {PROFILE_MENU_ITEMS.map((item) => (
               <MenuLink key={item.href} {...item} />
             ))}
             <div className="border-t border-zinc-700 my-0.5" />
-            <p className="px-3 pt-2.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-600">Tools</p>
+            <p className="px-3 pt-2.5 pb-1 text-xs font-semibold uppercase tracking-wider text-zinc-600">Tools</p>
             {TOOLS_MENU_ITEMS.map((item) => (
               <MenuLink key={item.href} {...item} />
             ))}
             <div className="border-t border-zinc-700 my-0.5" />
+            <MenuButton
+              label="Send Feedback"
+              icon={MessageSquarePlus}
+              onClick={() => { setUserMenuOpen(false); setFeedbackModalOpen(true); }}
+            />
             {SETTINGS_MENU_ITEMS.map((item) => (
               <MenuLink key={item.href} {...item} />
             ))}
@@ -337,16 +341,21 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
         {/* User menu popup — collapsed sidebar */}
         {userMenuOpen && collapsed && (
           <div className="absolute bottom-[72px] left-[72px] w-48 bg-zinc-900 border border-zinc-700 rounded-xl shadow-xl overflow-hidden z-40">
-            <p className="px-3 pt-2.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-600">Setup & Profile</p>
+            <p className="px-3 pt-2.5 pb-1 text-xs font-semibold uppercase tracking-wider text-zinc-600">Setup & Profile</p>
             {PROFILE_MENU_ITEMS.map((item) => (
               <MenuLink key={item.href} {...item} />
             ))}
             <div className="border-t border-zinc-700 my-0.5" />
-            <p className="px-3 pt-2.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-600">Tools</p>
+            <p className="px-3 pt-2.5 pb-1 text-xs font-semibold uppercase tracking-wider text-zinc-600">Tools</p>
             {TOOLS_MENU_ITEMS.map((item) => (
               <MenuLink key={item.href} {...item} />
             ))}
             <div className="border-t border-zinc-700 my-0.5" />
+            <MenuButton
+              label="Send Feedback"
+              icon={MessageSquarePlus}
+              onClick={() => { setUserMenuOpen(false); setFeedbackModalOpen(true); }}
+            />
             {SETTINGS_MENU_ITEMS.map((item) => (
               <MenuLink key={item.href} {...item} />
             ))}
@@ -357,14 +366,14 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
           className={`w-full flex items-center ${collapsed ? "justify-center" : "gap-2.5"} rounded-lg hover:bg-zinc-800 transition-colors p-1.5 -mx-1.5`}
           title={collapsed ? displayName : undefined}
         >
-          <div className="w-8 h-8 rounded-full bg-[#16A34A] flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ fontFamily: "var(--font-display, sans-serif)" }}>
+          <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ fontFamily: "var(--font-display, sans-serif)" }}>
             {displayInitial}
           </div>
           {!collapsed && (
             <>
               <div className="flex-1 min-w-0 text-left">
                 <p className="text-zinc-200 text-xs font-medium truncate">{displayName}</p>
-                <p className="text-zinc-600 text-[11px]">Local &middot; Secure &middot; Private</p>
+                <p className="text-zinc-600 text-xs">Local &middot; Secure &middot; Private</p>
               </div>
               <ChevronUp size={14} className={`text-zinc-500 shrink-0 transition-transform ${userMenuOpen ? "rotate-180" : ""}`} />
             </>
@@ -373,6 +382,9 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
       </div>
 
     </aside>
+    {feedbackModalOpen && (
+      <FeedbackModal onClose={() => setFeedbackModalOpen(false)} />
+    )}
     </>
   );
 }

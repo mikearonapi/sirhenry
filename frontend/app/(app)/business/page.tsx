@@ -317,7 +317,7 @@ function BusinessPageContent() {
         actions={
           <button
             onClick={() => { if (showForm) resetForm(); else setShowForm(true); }}
-            className="flex items-center gap-2 bg-[#16A34A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#15803D] shadow-sm"
+            className="flex items-center gap-2 bg-accent text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-hover shadow-sm"
           >
             {showForm ? <X size={14} /> : <Plus size={14} />}
             {showForm ? "Cancel" : "Add Business"}
@@ -334,16 +334,16 @@ function BusinessPageContent() {
       )}
 
       {/* How this section connects to the rest of the app */}
-      <div className="bg-stone-50 border border-stone-100 rounded-xl px-4 py-3">
-        <p className="text-xs font-semibold text-stone-700">Why this matters</p>
-        <p className="text-xs text-stone-500 mt-0.5">
+      <div className="bg-surface border border-card-border rounded-xl px-4 py-3">
+        <p className="text-xs font-semibold text-text-secondary">Why this matters</p>
+        <p className="text-xs text-text-secondary mt-0.5">
           Business entities connect your financial data across the app.
           Transactions tagged to a business entity appear in Tax Strategy (Schedule C / QBI), in Reports (annual business expense detail), and can be filtered in Transactions.
         </p>
         <div className="flex gap-4 mt-2">
-          <a href="/tax-strategy" className="text-xs font-medium text-[#16A34A] hover:underline flex items-center gap-1"><Zap size={11} /> Tax Strategy</a>
-          <a href="/transactions" className="text-xs font-medium text-[#16A34A] hover:underline flex items-center gap-1"><Tag size={11} /> Transactions</a>
-          <a href="/reports" className="text-xs font-medium text-[#16A34A] hover:underline flex items-center gap-1"><FileText size={11} /> Reports</a>
+          <a href="/tax-strategy" className="text-xs font-medium text-accent hover:underline flex items-center gap-1"><Zap size={11} /> Tax Strategy</a>
+          <a href="/transactions" className="text-xs font-medium text-accent hover:underline flex items-center gap-1"><Tag size={11} /> Transactions</a>
+          <a href="/reports" className="text-xs font-medium text-accent hover:underline flex items-center gap-1"><FileText size={11} /> Reports</a>
         </div>
       </div>
 
@@ -354,28 +354,28 @@ function BusinessPageContent() {
         const pct = Math.round((complete / steps.length) * 100);
         if (pct === 100) return null;
         return (
-          <div className="bg-white border border-stone-100 rounded-xl p-4 shadow-sm">
+          <div className="bg-card border border-card-border rounded-xl p-4 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <div>
-                <p className="text-sm font-semibold text-stone-800">Business Setup Progress</p>
-                <p className="text-xs text-stone-500">{complete} of {steps.length} steps complete</p>
+                <p className="text-sm font-semibold text-text-primary">Business Setup Progress</p>
+                <p className="text-xs text-text-secondary">{complete} of {steps.length} steps complete</p>
               </div>
-              <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${pct >= 75 ? "bg-green-50 text-green-700" : pct >= 50 ? "bg-amber-50 text-amber-700" : "bg-stone-100 text-stone-600"}`}>
+              <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${pct >= 75 ? "bg-green-50 text-green-700" : pct >= 50 ? "bg-amber-50 text-amber-700" : "bg-surface text-text-secondary"}`}>
                 {pct}%
               </span>
             </div>
-            <div className="w-full bg-stone-100 rounded-full h-1.5 mb-3">
-              <div className="bg-[#16A34A] h-1.5 rounded-full transition-all" style={{ width: `${pct}%` }} />
+            <div className="w-full bg-surface rounded-full h-1.5 mb-3">
+              <div className="bg-accent h-1.5 rounded-full transition-all" style={{ width: `${pct}%` }} />
             </div>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
               {steps.map((s) => (
-                <div key={s.label} className={`flex items-center gap-2 p-2 rounded-lg text-xs ${s.done ? "bg-green-50" : "bg-stone-50"}`}>
-                  <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 text-white text-[9px] font-bold ${s.done ? "bg-green-500" : "bg-stone-300"}`}>
+                <div key={s.label} className={`flex items-center gap-2 p-2 rounded-lg text-xs ${s.done ? "bg-green-50" : "bg-surface"}`}>
+                  <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 text-white text-[9px] font-bold ${s.done ? "bg-green-500" : "bg-border"}`}>
                     {s.done ? "✓" : "!"}
                   </div>
                   <div>
-                    <p className={`font-medium ${s.done ? "text-green-700" : "text-stone-600"}`}>{s.label}</p>
-                    <p className={`text-[10px] ${s.done ? "text-green-600" : "text-stone-400"}`}>
+                    <p className={`font-medium ${s.done ? "text-green-700" : "text-text-secondary"}`}>{s.label}</p>
+                    <p className={`text-xs ${s.done ? "text-green-600" : "text-text-muted"}`}>
                       {s.done ? "Complete" : s.action}
                     </p>
                   </div>
@@ -396,23 +396,23 @@ function BusinessPageContent() {
               <div key={card.key} className="bg-blue-50/50 border border-blue-100 rounded-xl p-4 relative group">
                 <button
                   onClick={() => handleDismissCard(card.key)}
-                  className="absolute top-2 right-2 text-stone-300 hover:text-stone-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute top-2 right-2 text-text-muted hover:text-text-secondary opacity-0 group-hover:opacity-100 transition-opacity"
                   title="Dismiss"
                 >
                   <X size={14} />
                 </button>
-                <p className="text-sm font-semibold text-stone-800">{card.title}</p>
-                <p className="text-xs text-stone-500 mt-1">{card.description}</p>
+                <p className="text-sm font-semibold text-text-primary">{card.title}</p>
+                <p className="text-xs text-text-secondary mt-1">{card.description}</p>
                 <div className="flex items-center gap-3 mt-2">
                   {card.linkHref && (
-                    <a href={card.linkHref} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-[#16A34A] hover:underline">
+                    <a href={card.linkHref} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-accent hover:underline">
                       {card.linkLabel}
                     </a>
                   )}
                   {card.askHenry && (
                     <button
                       onClick={() => window.dispatchEvent(new CustomEvent("ask-henry", { detail: { message: card.askHenry } }))}
-                      className="flex items-center gap-1 text-xs text-[#16A34A]/70 hover:text-[#16A34A]"
+                      className="flex items-center gap-1 text-xs text-accent/70 hover:text-accent"
                     >
                       <MessageCircle size={10} /> Ask Henry
                     </button>
@@ -427,26 +427,26 @@ function BusinessPageContent() {
       {/* Add / Edit form */}
       {showForm && (
         <Card padding="lg">
-          <h3 className="text-sm font-semibold text-stone-900 mb-4">
+          <h3 className="text-sm font-semibold text-text-primary mb-4">
             {editingEntity ? "Edit Business Entity" : "Add Business Entity"}
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
-              <label className="text-xs text-stone-500">Business / Entity Name *</label>
+              <label className="text-xs text-text-secondary">Business / Entity Name *</label>
               <input
                 type="text"
                 value={fName}
                 onChange={(e) => setFName(e.target.value)}
                 placeholder="e.g. Acme Consulting LLC"
-                className="w-full mt-1 text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20"
+                className="w-full mt-1 text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20"
               />
             </div>
             <div>
-              <label className="text-xs text-stone-500">Entity Type</label>
+              <label className="text-xs text-text-secondary">Entity Type</label>
               <select
                 value={fEntityType}
                 onChange={(e) => setFEntityType(e.target.value)}
-                className="w-full mt-1 text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20"
+                className="w-full mt-1 text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20"
               >
                 {ENTITY_TYPES.map((t) => (
                   <option key={t.value} value={t.value}>{t.label}</option>
@@ -454,11 +454,11 @@ function BusinessPageContent() {
               </select>
             </div>
             <div>
-              <label className="text-xs text-stone-500">Tax Treatment</label>
+              <label className="text-xs text-text-secondary">Tax Treatment</label>
               <select
                 value={fTaxTreatment}
                 onChange={(e) => setFTaxTreatment(e.target.value)}
-                className="w-full mt-1 text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20"
+                className="w-full mt-1 text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20"
               >
                 {TAX_TREATMENTS.map((t) => (
                   <option key={t.value} value={t.value}>{t.label}</option>
@@ -466,31 +466,31 @@ function BusinessPageContent() {
               </select>
             </div>
             <div>
-              <label className="text-xs text-stone-500">EIN (optional)</label>
+              <label className="text-xs text-text-secondary">EIN (optional)</label>
               <input
                 type="text"
                 value={fEin}
                 onChange={(e) => setFEin(e.target.value)}
                 placeholder="XX-XXXXXXX"
-                className="w-full mt-1 text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20"
+                className="w-full mt-1 text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20"
               />
             </div>
             <div>
-              <label className="text-xs text-stone-500">Active From</label>
+              <label className="text-xs text-text-secondary">Active From</label>
               <input
                 type="date"
                 value={fActiveFrom}
                 onChange={(e) => setFActiveFrom(e.target.value)}
-                className="w-full mt-1 text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20"
+                className="w-full mt-1 text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20"
               />
             </div>
             <div>
-              <label className="text-xs text-stone-500">Active To (leave blank if still active)</label>
+              <label className="text-xs text-text-secondary">Active To (leave blank if still active)</label>
               <input
                 type="date"
                 value={fActiveTo}
                 onChange={(e) => setFActiveTo(e.target.value)}
-                className="w-full mt-1 text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20"
+                className="w-full mt-1 text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20"
               />
             </div>
           </div>
@@ -504,37 +504,37 @@ function BusinessPageContent() {
           )}
 
           <div className="mt-4">
-            <label className="text-xs text-stone-500">Business Description</label>
+            <label className="text-xs text-text-secondary">Business Description</label>
             <textarea
               value={fDescription}
               onChange={(e) => setFDescription(e.target.value)}
               rows={2}
               placeholder="e.g. AI-powered car marketplace startup"
-              className="w-full mt-1 text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20"
+              className="w-full mt-1 text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20"
             />
-            <p className="text-[10px] text-stone-400 mt-0.5">Helps the AI categorizer understand what this business does.</p>
+            <p className="text-xs text-text-muted mt-0.5">Helps the AI categorizer understand what this business does.</p>
           </div>
 
           <div className="mt-4">
-            <label className="text-xs text-stone-500">Expected Expense Types</label>
+            <label className="text-xs text-text-secondary">Expected Expense Types</label>
             <textarea
               value={fExpectedExpenses}
               onChange={(e) => setFExpectedExpenses(e.target.value)}
               rows={2}
               placeholder="e.g. cloud hosting, AI API costs, marketing, contractors"
-              className="w-full mt-1 text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20"
+              className="w-full mt-1 text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20"
             />
-            <p className="text-[10px] text-stone-400 mt-0.5">Comma-separated list of expense types you expect for this business.</p>
+            <p className="text-xs text-text-muted mt-0.5">Comma-separated list of expense types you expect for this business.</p>
           </div>
 
           <div className="mt-4">
-            <label className="text-xs text-stone-500">Notes</label>
+            <label className="text-xs text-text-secondary">Notes</label>
             <textarea
               value={fNotes}
               onChange={(e) => setFNotes(e.target.value)}
               rows={2}
               placeholder="State of incorporation, purpose, etc."
-              className="w-full mt-1 text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20"
+              className="w-full mt-1 text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20"
             />
           </div>
 
@@ -542,33 +542,33 @@ function BusinessPageContent() {
             <button
               onClick={handleSave}
               disabled={saving || !fName.trim()}
-              className="flex items-center gap-2 bg-[#16A34A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#15803D] disabled:opacity-60"
+              className="flex items-center gap-2 bg-accent text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-60"
             >
               {saving && <Loader2 size={14} className="animate-spin" />}
               {editingEntity ? "Update Entity" : "Save Entity"}
             </button>
-            <button onClick={resetForm} className="text-sm text-stone-500 hover:text-stone-700">Cancel</button>
+            <button onClick={resetForm} className="text-sm text-text-secondary hover:text-text-secondary">Cancel</button>
           </div>
         </Card>
       )}
 
       {/* Filter */}
       <div className="flex items-center gap-3">
-        <label className="flex items-center gap-2 text-sm text-stone-600 cursor-pointer">
+        <label className="flex items-center gap-2 text-sm text-text-secondary cursor-pointer">
           <input
             type="checkbox"
             checked={showInactive}
             onChange={(e) => setShowInactive(e.target.checked)}
-            className="rounded border-stone-300"
+            className="rounded border-border"
           />
           Show inactive entities
         </label>
-        <span className="ml-auto text-xs text-stone-400">{entities.length} entities</span>
+        <span className="ml-auto text-xs text-text-muted">{entities.length} entities</span>
       </div>
 
       {/* Entity list */}
       {loading ? (
-        <div className="flex items-center gap-2 text-stone-500 text-sm py-8">
+        <div className="flex items-center gap-2 text-text-secondary text-sm py-8">
           <Loader2 size={16} className="animate-spin" /> Loading...
         </div>
       ) : entities.length === 0 ? (
@@ -581,13 +581,13 @@ function BusinessPageContent() {
           action={
             <button
               onClick={() => setShowForm(true)}
-              className="flex items-center gap-2 bg-[#16A34A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#15803D] shadow-sm"
+              className="flex items-center gap-2 bg-accent text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-hover shadow-sm"
             >
               <Plus size={14} /> Add Your First Business
             </button>
           }
           templates={BUSINESS_TEMPLATES.map((t) => ({
-            icon: <t.icon size={18} className="text-stone-500" />,
+            icon: <t.icon size={18} className="text-text-secondary" />,
             label: t.name,
             description: t.description,
             onClick: () => handleTemplateSelect(t),
@@ -603,31 +603,31 @@ function BusinessPageContent() {
               <Card key={entity.id} padding="md">
                 <div className="flex items-start justify-between">
                   <Link href={`/business/${entity.id}`} className="flex items-start gap-3 flex-1 min-w-0 group">
-                    <Building2 size={20} className="text-stone-400 mt-0.5 shrink-0" />
+                    <Building2 size={20} className="text-text-muted mt-0.5 shrink-0" />
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <h4 className="text-sm font-semibold text-stone-900 group-hover:text-[#16A34A] transition-colors">{entity.name}</h4>
+                        <h4 className="text-sm font-semibold text-text-primary group-hover:text-accent transition-colors">{entity.name}</h4>
                         {!entity.is_active && (
-                          <span className="text-xs bg-stone-100 text-stone-400 px-2 py-0.5 rounded-full">Inactive</span>
+                          <span className="text-xs bg-surface text-text-muted px-2 py-0.5 rounded-full">Inactive</span>
                         )}
                         {entity.is_provisional && (
                           <span className="text-xs bg-amber-50 text-amber-600 px-2 py-0.5 rounded-full">Provisional</span>
                         )}
                       </div>
-                      <p className="text-xs text-stone-500 mt-0.5">{typeLabel}</p>
+                      <p className="text-xs text-text-secondary mt-0.5">{typeLabel}</p>
                     </div>
                   </Link>
                   <div className="flex items-center gap-1 shrink-0">
                     <button
                       onClick={() => openEdit(entity)}
-                      className="p-1.5 text-stone-400 hover:text-[#16A34A] rounded"
+                      className="p-1.5 text-text-muted hover:text-accent rounded"
                       title="Edit"
                     >
                       <Pencil size={13} />
                     </button>
                     <button
                       onClick={() => handleDelete(entity.id)}
-                      className="p-1.5 text-stone-400 hover:text-red-500 rounded"
+                      className="p-1.5 text-text-muted hover:text-red-500 rounded"
                     >
                       <Trash2 size={13} />
                     </button>
@@ -635,15 +635,15 @@ function BusinessPageContent() {
                 </div>
 
                 <div className="mt-3 space-y-1 text-xs">
-                  <div className="flex items-center gap-1 text-stone-500">
+                  <div className="flex items-center gap-1 text-text-secondary">
                     <FileText size={11} className="shrink-0" />
-                    <span className="font-medium text-stone-700">{taxLabel}</span>
+                    <span className="font-medium text-text-secondary">{taxLabel}</span>
                   </div>
                   {entity.ein && (
-                    <p className="text-stone-400">EIN: {entity.ein}</p>
+                    <p className="text-text-muted">EIN: {entity.ein}</p>
                   )}
                   {entity.active_from && (
-                    <p className="text-stone-400">
+                    <p className="text-text-muted">
                       Active: {new Date(entity.active_from).toLocaleDateString()}{entity.active_to ? ` \u2192 ${new Date(entity.active_to).toLocaleDateString()}` : " \u2192 Present"}
                     </p>
                   )}
@@ -651,23 +651,23 @@ function BusinessPageContent() {
 
                 {/* Business profile info */}
                 {entity.description && (
-                  <div className="mt-3 pt-3 border-t border-stone-100">
-                    <p className="text-xs text-stone-600 line-clamp-2">{entity.description}</p>
+                  <div className="mt-3 pt-3 border-t border-card-border">
+                    <p className="text-xs text-text-secondary line-clamp-2">{entity.description}</p>
                   </div>
                 )}
 
                 {/* View details + quick links */}
-                <div className="mt-3 pt-3 border-t border-stone-100">
+                <div className="mt-3 pt-3 border-t border-card-border">
                   <Link
                     href={`/business/${entity.id}`}
-                    className="flex items-center gap-1.5 text-xs font-medium text-[#16A34A] hover:text-[#15803D] transition-colors"
+                    className="flex items-center gap-1.5 text-xs font-medium text-accent hover:text-accent-hover transition-colors"
                   >
                     View Details <ChevronRight size={12} />
                   </Link>
                 </div>
 
                 {entity.notes && (
-                  <p className="text-xs text-stone-400 mt-2 italic line-clamp-1">{entity.notes}</p>
+                  <p className="text-xs text-text-muted mt-2 italic line-clamp-1">{entity.notes}</p>
                 )}
               </Card>
             );

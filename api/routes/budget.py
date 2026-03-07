@@ -10,8 +10,13 @@ from api.database import get_session
 from api.models.schemas import (
     BudgetIn, BudgetOut, BudgetSummaryOut, BudgetUpdateIn,
 )
-from pipeline.db.schema import HouseholdProfile, Transaction
+from pipeline.db.schema import Transaction
 from pipeline.db import Budget
+from pipeline.planning.budget_actuals import (
+    fetch_actuals as _fetch_actuals,
+    get_income_categories as _get_income_categories,
+    INTERNAL_TRANSFER_CATEGORIES,
+)
 
 from api.routes.budget_forecast import router as forecast_router
 
@@ -21,88 +26,11 @@ router = APIRouter(prefix="/budget", tags=["budget"])
 router.include_router(forecast_router)
 
 
-INTERNAL_TRANSFER_CATEGORIES = {"Transfer", "Credit Card Payment", "Savings"}
-
-# Generic income category names applicable to any household.
-# Employer-specific names (e.g. "Accenture Paycheck") are added dynamically
-# from HouseholdProfile.spouse_a_employer / spouse_b_employer at query time.
-_BASE_INCOME_CATEGORIES: frozenset[str] = frozenset({
-    "Other Income", "Dividend Income", "Interest Income", "Capital Gain",
-    "Board / Director Income", "W-2 Wages", "1099-NEC / Consulting Income",
-    "K-1 / Partnership Income", "Rental Income", "Trust Income",
-})
-
 # Generic goal/savings categories applicable to any household.
-# Users should add their own custom goal categories via the budget UI.
 _BASE_GOAL_CATEGORIES: frozenset[str] = frozenset({
     "Emergency Fund", "Vacation Fund", "Retirement Contribution",
     "Investment Contribution", "Home Improvement", "Education Fund",
 })
-
-
-async def _get_income_categories(session: AsyncSession) -> set[str]:
-    """Return the full income category set: base generic + employer-specific names from DB."""
-    categories = set(_BASE_INCOME_CATEGORIES)
-    result = await session.execute(
-        select(HouseholdProfile).where(HouseholdProfile.is_primary.is_(True)).limit(1)
-    )
-    household = result.scalar_one_or_none()
-    if household:
-        for employer in [household.spouse_a_employer, household.spouse_b_employer]:
-            if employer:
-                categories.add(f"{employer} Paycheck")
-                categories.add(f"{employer} Bonus")
-                categories.add(f"{employer} Expenses")
-    return categories
-
-
-def _build_actuals_query(year: int, month: int):
-    """Expense actuals: sum of negative amounts grouped by effective_category."""
-    return (
-        select(Transaction.effective_category, func.sum(Transaction.amount).label("total"))
-        .where(
-            Transaction.period_year == year,
-            Transaction.period_month == month,
-            Transaction.is_excluded.is_(False),
-            Transaction.amount < 0,
-            Transaction.effective_category.notin_(INTERNAL_TRANSFER_CATEGORIES),
-        )
-        .group_by(Transaction.effective_category)
-    )
-
-
-def _build_income_actuals_query(year: int, month: int):
-    """Income actuals: sum of positive amounts for income categories."""
-    return (
-        select(Transaction.effective_category, func.sum(Transaction.amount).label("total"))
-        .where(
-            Transaction.period_year == year,
-            Transaction.period_month == month,
-            Transaction.is_excluded.is_(False),
-            Transaction.amount > 0,
-            Transaction.effective_category.notin_(INTERNAL_TRANSFER_CATEGORIES),
-        )
-        .group_by(Transaction.effective_category)
-    )
-
-
-async def _fetch_actuals(session: AsyncSession, year: int, month: int) -> dict[str, float]:
-    """Fetch both expense and income actuals, merged into one dict."""
-    income_categories = await _get_income_categories(session)
-
-    expense_result = await session.execute(_build_actuals_query(year, month))
-    actuals: dict[str, float] = {
-        row.effective_category: abs(float(row.total or 0))
-        for row in expense_result.all()
-        if row.effective_category
-    }
-
-    income_result = await session.execute(_build_income_actuals_query(year, month))
-    for row in income_result.all():
-        if row.effective_category and row.effective_category in income_categories:
-            actuals[row.effective_category] = float(row.total or 0)
-
-    return actuals
 
 
 # ---- Fixed-path endpoints BEFORE path-parameter endpoints ----

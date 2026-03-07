@@ -1,4 +1,4 @@
-import type { EconomicIndicator } from "@/types/api";
+import type { CompanyResearch, EconomicIndicator, MortgageContext } from "@/types/api";
 import { request } from "./api-client";
 
 export function getEconomicIndicators(): Promise<{ indicators: EconomicIndicator[] }> {
@@ -9,11 +9,11 @@ export function getEconomicIndicator(seriesId: string): Promise<EconomicIndicato
   return request(`/market/indicators/${seriesId}`);
 }
 
-export function getMortgageContext(): Promise<Record<string, unknown>> {
+export function getMortgageContext(): Promise<MortgageContext> {
   return request("/market/mortgage-context");
 }
 
-export function researchCompany(ticker: string): Promise<Record<string, unknown>> {
+export function researchCompany(ticker: string): Promise<CompanyResearch> {
   return request(`/market/research/${ticker}`);
 }
 

@@ -126,11 +126,13 @@ CHILD_TAX_CREDIT_PHASEOUT: dict[str, float] = {"mfj": 400_000, "single": 200_000
 ROTH_IRA_LIMIT = 7_000     # under 50
 ROTH_IRA_LIMIT_CATCHUP = 8_000  # 50+
 ROTH_INCOME_PHASEOUT: dict[str, float] = {"mfj": 236_000, "single": 150_000}
+ROTH_INCOME_PHASEOUT_END: dict[str, float] = {"mfj": 246_000, "single": 165_000}
 LIMIT_401K = 23_500
 LIMIT_401K_CATCHUP = 31_000  # 50+
 LIMIT_401K_TOTAL = 70_000   # including employer + after-tax (Section 415(c) 2025)
 HSA_LIMIT: dict[str, float] = {"individual": 4_300, "family": 8_550}
 DEP_CARE_FSA_LIMIT = 5_000
+SALT_CAP = 10_000
 
 # ---------------------------------------------------------------------------
 # QBI / Section 199A

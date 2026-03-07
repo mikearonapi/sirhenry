@@ -19,8 +19,8 @@ export default function CashFlowWidget({ data, budget, currentMonthName, savings
       {/* Income vs Expenses bars */}
       <Card padding="lg">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-stone-700">This Month</h3>
-          <span className="text-xs text-stone-400">{currentMonthName} {data.current_year}</span>
+          <h3 className="text-sm font-semibold text-text-secondary">This Month</h3>
+          <span className="text-xs text-text-muted">{currentMonthName} {data.current_year}</span>
         </div>
         <div className="space-y-3">
           {[
@@ -30,7 +30,7 @@ export default function CashFlowWidget({ data, budget, currentMonthName, savings
             { label: "Savings", value: Math.max(0, data.current_month_net - data.current_month_tax_estimate), color: "#3B82F6", max: data.current_month_income },
           ].map((row) => (
             <div key={row.label}>
-              <div className="flex items-center justify-between text-xs text-stone-500 mb-1">
+              <div className="flex items-center justify-between text-xs text-text-secondary mb-1">
                 <span>{row.label}</span>
                 <span className="font-medium money">{formatCurrency(row.value, true)}</span>
               </div>
@@ -43,7 +43,7 @@ export default function CashFlowWidget({ data, budget, currentMonthName, savings
             </p>
           )}
         </div>
-        <Link href="/cashflow" className="text-xs text-[#16A34A] hover:underline font-medium mt-3 block">
+        <Link href="/cashflow" className="text-xs text-accent hover:underline font-medium mt-3 block">
           Full cash flow →
         </Link>
       </Card>
@@ -51,8 +51,8 @@ export default function CashFlowWidget({ data, budget, currentMonthName, savings
       {/* YTD Summary */}
       <Card padding="lg">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-stone-700">Year-to-Date</h3>
-          <span className="text-xs text-stone-400">{data.current_year}</span>
+          <h3 className="text-sm font-semibold text-text-secondary">Year-to-Date</h3>
+          <span className="text-xs text-text-muted">{data.current_year}</span>
         </div>
         <div className="space-y-3">
           {[
@@ -63,16 +63,16 @@ export default function CashFlowWidget({ data, budget, currentMonthName, savings
             <div key={row.label} className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: row.dot }} />
-                <span className="text-sm text-stone-600">{row.label}</span>
+                <span className="text-sm text-text-secondary">{row.label}</span>
               </div>
-              <span className={`text-sm money ${row.bold ? (data.ytd_net >= 0 ? "font-bold text-green-600" : "font-bold text-red-600") : "font-semibold text-stone-900"}`}>
+              <span className={`text-sm money ${row.bold ? (data.ytd_net >= 0 ? "font-bold text-green-600" : "font-bold text-red-600") : "font-semibold text-text-primary"}`}>
                 {formatCurrency(row.value, true)}
               </span>
             </div>
           ))}
-          <div className="border-t border-stone-100 pt-2 flex items-center justify-between">
-            <span className="text-sm text-stone-500">Est. Tax</span>
-            <span className="text-sm font-semibold text-stone-700 money">{formatCurrency(data.ytd_tax_estimate, true)}</span>
+          <div className="border-t border-card-border pt-2 flex items-center justify-between">
+            <span className="text-sm text-text-secondary">Est. Tax</span>
+            <span className="text-sm font-semibold text-text-secondary money">{formatCurrency(data.ytd_tax_estimate, true)}</span>
           </div>
         </div>
       </Card>
@@ -80,13 +80,13 @@ export default function CashFlowWidget({ data, budget, currentMonthName, savings
       {/* Budget */}
       <Card padding="lg">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-stone-700">Budget</h3>
-          <span className="text-xs text-stone-400">{currentMonthName}</span>
+          <h3 className="text-sm font-semibold text-text-secondary">Budget</h3>
+          <span className="text-xs text-text-muted">{currentMonthName}</span>
         </div>
         {budget && budget.total_budgeted > 0 ? (
           <>
             <div className="mb-3">
-              <div className="flex justify-between text-xs text-stone-500 mb-1">
+              <div className="flex justify-between text-xs text-text-secondary mb-1">
                 <span>Spent</span>
                 <span className="money">{formatCurrency(data.current_month_expenses, true)} / {formatCurrency(budget.total_budgeted, true)}</span>
               </div>
@@ -96,14 +96,14 @@ export default function CashFlowWidget({ data, budget, currentMonthName, savings
                 color={data.current_month_expenses > budget.total_budgeted ? "#DC2626" : "#16A34A"}
                 size="md"
               />
-              <p className="text-xs mt-1 text-stone-500">
+              <p className="text-xs mt-1 text-text-secondary">
                 {data.current_month_expenses <= budget.total_budgeted
                   ? `${formatCurrency(budget.total_budgeted - data.current_month_expenses)} remaining`
                   : `${formatCurrency(data.current_month_expenses - budget.total_budgeted)} over`}
               </p>
             </div>
             <div className="mt-3">
-              <div className="flex justify-between text-xs text-stone-500 mb-1">
+              <div className="flex justify-between text-xs text-text-secondary mb-1">
                 <span>Savings Rate</span>
                 <span className={`font-semibold money ${savingsRate >= targetSavingsRate ? "text-green-600" : savingsRate >= 0 ? "text-amber-600" : "text-red-600"}`}>
                   {savingsRate.toFixed(1)}%
@@ -114,17 +114,17 @@ export default function CashFlowWidget({ data, budget, currentMonthName, savings
           </>
         ) : (
           <div className="grid grid-cols-2 gap-3 mb-3">
-            <div className="text-center bg-stone-50 rounded-lg p-3">
-              <p className="text-lg font-bold text-stone-900 money">{formatCurrency(data.current_month_income, true)}</p>
-              <p className="text-[11px] text-stone-400 uppercase">In</p>
+            <div className="text-center bg-surface rounded-lg p-3">
+              <p className="text-lg font-bold text-text-primary money">{formatCurrency(data.current_month_income, true)}</p>
+              <p className="text-xs text-text-muted uppercase">In</p>
             </div>
-            <div className="text-center bg-stone-50 rounded-lg p-3">
-              <p className="text-lg font-bold text-stone-900 money">{formatCurrency(data.current_month_expenses, true)}</p>
-              <p className="text-[11px] text-stone-400 uppercase">Out</p>
+            <div className="text-center bg-surface rounded-lg p-3">
+              <p className="text-lg font-bold text-text-primary money">{formatCurrency(data.current_month_expenses, true)}</p>
+              <p className="text-xs text-text-muted uppercase">Out</p>
             </div>
           </div>
         )}
-        <Link href="/budget" className="text-xs text-[#16A34A] hover:underline font-medium mt-1 block">
+        <Link href="/budget" className="text-xs text-accent hover:underline font-medium mt-1 block">
           {budget && budget.total_budgeted > 0 ? "View budget details →" : "Set up budget →"}
         </Link>
       </Card>

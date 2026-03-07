@@ -117,14 +117,14 @@ export default function GoalsPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => askHenry("Review my financial goals and suggest what I should prioritize given my income and situation.")}
-              className="flex items-center gap-1.5 text-xs text-[#16A34A] hover:text-[#15803D] transition-colors"
+              className="flex items-center gap-1.5 text-xs text-accent hover:text-accent-hover transition-colors"
             >
               <MessageCircle size={14} />
               Ask <SirHenryName />
             </button>
             <button
               onClick={() => { resetForm(); setShowAdd(true); }}
-              className="flex items-center gap-2 bg-[#16A34A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#15803D] shadow-sm"
+              className="flex items-center gap-2 bg-accent text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-hover shadow-sm"
             >
               <Plus size={15} /> Add goal
             </button>
@@ -146,38 +146,38 @@ export default function GoalsPage() {
       {!loading && active.length > 0 && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="!p-4">
-            <p className="text-xs text-stone-400 mb-1">Overall Progress</p>
-            <p className="text-2xl font-bold text-stone-800 font-mono tabular-nums">{overallProgress}%</p>
+            <p className="text-xs text-text-muted mb-1">Overall Progress</p>
+            <p className="text-2xl font-bold text-text-primary font-mono tabular-nums">{overallProgress}%</p>
             <ProgressBar value={overallProgress} color="#16A34A" size="sm" />
-            <p className="text-[11px] text-stone-400 mt-1.5">
+            <p className="text-xs text-text-muted mt-1.5">
               {formatCurrency(totalCurrent, true)} of {formatCurrency(totalTarget, true)}
             </p>
           </Card>
           <Card className="!p-4">
-            <p className="text-xs text-stone-400 mb-1">Active Goals</p>
-            <p className="text-2xl font-bold text-stone-800 font-mono tabular-nums">{active.length}</p>
+            <p className="text-xs text-text-muted mb-1">Active Goals</p>
+            <p className="text-2xl font-bold text-text-primary font-mono tabular-nums">{active.length}</p>
             <div className="flex items-center gap-2 mt-1.5">
               {onTrackCount > 0 && (
-                <span className="text-[11px] text-green-600 flex items-center gap-0.5">
+                <span className="text-xs text-green-600 flex items-center gap-0.5">
                   <CheckCircle2 size={10} /> {onTrackCount} on track
                 </span>
               )}
               {behindCount > 0 && (
-                <span className="text-[11px] text-red-500 flex items-center gap-0.5">
+                <span className="text-xs text-red-500 flex items-center gap-0.5">
                   <AlertCircle size={10} /> {behindCount} behind
                 </span>
               )}
             </div>
           </Card>
           <Card className="!p-4">
-            <p className="text-xs text-stone-400 mb-1">Monthly Commitment</p>
-            <p className="text-2xl font-bold text-stone-800 font-mono tabular-nums">{formatCurrency(totalMonthly, true)}</p>
-            <p className="text-[11px] text-stone-400 mt-1.5">across {active.filter((g) => g.monthly_contribution).length} goals</p>
+            <p className="text-xs text-text-muted mb-1">Monthly Commitment</p>
+            <p className="text-2xl font-bold text-text-primary font-mono tabular-nums">{formatCurrency(totalMonthly, true)}</p>
+            <p className="text-xs text-text-muted mt-1.5">across {active.filter((g) => g.monthly_contribution).length} goals</p>
           </Card>
           <Card className="!p-4">
-            <p className="text-xs text-stone-400 mb-1">Remaining</p>
-            <p className="text-2xl font-bold text-stone-800 font-mono tabular-nums">{formatCurrency(totalTarget - totalCurrent, true)}</p>
-            <p className="text-[11px] text-stone-400 mt-1.5">
+            <p className="text-xs text-text-muted mb-1">Remaining</p>
+            <p className="text-2xl font-bold text-text-primary font-mono tabular-nums">{formatCurrency(totalTarget - totalCurrent, true)}</p>
+            <p className="text-xs text-text-muted mt-1.5">
               {completed.length > 0 && `${completed.length} goal${completed.length > 1 ? "s" : ""} completed`}
               {completed.length === 0 && "to reach all targets"}
             </p>
@@ -188,59 +188,59 @@ export default function GoalsPage() {
       {/* Add goal form */}
       {showAdd && (
         <Card padding="lg">
-          <h2 className="font-semibold text-stone-800 mb-4">New Goal</h2>
+          <h2 className="font-semibold text-text-primary mb-4">New Goal</h2>
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
-              <label className="block text-xs text-stone-500 mb-1.5">Goal Name</label>
+              <label className="block text-xs text-text-secondary mb-1.5">Goal Name</label>
               <input
                 value={name} onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Emergency Fund, Down Payment, Pay off loans"
-                className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A]"
+                className="w-full text-sm border border-border rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
               />
             </div>
             <div>
-              <label className="block text-xs text-stone-500 mb-1.5">Goal Type</label>
+              <label className="block text-xs text-text-secondary mb-1.5">Goal Type</label>
               <select value={goalType} onChange={(e) => setGoalType(e.target.value as Goal["goal_type"])}
-                className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A] bg-white">
+                className="w-full text-sm border border-border rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent bg-card">
                 {GOAL_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-xs text-stone-500 mb-1.5">Target Amount</label>
+              <label className="block text-xs text-text-secondary mb-1.5">Target Amount</label>
               <input type="number" value={targetAmount} onChange={(e) => setTargetAmount(e.target.value)} placeholder="0.00" min="1" step="0.01"
-                className={`w-full text-sm border rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A] ${targetAmount && !isTargetValid ? "border-red-300" : "border-stone-200"}`} />
+                className={`w-full text-sm border rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent ${targetAmount && !isTargetValid ? "border-red-300" : "border-border"}`} />
               {targetAmount && !isTargetValid && (
-                <p className="text-[11px] text-red-500 mt-1">Target amount must be greater than 0</p>
+                <p className="text-xs text-red-500 mt-1">Target amount must be greater than 0</p>
               )}
             </div>
             <div>
-              <label className="block text-xs text-stone-500 mb-1.5">Current Amount</label>
+              <label className="block text-xs text-text-secondary mb-1.5">Current Amount</label>
               <input type="number" value={currentAmount} onChange={(e) => setCurrentAmount(e.target.value)} placeholder="0.00" min="0" step="0.01"
-                className={`w-full text-sm border rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A] ${isCurrentOverTarget ? "border-amber-300" : "border-stone-200"}`} />
+                className={`w-full text-sm border rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent ${isCurrentOverTarget ? "border-amber-300" : "border-border"}`} />
               {isCurrentOverTarget && (
-                <p className="text-[11px] text-amber-600 mt-1">Current amount exceeds target — goal may already be complete</p>
+                <p className="text-xs text-amber-600 mt-1">Current amount exceeds target — goal may already be complete</p>
               )}
             </div>
             <div>
-              <label className="block text-xs text-stone-500 mb-1.5">Monthly Contribution</label>
+              <label className="block text-xs text-text-secondary mb-1.5">Monthly Contribution</label>
               <input type="number" value={monthlyContrib} onChange={(e) => setMonthlyContrib(e.target.value)} placeholder="Optional" min="0" step="0.01"
-                className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A]" />
+                className="w-full text-sm border border-border rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent" />
             </div>
             <div>
-              <label className="block text-xs text-stone-500 mb-1.5">Target Date</label>
+              <label className="block text-xs text-text-secondary mb-1.5">Target Date</label>
               <input type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)}
-                className={`w-full text-sm border rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A] ${isDatePast ? "border-amber-300" : "border-stone-200"}`} />
+                className={`w-full text-sm border rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent ${isDatePast ? "border-amber-300" : "border-border"}`} />
               {isDatePast && (
-                <p className="text-[11px] text-amber-600 mt-1">This date is in the past</p>
+                <p className="text-xs text-amber-600 mt-1">This date is in the past</p>
               )}
             </div>
             <div className="col-span-2">
-              <label className="block text-xs text-stone-500 mb-2">Color</label>
+              <label className="block text-xs text-text-secondary mb-2">Color</label>
               <div className="flex gap-2">
                 {COLORS.map((c) => (
                   <button key={c} onClick={() => setColor(c)}
                     aria-label={`Select color ${c}`}
-                    className={`w-8 h-8 rounded-full transition-transform ${color === c ? "scale-110 ring-2 ring-offset-2 ring-stone-400" : "hover:scale-105"}`}
+                    className={`w-8 h-8 rounded-full transition-transform ${color === c ? "scale-110 ring-2 ring-offset-2 ring-border" : "hover:scale-105"}`}
                     style={{ backgroundColor: c }} />
                 ))}
               </div>
@@ -249,12 +249,12 @@ export default function GoalsPage() {
 
           {/* Show projected timeline when monthly contribution and target are set */}
           {isTargetValid && monthlyContrib && parseFloat(monthlyContrib) > 0 && (
-            <div className="mt-4 p-3 bg-stone-50 rounded-lg border border-stone-100">
-              <div className="flex items-center gap-2 text-xs text-stone-500">
-                <TrendingUp size={12} className="text-[#16A34A]" />
+            <div className="mt-4 p-3 bg-surface rounded-lg border border-card-border">
+              <div className="flex items-center gap-2 text-xs text-text-secondary">
+                <TrendingUp size={12} className="text-accent" />
                 <span>
                   At {formatCurrency(parseFloat(monthlyContrib))}/mo, you&apos;ll reach {formatCurrency(targetNum, true)} in{" "}
-                  <strong className="text-stone-700">
+                  <strong className="text-text-secondary">
                     {Math.ceil((targetNum - currentNum) / parseFloat(monthlyContrib))} months
                   </strong>
                   {targetDate && !isDatePast && (
@@ -269,16 +269,16 @@ export default function GoalsPage() {
 
           <div className="flex gap-3 mt-5">
             <button onClick={handleAdd} disabled={!canSubmit}
-              className="flex items-center gap-2 bg-[#16A34A] text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-[#15803D] disabled:opacity-60 shadow-sm">
+              className="flex items-center gap-2 bg-accent text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-60 shadow-sm">
               {saving ? <Loader2 size={13} className="animate-spin" /> : null} Create Goal
             </button>
-            <button onClick={() => { setShowAdd(false); resetForm(); }} className="text-sm text-stone-500 hover:text-stone-700 px-3">Cancel</button>
+            <button onClick={() => { setShowAdd(false); resetForm(); }} className="text-sm text-text-secondary hover:text-text-secondary px-3">Cancel</button>
           </div>
         </Card>
       )}
 
       {loading ? (
-        <div className="flex justify-center py-12"><Loader2 className="animate-spin text-stone-300" size={24} /></div>
+        <div className="flex justify-center py-12"><Loader2 className="animate-spin text-text-muted" size={24} /></div>
       ) : (
         <>
           {active.length === 0 && !showAdd ? (
@@ -291,14 +291,14 @@ export default function GoalsPage() {
                 askHenryPrompt="What financial goals should I prioritize given my income and situation?"
                 action={
                   <button onClick={() => { resetForm(); setShowAdd(true); }}
-                    className="bg-[#16A34A] text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-[#15803D] shadow-sm">
+                    className="bg-accent text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-accent-hover shadow-sm">
                     Create Custom Goal
                   </button>
                 }
               />
               {/* HENRY goal template gallery */}
               <div>
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-stone-400 mb-3">
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-3">
                   Recommended for high earners
                 </h2>
                 <GoalTemplates onSelect={prefillFromTemplate} />
@@ -324,22 +324,22 @@ export default function GoalsPage() {
       {active.length > 0 && (
         <div className="flex flex-wrap gap-3">
           {active.some((g) => g.goal_type === "investment" || g.goal_type === "savings") && (
-            <a href="/portfolio" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-stone-50 border border-stone-200 hover:border-[#16A34A]/30 hover:bg-green-50/30 transition-colors text-xs text-stone-600 hover:text-stone-800">
-              <PieChart size={14} className="text-[#16A34A]" /> Track investments in Portfolio <ArrowRight size={12} />
+            <a href="/portfolio" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface border border-border hover:border-accent/30 hover:bg-green-50/30 transition-colors text-xs text-text-secondary hover:text-text-primary">
+              <PieChart size={14} className="text-accent" /> Track investments in Portfolio <ArrowRight size={12} />
             </a>
           )}
           {active.some((g) => g.goal_type === "tax") && (
-            <a href="/equity-comp" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-stone-50 border border-stone-200 hover:border-[#16A34A]/30 hover:bg-green-50/30 transition-colors text-xs text-stone-600 hover:text-stone-800">
-              <Briefcase size={14} className="text-[#16A34A]" /> Manage equity comp taxes <ArrowRight size={12} />
+            <a href="/equity-comp" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface border border-border hover:border-accent/30 hover:bg-green-50/30 transition-colors text-xs text-text-secondary hover:text-text-primary">
+              <Briefcase size={14} className="text-accent" /> Manage equity comp taxes <ArrowRight size={12} />
             </a>
           )}
           {active.some((g) => g.goal_type === "purchase") && (
-            <a href="/life-planner" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-stone-50 border border-stone-200 hover:border-[#16A34A]/30 hover:bg-green-50/30 transition-colors text-xs text-stone-600 hover:text-stone-800">
-              <Compass size={14} className="text-[#16A34A]" /> Model purchase in Life Planner <ArrowRight size={12} />
+            <a href="/life-planner" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface border border-border hover:border-accent/30 hover:bg-green-50/30 transition-colors text-xs text-text-secondary hover:text-text-primary">
+              <Compass size={14} className="text-accent" /> Model purchase in Life Planner <ArrowRight size={12} />
             </a>
           )}
-          <a href="/retirement" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-stone-50 border border-stone-200 hover:border-[#16A34A]/30 hover:bg-green-50/30 transition-colors text-xs text-stone-600 hover:text-stone-800">
-            <Landmark size={14} className="text-[#16A34A]" /> Retirement planner <ArrowRight size={12} />
+          <a href="/retirement" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface border border-border hover:border-accent/30 hover:bg-green-50/30 transition-colors text-xs text-text-secondary hover:text-text-primary">
+            <Landmark size={14} className="text-accent" /> Retirement planner <ArrowRight size={12} />
           </a>
         </div>
       )}
@@ -347,7 +347,7 @@ export default function GoalsPage() {
       {/* Completed goals */}
       {completed.length > 0 && (
         <div>
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-stone-400 mb-3">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-3">
             Completed Goals ({completed.length})
           </h2>
           <div className="space-y-2">
@@ -358,7 +358,7 @@ export default function GoalsPage() {
                     <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
                       <Check size={14} className="text-green-600" />
                     </div>
-                    <p className="font-medium text-stone-700">{goal.name}</p>
+                    <p className="font-medium text-text-secondary">{goal.name}</p>
                   </div>
                   <span className="text-sm font-semibold text-green-600 font-mono tabular-nums">{formatCurrency(goal.target_amount)}</span>
                 </div>
@@ -371,7 +371,7 @@ export default function GoalsPage() {
       {/* Show templates below active goals for adding more */}
       {active.length > 0 && !showAdd && (
         <div>
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-stone-400 mb-3">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-3">
             Add another goal
           </h2>
           <GoalTemplates onSelect={prefillFromTemplate} />

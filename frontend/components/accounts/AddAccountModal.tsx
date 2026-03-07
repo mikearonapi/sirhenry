@@ -45,8 +45,8 @@ const CONTRIBUTION_TYPES: { value: ContributionType; label: string }[] = [
   { value: "mixed", label: "Mixed" },
 ];
 
-const INPUT_CLS = "w-full rounded-lg border border-stone-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#16A34A]/30 focus:border-[#16A34A]";
-const DOLLAR_CLS = "w-full rounded-lg border border-stone-200 pl-7 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#16A34A]/30 focus:border-[#16A34A]";
+const INPUT_CLS = "w-full rounded-lg border border-border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent";
+const DOLLAR_CLS = "w-full rounded-lg border border-border pl-7 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent";
 
 // ---------------------------------------------------------------------------
 // Props
@@ -85,17 +85,17 @@ export default function AddAccountModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl mx-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-card rounded-2xl shadow-2xl w-full max-w-xl mx-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-stone-100">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-card-border">
           <div className="flex items-center gap-2">
             {showingForm && !editingAsset && (
-              <button onClick={onBack} className="p-1 rounded-lg hover:bg-stone-100 text-stone-400 mr-1">
+              <button onClick={onBack} className="p-1 rounded-lg hover:bg-surface text-text-muted mr-1">
                 <ArrowLeft size={18} />
               </button>
             )}
-            <h2 className="text-lg font-semibold text-stone-900">
+            <h2 className="text-lg font-semibold text-text-primary">
               {editingAsset
                 ? `Edit ${MANUAL_ASSET_CONFIG[editingAsset.asset_type]?.label ?? "Asset"}`
                 : showingForm
@@ -103,7 +103,7 @@ export default function AddAccountModal({
                   : "Add Account"}
             </h2>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-stone-100 text-stone-400">
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-surface text-text-muted">
             <X size={18} />
           </button>
         </div>
@@ -112,48 +112,48 @@ export default function AddAccountModal({
         {addFlowStep === "choose" && (
           <div className="px-6 py-5 space-y-5">
             <div>
-              <p className="text-xs font-semibold text-stone-500 uppercase tracking-wider mb-3">Connect automatically</p>
+              <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3">Connect automatically</p>
               <button
                 onClick={onConnectPlaid}
                 disabled={connectingPlaid}
-                className="w-full flex items-center gap-4 p-4 rounded-xl border border-stone-200 hover:border-[#16A34A]/40 hover:bg-green-50/30 transition-all group"
+                className="w-full flex items-center gap-4 p-4 rounded-xl border border-border hover:border-accent/40 hover:bg-green-50/30 transition-all group"
               >
-                <div className="w-11 h-11 rounded-xl bg-[#16A34A]/10 flex items-center justify-center text-[#16A34A] shrink-0 group-hover:bg-[#16A34A]/20 transition-colors">
+                <div className="w-11 h-11 rounded-xl bg-accent/10 flex items-center justify-center text-accent shrink-0 group-hover:bg-accent/20 transition-colors">
                   <Link2 size={22} />
                 </div>
                 <div className="text-left flex-1">
-                  <p className="text-sm font-semibold text-stone-800">Link bank or brokerage</p>
-                  <p className="text-xs text-stone-500">Checking, savings, credit cards, investments, loans</p>
+                  <p className="text-sm font-semibold text-text-primary">Link bank or brokerage</p>
+                  <p className="text-xs text-text-secondary">Checking, savings, credit cards, investments, loans</p>
                 </div>
-                {connectingPlaid && <Loader2 size={16} className="animate-spin text-stone-400" />}
+                {connectingPlaid && <Loader2 size={16} className="animate-spin text-text-muted" />}
               </button>
             </div>
 
             <div>
-              <p className="text-xs font-semibold text-stone-500 uppercase tracking-wider mb-3">Add manually</p>
+              <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3">Add manually</p>
               <div className="grid grid-cols-2 gap-2.5">
                 {ADD_ACCOUNT_OPTIONS.map((opt) => (
                   <button
                     key={opt.type}
                     onClick={() => onPickManualType(opt.type)}
-                    className="flex items-center gap-3 p-3.5 rounded-xl border border-stone-200 hover:border-stone-300 hover:bg-stone-50 transition-all text-left"
+                    className="flex items-center gap-3 p-3.5 rounded-xl border border-border hover:border-border hover:bg-surface transition-all text-left"
                   >
                     <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${opt.color}`}>
                       {opt.icon}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-stone-800">{opt.label}</p>
-                      <p className="text-[11px] text-stone-400 truncate">{opt.subtitle}</p>
+                      <p className="text-sm font-medium text-text-primary">{opt.label}</p>
+                      <p className="text-xs text-text-muted truncate">{opt.subtitle}</p>
                     </div>
                   </button>
                 ))}
               </div>
             </div>
 
-            <div className="border-t border-stone-100 pt-4">
+            <div className="border-t border-card-border pt-4">
               <a
                 href="/import"
-                className="flex items-center gap-3 p-3 rounded-lg hover:bg-stone-50 transition-colors text-stone-500 hover:text-stone-700"
+                className="flex items-center gap-3 p-3 rounded-lg hover:bg-surface transition-colors text-text-secondary hover:text-text-secondary"
               >
                 <FileText size={18} />
                 <span className="text-sm">Import from CSV file instead</span>
@@ -167,7 +167,7 @@ export default function AddAccountModal({
           <>
             <div className="px-6 py-5 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-stone-700 mb-1">Name</label>
+                <label className="block text-sm font-medium text-text-secondary mb-1">Name</label>
                 <input
                   type="text"
                   value={assetForm.name}
@@ -179,11 +179,11 @@ export default function AddAccountModal({
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-stone-700 mb-1">
+                  <label className="block text-sm font-medium text-text-secondary mb-1">
                     {formConfig?.isLiability ? "Balance Owed" : "Current Value"}
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-sm">$</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-sm">$</span>
                     <input
                       type="number"
                       min="0"
@@ -196,11 +196,11 @@ export default function AddAccountModal({
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-stone-700 mb-1">
+                  <label className="block text-sm font-medium text-text-secondary mb-1">
                     {formConfig?.isLiability ? "Original Amount" : assetForm.asset_type === "investment" ? "Original Cost Basis" : "Purchase Price"}
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-sm">$</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-sm">$</span>
                     <input
                       type="number"
                       min="0"
@@ -212,13 +212,13 @@ export default function AddAccountModal({
                     />
                   </div>
                   {assetForm.asset_type === "investment" && (
-                    <p className="text-xs text-stone-400 mt-1">Used to calculate total gain/loss on your portfolio</p>
+                    <p className="text-xs text-text-muted mt-1">Used to calculate total gain/loss on your portfolio</p>
                   )}
                 </div>
               </div>
               {(assetForm.asset_type === "real_estate" || editingAsset?.asset_type === "real_estate") && (
                 <div>
-                  <label className="block text-sm font-medium text-stone-700 mb-1">Address</label>
+                  <label className="block text-sm font-medium text-text-secondary mb-1">Address</label>
                   <input
                     type="text"
                     value={assetForm.address}
@@ -229,7 +229,7 @@ export default function AddAccountModal({
                 </div>
               )}
               <div>
-                <label className="block text-sm font-medium text-stone-700 mb-1">
+                <label className="block text-sm font-medium text-text-secondary mb-1">
                   {formConfig?.isLiability ? "Lender / Institution" : "Institution / Brokerage"}
                 </label>
                 <input
@@ -243,12 +243,12 @@ export default function AddAccountModal({
 
               {/* Investment-specific fields */}
               {assetForm.asset_type === "investment" && (
-                <div className="space-y-4 border-t border-stone-100 pt-4">
-                  <p className="text-xs font-semibold text-stone-500 uppercase tracking-wider">Investment Details</p>
+                <div className="space-y-4 border-t border-card-border pt-4">
+                  <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Investment Details</p>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-stone-700 mb-1">Owner</label>
+                      <label className="block text-sm font-medium text-text-secondary mb-1">Owner</label>
                       <select
                         value={assetForm.owner}
                         onChange={(e) => onSetAssetForm((f) => ({ ...f, owner: e.target.value }))}
@@ -261,7 +261,7 @@ export default function AddAccountModal({
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-stone-700 mb-1">Account Type</label>
+                      <label className="block text-sm font-medium text-text-secondary mb-1">Account Type</label>
                       <select
                         value={assetForm.account_subtype}
                         onChange={(e) => onSetAssetForm((f) => ({ ...f, account_subtype: e.target.value }))}
@@ -277,7 +277,7 @@ export default function AddAccountModal({
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-stone-700 mb-1">Tax Treatment</label>
+                      <label className="block text-sm font-medium text-text-secondary mb-1">Tax Treatment</label>
                       <select
                         value={assetForm.tax_treatment}
                         onChange={(e) => onSetAssetForm((f) => ({ ...f, tax_treatment: e.target.value }))}
@@ -290,7 +290,7 @@ export default function AddAccountModal({
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-stone-700 mb-1">Custodian</label>
+                      <label className="block text-sm font-medium text-text-secondary mb-1">Custodian</label>
                       <input
                         type="text"
                         value={assetForm.custodian}
@@ -303,7 +303,7 @@ export default function AddAccountModal({
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-stone-700 mb-1">Employer</label>
+                      <label className="block text-sm font-medium text-text-secondary mb-1">Employer</label>
                       <input
                         type="text"
                         value={assetForm.employer}
@@ -313,7 +313,7 @@ export default function AddAccountModal({
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-stone-700 mb-1">Beneficiary</label>
+                      <label className="block text-sm font-medium text-text-secondary mb-1">Beneficiary</label>
                       <input
                         type="text"
                         value={assetForm.beneficiary}
@@ -330,17 +330,17 @@ export default function AddAccountModal({
                         type="checkbox"
                         checked={assetForm.is_retirement_account}
                         onChange={(e) => onSetAssetForm((f) => ({ ...f, is_retirement_account: e.target.checked }))}
-                        className="rounded border-stone-300 text-[#16A34A] focus:ring-[#16A34A]/30"
+                        className="rounded border-border text-accent focus:ring-accent/30"
                       />
-                      <span className="text-sm text-stone-700">Retirement account</span>
+                      <span className="text-sm text-text-secondary">Retirement account</span>
                     </label>
                   </div>
 
-                  <p className="text-xs font-semibold text-stone-500 uppercase tracking-wider pt-2">Contributions & Performance</p>
+                  <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider pt-2">Contributions & Performance</p>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-stone-700 mb-1">Contribution Type</label>
+                      <label className="block text-sm font-medium text-text-secondary mb-1">Contribution Type</label>
                       <select
                         value={assetForm.contribution_type}
                         onChange={(e) => onSetAssetForm((f) => ({ ...f, contribution_type: e.target.value }))}
@@ -353,7 +353,7 @@ export default function AddAccountModal({
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-stone-700 mb-1">Contribution Rate %</label>
+                      <label className="block text-sm font-medium text-text-secondary mb-1">Contribution Rate %</label>
                       <input
                         type="number"
                         value={assetForm.contribution_rate_pct}
@@ -367,9 +367,9 @@ export default function AddAccountModal({
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-stone-700 mb-1">Employee Contributions YTD</label>
+                      <label className="block text-sm font-medium text-text-secondary mb-1">Employee Contributions YTD</label>
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-sm">$</span>
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-sm">$</span>
                         <input
                           type="number"
                           value={assetForm.employee_contribution_ytd}
@@ -381,9 +381,9 @@ export default function AddAccountModal({
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-stone-700 mb-1">Employer Contributions YTD</label>
+                      <label className="block text-sm font-medium text-text-secondary mb-1">Employer Contributions YTD</label>
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-sm">$</span>
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-sm">$</span>
                         <input
                           type="number"
                           value={assetForm.employer_contribution_ytd}
@@ -398,7 +398,7 @@ export default function AddAccountModal({
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-stone-700 mb-1">Employer Match %</label>
+                      <label className="block text-sm font-medium text-text-secondary mb-1">Employer Match %</label>
                       <input
                         type="number"
                         value={assetForm.employer_match_pct}
@@ -409,7 +409,7 @@ export default function AddAccountModal({
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-stone-700 mb-1">Match Limit (% of salary)</label>
+                      <label className="block text-sm font-medium text-text-secondary mb-1">Match Limit (% of salary)</label>
                       <input
                         type="number"
                         value={assetForm.employer_match_limit_pct}
@@ -423,7 +423,7 @@ export default function AddAccountModal({
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-stone-700 mb-1">Annual Return %</label>
+                      <label className="block text-sm font-medium text-text-secondary mb-1">Annual Return %</label>
                       <input
                         type="number"
                         value={assetForm.annual_return_pct}
@@ -434,7 +434,7 @@ export default function AddAccountModal({
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-stone-700 mb-1">Balance As-Of Date</label>
+                      <label className="block text-sm font-medium text-text-secondary mb-1">Balance As-Of Date</label>
                       <input
                         type="date"
                         value={assetForm.as_of_date}
@@ -447,7 +447,7 @@ export default function AddAccountModal({
               )}
 
               <div>
-                <label className="block text-sm font-medium text-stone-700 mb-1">Notes</label>
+                <label className="block text-sm font-medium text-text-secondary mb-1">Notes</label>
                 <textarea
                   value={assetForm.notes}
                   onChange={(e) => onSetAssetForm((f) => ({ ...f, notes: e.target.value }))}
@@ -457,17 +457,17 @@ export default function AddAccountModal({
                 />
               </div>
             </div>
-            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-stone-100 bg-stone-50/50 rounded-b-2xl">
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-card-border bg-surface rounded-b-2xl">
               <button
                 onClick={onClose}
-                className="px-4 py-2 text-sm text-stone-600 hover:text-stone-800"
+                className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary"
               >
                 Cancel
               </button>
               <button
                 onClick={onSave}
                 disabled={savingAsset || !assetForm.name.trim() || !assetForm.current_value}
-                className="flex items-center gap-2 bg-[#16A34A] text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-[#15803D] disabled:opacity-60 shadow-sm"
+                className="flex items-center gap-2 bg-accent text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-60 shadow-sm"
               >
                 {savingAsset && <Loader2 size={14} className="animate-spin" />}
                 {editingAsset ? "Save Changes" : `Add ${formConfig?.label ?? "Asset"}`}

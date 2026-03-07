@@ -46,7 +46,7 @@ export default function RothConversionSim({ defaultIncome, defaultTraditional }:
         <LabeledInput label="Traditional Balance" value={traditional} onChange={setTraditional} />
         <LabeledInput label="Current Income" value={currentIncome} onChange={setCurrentIncome} />
         <div>
-          <label className="block text-xs text-stone-500 mb-1">Years (1-20): {years}</label>
+          <label className="block text-xs text-text-secondary mb-1">Years (1-20): {years}</label>
           <input type="range" min={1} max={20} value={years} onChange={(e) => setYears(Number(e.target.value))} className="w-full" />
         </div>
         <LabeledInput label="Target Bracket Rate (%)" value={targetBracket} onChange={setTargetBracket} />
@@ -56,14 +56,14 @@ export default function RothConversionSim({ defaultIncome, defaultTraditional }:
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-sm">
             <caption className="sr-only">Roth conversion projection</caption>
-            <thead className="bg-stone-50">
+            <thead className="bg-surface">
               <tr>
                 {["Year", "Conversion", "Tax", "Marginal Rate", "Remaining Trad.", "Roth Balance"].map((h) => (
-                  <th key={h} className={`${h === "Year" ? "text-left" : "text-right"} px-3 py-2 text-xs font-semibold text-stone-500`}>{h}</th>
+                  <th key={h} className={`${h === "Year" ? "text-left" : "text-right"} px-3 py-2 text-xs font-semibold text-text-secondary`}>{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-stone-100">
+            <tbody className="divide-y divide-card-border">
               {result.year_by_year.map((r) => (
                 <tr key={r.year}>
                   <td className="px-3 py-2 font-medium">{r.year}</td>
@@ -81,7 +81,7 @@ export default function RothConversionSim({ defaultIncome, defaultTraditional }:
             <span>Total Tax: <span className="font-mono tabular-nums">{formatCurrency(result.total_tax_paid)}</span></span>
             <span>Projected Roth: <span className="font-mono tabular-nums">{formatCurrency(result.projected_roth_at_retirement)}</span></span>
           </div>
-          <button type="button" onClick={() => askHenry("I just ran a Roth conversion projection. Can you explain what these numbers mean and whether this strategy makes sense for my situation?")} className="flex items-center gap-1.5 text-xs text-[#16A34A] hover:underline mt-2">
+          <button type="button" onClick={() => askHenry("I just ran a Roth conversion projection. Can you explain what these numbers mean and whether this strategy makes sense for my situation?")} className="flex items-center gap-1.5 text-xs text-accent hover:underline mt-2">
             <MessageCircle size={12} /> What does this mean?
           </button>
         </div>

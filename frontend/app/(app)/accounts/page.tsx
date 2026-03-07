@@ -41,7 +41,7 @@ import { LINK_TOKEN_KEY, INSTITUTION_KEY } from "@/app/oauth-redirect/page";
 export default function AccountsPage() {
   return (
     <Suspense fallback={
-      <div className="flex items-center justify-center h-48 gap-3 text-stone-400">
+      <div className="flex items-center justify-center h-48 gap-3 text-text-muted">
         <Loader2 className="animate-spin" size={20} />
         Loading accounts...
       </div>
@@ -484,14 +484,14 @@ function AccountsPageContent() {
             <button
               onClick={handleSync}
               disabled={syncing}
-              className="flex items-center gap-2 text-sm text-stone-600 border border-stone-200 rounded-lg px-4 py-2 hover:bg-stone-50 disabled:opacity-60"
+              className="flex items-center gap-2 text-sm text-text-secondary border border-border rounded-lg px-4 py-2 hover:bg-surface disabled:opacity-60"
             >
               <RefreshCw size={14} className={syncing ? "animate-spin" : ""} />
               {syncing ? "Syncing..." : "Refresh all"}
             </button>
             <button
               onClick={openAddFlow}
-              className="flex items-center gap-2 bg-[#16A34A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#15803D] shadow-sm"
+              className="flex items-center gap-2 bg-accent text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-hover shadow-sm"
             >
               <Plus size={14} />
               Add account
@@ -524,7 +524,7 @@ function AccountsPageContent() {
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center h-48 gap-3 text-stone-400">
+        <div className="flex items-center justify-center h-48 gap-3 text-text-muted">
           <Loader2 className="animate-spin" size={20} />
           Loading accounts...
         </div>
@@ -538,7 +538,7 @@ function AccountsPageContent() {
             action={
               <button
                 onClick={openAddFlow}
-                className="flex items-center gap-2 bg-[#16A34A] text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-[#15803D] shadow-sm"
+                className="flex items-center gap-2 bg-accent text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-accent-hover shadow-sm"
               >
                 <Plus size={15} />
                 Add your first account

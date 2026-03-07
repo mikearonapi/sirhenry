@@ -5,9 +5,9 @@ import {
   CartesianGrid, Legend,
 } from "recharts";
 import {
-  TrendingUp, DollarSign, Receipt, AlertCircle,
-  Loader2, Wallet, Target, RotateCcw, PieChart,
-  ChevronRight, Calendar, Lightbulb,
+  Receipt, AlertCircle,
+  Loader2,
+  ChevronRight, Calendar, Lightbulb, LayoutDashboard, Sparkles,
 } from "lucide-react";
 import { getDashboard, getBudgetSummary, getRecurringSummary, getGoals, getBenchmarkSnapshot, getOrderOfOperations, getProactiveInsights } from "@/lib/api";
 import { getFamilyMembers } from "@/lib/api-household";
@@ -23,6 +23,7 @@ import TrajectoryChart from "@/components/TrajectoryChart";
 import Link from "next/link";
 import { StatusCard, CashFlowWidget, ActionPlanWidget, InsightsSection } from "@/components/dashboard";
 import SetupBanner from "@/components/setup/SetupBanner";
+import EmptyState from "@/components/ui/EmptyState";
 
 const now = new Date();
 const CURRENT_YEAR = now.getFullYear();
@@ -57,8 +58,9 @@ export default function DashboardPage() {
       getGoals().catch(() => []),
       getBenchmarkSnapshot().catch(() => null),
       getOrderOfOperations().catch(() => []),
+      getProactiveInsights().catch(() => ({ insights: [] })),
     ])
-      .then(([d, b, r, g, bench, foo]) => {
+      .then(([d, b, r, g, bench, foo, pi]) => {
         if (controller.signal.aborted) return;
         setData(d);
         setBudget(b);
@@ -66,6 +68,7 @@ export default function DashboardPage() {
         setGoals(Array.isArray(g) ? g.filter((x: Goal) => x.status === "active").slice(0, 4) : []);
         setBenchmarks(bench ?? null);
         setFooSteps(Array.isArray(foo) ? foo : []);
+        setInsights((pi as { insights: ProactiveInsight[] }).insights);
       })
       .catch((e) => {
         if (!controller.signal.aborted) setError(e.message);
@@ -94,8 +97,6 @@ export default function DashboardPage() {
       setUpcomingEvents(upcoming);
     }).catch(() => {});
 
-    getProactiveInsights().then((r) => setInsights(r.insights)).catch(() => {});
-
     // Load dismissed insights from localStorage
     try {
       const dismissed = localStorage.getItem("dismissed-insights");
@@ -105,7 +106,7 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64 gap-3 text-stone-400">
+      <div className="flex items-center justify-center h-64 gap-3 text-text-muted">
         <Loader2 className="animate-spin" size={22} />
         <span>Loading dashboard...</span>
       </div>
@@ -129,7 +130,43 @@ export default function DashboardPage() {
     );
   }
 
-  if (!data) return null;
+  if (!data) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-text-primary tracking-tight font-display">
+            Welcome to Sir HENRY
+          </h1>
+          <p className="text-text-secondary text-sm mt-0.5">Let&apos;s get your financial picture set up.</p>
+        </div>
+        <SetupBanner />
+        <EmptyState
+          icon={<LayoutDashboard size={40} />}
+          title="Your dashboard is ready"
+          description="Connect your accounts or import a statement to see your financial overview come to life."
+          henryTip="Start by connecting your bank accounts — I'll automatically categorize your transactions and build your complete financial picture."
+          action={
+            <div className="flex items-center gap-3 justify-center">
+              <Link
+                href="/setup"
+                className="inline-flex items-center gap-2 bg-accent text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-accent-hover shadow-sm transition-colors"
+              >
+                <Sparkles size={14} />
+                Start Setup
+              </Link>
+              <Link
+                href="/import"
+                className="inline-flex items-center gap-2 border border-border bg-card text-text-secondary px-5 py-2.5 rounded-lg text-sm font-medium hover:border-border transition-colors"
+              >
+                Import Statement
+              </Link>
+            </div>
+          }
+          askHenryPrompt="What should I set up first to get the most out of Sir HENRY?"
+        />
+      </div>
+    );
+  }
 
   const currentMonthName = monthName(data.current_month);
   const savingsRate = data.current_month_income > 0
@@ -157,18 +194,18 @@ export default function DashboardPage() {
       {/* HEADER */}
       <div className="flex items-end justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-stone-900 tracking-tight font-display">
+          <h1 className="text-2xl font-bold text-text-primary tracking-tight font-display">
             Good {new Date().getHours() < 12 ? "morning" : new Date().getHours() < 17 ? "afternoon" : "evening"}{primaryName ? `, ${primaryName}` : ""}
           </h1>
-          <p className="text-stone-500 text-sm mt-0.5">{currentMonthName} {data.current_year}</p>
+          <p className="text-text-secondary text-sm mt-0.5">{currentMonthName} {data.current_year}</p>
         </div>
         <div className="flex items-center gap-3">
           <span className={`text-xs font-semibold px-3 py-1.5 rounded-full ${statusClass}`}>{statusLabel}</span>
           <div className="flex items-center gap-2">
-            <select value={selectedYear} onChange={(e) => { setSelectedYear(Number(e.target.value)); setSelectedMonth(null); }} className="text-sm border border-stone-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A]">
+            <select value={selectedYear} onChange={(e) => { setSelectedYear(Number(e.target.value)); setSelectedMonth(null); }} className="text-sm border border-border rounded-lg px-3 py-1.5 bg-card focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent">
               {AVAILABLE_YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
             </select>
-            <select value={selectedMonth ?? ""} onChange={(e) => setSelectedMonth(e.target.value ? Number(e.target.value) : null)} className="text-sm border border-stone-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A]">
+            <select value={selectedMonth ?? ""} onChange={(e) => setSelectedMonth(e.target.value ? Number(e.target.value) : null)} className="text-sm border border-border rounded-lg px-3 py-1.5 bg-card focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent">
               <option value="">{selectedYear === CURRENT_YEAR ? "Current Month" : "Full Year"}</option>
               {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => <option key={m} value={m}>{monthName(m)}</option>)}
             </select>
@@ -177,16 +214,16 @@ export default function DashboardPage() {
       </div>
 
       {/* TABS */}
-      <div className="flex items-center gap-1 bg-stone-100 rounded-lg p-1 w-fit">
+      <div className="flex items-center gap-1 bg-surface rounded-lg p-1 w-fit">
         <button
           onClick={() => setActiveTab("overview")}
-          className={`text-sm font-medium px-4 py-1.5 rounded-md transition-all ${activeTab === "overview" ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700"}`}
+          className={`text-sm font-medium px-4 py-1.5 rounded-md transition-all ${activeTab === "overview" ? "bg-card text-text-primary shadow-sm" : "text-text-secondary hover:text-text-secondary"}`}
         >
           Overview
         </button>
         <button
           onClick={() => setActiveTab("insights")}
-          className={`text-sm font-medium px-4 py-1.5 rounded-md transition-all ${activeTab === "insights" ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700"}`}
+          className={`text-sm font-medium px-4 py-1.5 rounded-md transition-all ${activeTab === "insights" ? "bg-card text-text-primary shadow-sm" : "text-text-secondary hover:text-text-secondary"}`}
         >
           Insights
         </button>
@@ -217,24 +254,24 @@ export default function DashboardPage() {
           <Card padding="none">
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
               <div className="flex items-center gap-2">
-                <Lightbulb size={16} className="text-[#16A34A]" />
-                <h2 className="text-sm font-semibold text-stone-700">Action Items</h2>
+                <Lightbulb size={16} className="text-accent" />
+                <h2 className="text-sm font-semibold text-text-secondary">Action Items</h2>
               </div>
-              <span className="text-xs text-stone-400">{visible.length} item{visible.length !== 1 ? "s" : ""}</span>
+              <span className="text-xs text-text-muted">{visible.length} item{visible.length !== 1 ? "s" : ""}</span>
             </div>
-            <div className="divide-y divide-stone-50">
+            <div className="divide-y divide-border-light">
               {visible.slice(0, 5).map((insight) => (
-                <div key={insight.type + insight.title} className="flex items-center gap-3 px-5 py-3 hover:bg-stone-50/50">
+                <div key={insight.type + insight.title} className="flex items-center gap-3 px-5 py-3 hover:bg-surface/50">
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${severityBg(insight.severity)}`}>
                     {severityIcon(insight.severity)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-stone-800">{insight.title}</p>
-                    <p className="text-xs text-stone-500 mt-0.5">{insight.message}</p>
+                    <p className="text-sm font-medium text-text-primary">{insight.title}</p>
+                    <p className="text-xs text-text-secondary mt-0.5">{insight.message}</p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     {insight.link_to && (
-                      <Link href={insight.link_to} className="text-xs text-[#16A34A] hover:underline font-medium">
+                      <Link href={insight.link_to} className="text-xs text-accent hover:underline font-medium">
                         Review
                       </Link>
                     )}
@@ -246,7 +283,7 @@ export default function DashboardPage() {
                         setDismissedInsights(next);
                         try { localStorage.setItem("dismissed-insights", JSON.stringify([...next])); } catch {}
                       }}
-                      className="text-stone-300 hover:text-stone-500 p-1"
+                      className="text-text-muted hover:text-text-secondary p-1"
                       title="Dismiss"
                     >
                       <ChevronRight size={12} className="rotate-90" />
@@ -266,8 +303,8 @@ export default function DashboardPage() {
       <Card padding="lg">
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h2 className="text-sm font-semibold text-stone-700 font-display">Trajectory</h2>
-            <p className="text-xs text-stone-400 mt-0.5">Retirement projection — pessimistic · base · optimistic</p>
+            <h2 className="text-sm font-semibold text-text-secondary font-display">Trajectory</h2>
+            <p className="text-xs text-text-muted mt-0.5">Retirement projection — pessimistic · base · optimistic</p>
           </div>
         </div>
         <TrajectoryChart />
@@ -275,7 +312,7 @@ export default function DashboardPage() {
 
       {/* MONEY FLOW */}
       <div>
-        <h2 className="text-[11px] font-semibold uppercase tracking-wider text-stone-400 mb-3">Money Flow · {currentMonthName}</h2>
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-3">Money Flow · {currentMonthName}</h2>
         <CashFlowWidget data={data} budget={budget} currentMonthName={currentMonthName} savingsRate={savingsRate} targetSavingsRate={targetSavingsRate} />
       </div>
 
@@ -286,19 +323,19 @@ export default function DashboardPage() {
       {upcomingEvents.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-[11px] font-semibold uppercase tracking-wider text-stone-400">Upcoming Life Events</h2>
-            <Link href="/life-events" className="text-xs text-[#16A34A] hover:underline font-medium">View all →</Link>
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-text-muted">Upcoming Life Events</h2>
+            <Link href="/life-events" className="text-xs text-accent hover:underline font-medium">View all →</Link>
           </div>
           <Card padding="none">
-            <div className="divide-y divide-stone-50">
+            <div className="divide-y divide-border-light">
               {upcomingEvents.map((event) => (
                 <div key={event.id} className="flex items-center gap-4 px-5 py-3.5">
                   <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center shrink-0"><Calendar size={16} className="text-indigo-500" /></div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-stone-800 text-sm">{event.title}</p>
-                    {event.event_date && <p className="text-xs text-stone-400 mt-0.5">{formatDate(event.event_date)}</p>}
+                    <p className="font-medium text-text-primary text-sm">{event.title}</p>
+                    {event.event_date && <p className="text-xs text-text-muted mt-0.5">{formatDate(event.event_date)}</p>}
                   </div>
-                  <Link href="/life-events" className="text-xs text-stone-400 hover:text-[#16A34A] shrink-0">Review →</Link>
+                  <Link href="/life-events" className="text-xs text-text-muted hover:text-accent shrink-0">Review →</Link>
                 </div>
               ))}
             </div>
@@ -310,8 +347,8 @@ export default function DashboardPage() {
       {chartData.length > 0 && (
         <Card padding="lg">
           <div className="flex items-center justify-between mb-5">
-            <h2 className="text-sm font-semibold text-stone-700">Monthly Cash Flow</h2>
-            <Link href="/cashflow" className="text-xs text-[#16A34A] hover:underline font-medium">View Details →</Link>
+            <h2 className="text-sm font-semibold text-text-secondary">Monthly Cash Flow</h2>
+            <Link href="/cashflow" className="text-xs text-accent hover:underline font-medium">View Details →</Link>
           </div>
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={chartData} margin={{ top: 5, right: 5, left: 5, bottom: 0 }}>
@@ -331,26 +368,26 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <Card padding="none">
           <div className="flex items-center justify-between px-5 pt-5 pb-3">
-            <h2 className="text-sm font-semibold text-stone-700">Recent Transactions</h2>
-            <Link href="/transactions" className="text-xs text-[#16A34A] hover:underline font-medium flex items-center gap-1">All <ChevronRight size={12} /></Link>
+            <h2 className="text-sm font-semibold text-text-secondary">Recent Transactions</h2>
+            <Link href="/transactions" className="text-xs text-accent hover:underline font-medium flex items-center gap-1">All <ChevronRight size={12} /></Link>
           </div>
           {data.recent_transactions.length === 0 ? (
-            <p className="text-stone-400 text-sm text-center py-8 px-5">No transactions yet. Import a statement to get started.</p>
+            <p className="text-text-muted text-sm text-center py-8 px-5">No transactions yet. Import a statement to get started.</p>
           ) : (
-            <div className="divide-y divide-stone-50">
+            <div className="divide-y divide-border-light">
               {data.recent_transactions.map((tx) => (
-                <div key={tx.id} className="flex items-center justify-between px-5 py-3 hover:bg-stone-50/50">
+                <div key={tx.id} className="flex items-center justify-between px-5 py-3 hover:bg-surface/50">
                   <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${tx.amount >= 0 ? "bg-green-50 text-green-600" : "bg-stone-100 text-stone-500"}`}>{tx.description.charAt(0).toUpperCase()}</div>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${tx.amount >= 0 ? "bg-green-50 text-green-600" : "bg-surface text-text-secondary"}`}>{tx.description.charAt(0).toUpperCase()}</div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-stone-800 truncate">{tx.description}</p>
+                      <p className="text-sm font-medium text-text-primary truncate">{tx.description}</p>
                       <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-[11px] text-stone-400">{formatDate(tx.date)}</span>
+                        <span className="text-xs text-text-muted">{formatDate(tx.date)}</span>
                         <Badge className={segmentColor(tx.effective_segment)}>{tx.effective_segment ?? tx.segment}</Badge>
                       </div>
                     </div>
                   </div>
-                  <span className={`text-sm font-semibold tabular-nums ml-3 money ${tx.amount >= 0 ? "text-green-600" : "text-stone-800"}`}>{tx.amount >= 0 ? "+" : ""}{formatCurrency(tx.amount)}</span>
+                  <span className={`text-sm font-semibold tabular-nums ml-3 money ${tx.amount >= 0 ? "text-green-600" : "text-text-primary"}`}>{tx.amount >= 0 ? "+" : ""}{formatCurrency(tx.amount)}</span>
                 </div>
               ))}
             </div>
@@ -360,32 +397,32 @@ export default function DashboardPage() {
         <div className="space-y-5">
           <Card padding="lg">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-stone-700">Recurring</h2>
-              <Link href="/recurring" className="text-xs text-[#16A34A] hover:underline font-medium">View All →</Link>
+              <h2 className="text-sm font-semibold text-text-secondary">Recurring</h2>
+              <Link href="/recurring" className="text-xs text-accent hover:underline font-medium">View All →</Link>
             </div>
             {recurring ? (
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-stone-50 rounded-lg p-3 text-center"><p className="text-lg font-bold text-stone-900 money">{formatCurrency(recurring.total_monthly_cost, true)}</p><p className="text-[11px] text-stone-400 uppercase">Monthly</p></div>
-                  <div className="bg-stone-50 rounded-lg p-3 text-center"><p className="text-lg font-bold text-stone-900 money">{formatCurrency(recurring.total_annual_cost, true)}</p><p className="text-[11px] text-stone-400 uppercase">Annual</p></div>
+                  <div className="bg-surface rounded-lg p-3 text-center"><p className="text-lg font-bold text-text-primary money">{formatCurrency(recurring.total_monthly_cost, true)}</p><p className="text-xs text-text-muted uppercase">Monthly</p></div>
+                  <div className="bg-surface rounded-lg p-3 text-center"><p className="text-lg font-bold text-text-primary money">{formatCurrency(recurring.total_annual_cost, true)}</p><p className="text-xs text-text-muted uppercase">Annual</p></div>
                 </div>
-                <p className="text-xs text-stone-500">{recurring.subscription_count} active subscriptions</p>
+                <p className="text-xs text-text-secondary">{recurring.subscription_count} active subscriptions</p>
               </div>
-            ) : <p className="text-sm text-stone-400">No recurring items detected yet.</p>}
+            ) : <p className="text-sm text-text-muted">No recurring items detected yet.</p>}
           </Card>
 
           <Card padding="lg">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-stone-700">Goals</h2>
-              <Link href="/goals" className="text-xs text-[#16A34A] hover:underline font-medium">View All →</Link>
+              <h2 className="text-sm font-semibold text-text-secondary">Goals</h2>
+              <Link href="/goals" className="text-xs text-accent hover:underline font-medium">View All →</Link>
             </div>
-            {goals.length === 0 ? <p className="text-sm text-stone-400">No goals set yet.</p> : (
+            {goals.length === 0 ? <p className="text-sm text-text-muted">No goals set yet.</p> : (
               <div className="space-y-3">
                 {goals.map((goal) => (
                   <div key={goal.id} className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ backgroundColor: goal.color }}>{goal.name.charAt(0)}</div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1"><span className="text-sm font-medium text-stone-800 truncate">{goal.name}</span><span className="text-xs text-stone-500 money ml-2">{formatCurrency(goal.current_amount, true)}</span></div>
+                      <div className="flex items-center justify-between mb-1"><span className="text-sm font-medium text-text-primary truncate">{goal.name}</span><span className="text-xs text-text-secondary money ml-2">{formatCurrency(goal.current_amount, true)}</span></div>
                       <ProgressBar value={goal.progress_pct} color={goal.color} size="xs" />
                     </div>
                   </div>
@@ -396,44 +433,25 @@ export default function DashboardPage() {
 
           <Card padding="lg">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-stone-700">Tax Strategies</h2>
-              <Link href="/tax-strategy" className="text-xs text-[#16A34A] hover:underline font-medium">View All →</Link>
+              <h2 className="text-sm font-semibold text-text-secondary">Tax Strategies</h2>
+              <Link href="/tax-strategy" className="text-xs text-accent hover:underline font-medium">View All →</Link>
             </div>
             {data.top_strategies_count === 0 ? (
               <div className="text-center py-4">
-                <Receipt className="mx-auto text-stone-200 mb-2" size={24} />
-                <p className="text-stone-400 text-sm">No strategies yet.</p>
-                <Link href="/tax-strategy" className="text-xs text-[#16A34A] hover:underline mt-1 block">Run tax analysis →</Link>
+                <Receipt className="mx-auto text-text-muted mb-2" size={24} />
+                <p className="text-text-muted text-sm">No strategies yet.</p>
+                <Link href="/tax-strategy" className="text-xs text-accent hover:underline mt-1 block">Run tax analysis →</Link>
               </div>
             ) : (
               <div className="flex items-center gap-4">
-                <div className="text-3xl font-bold text-[#16A34A] money">{data.top_strategies_count}</div>
-                <div><p className="font-medium text-stone-800 text-sm">Active strategies</p><p className="text-stone-400 text-xs">identified for {data.current_year}</p></div>
+                <div className="text-3xl font-bold text-accent money">{data.top_strategies_count}</div>
+                <div><p className="font-medium text-text-primary text-sm">Active strategies</p><p className="text-text-muted text-xs">identified for {data.current_year}</p></div>
               </div>
             )}
           </Card>
         </div>
       </div>
 
-      {/* QUICK ACCESS */}
-      <div>
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-stone-400 mb-3">Quick Access</h2>
-        <div className="grid grid-cols-3 lg:grid-cols-6 gap-3">
-          {[
-            { href: "/accounts", label: "Accounts", icon: DollarSign, color: "text-green-500" },
-            { href: "/budget", label: "Budget", icon: Wallet, color: "text-blue-500" },
-            { href: "/recurring", label: "Recurring", icon: RotateCcw, color: "text-purple-500" },
-            { href: "/goals", label: "Goals", icon: Target, color: "text-amber-500" },
-            { href: "/portfolio", label: "Portfolio", icon: PieChart, color: "text-cyan-500" },
-            { href: "/import", label: "Import", icon: TrendingUp, color: "text-[#16A34A]" },
-          ].map((link) => (
-            <Link key={link.href} href={link.href} className="bg-white rounded-xl border border-stone-100 shadow-sm p-4 text-center hover:border-stone-200 hover:shadow-md transition-all group">
-              <link.icon className={`mx-auto mb-2 ${link.color} group-hover:scale-110 transition-transform`} size={22} />
-              <p className="text-xs font-medium text-stone-600">{link.label}</p>
-            </Link>
-          ))}
-        </div>
-      </div>
       </>
       )}
     </div>

@@ -46,15 +46,15 @@ export default function ConversationList({
     <div className="flex flex-col h-full">
       {/* Filter tabs */}
       {visibleTabs.length > 1 && (
-        <div className="flex gap-1 px-2 py-2 overflow-x-auto scrollbar-hide flex-shrink-0 border-b border-stone-100">
+        <div className="flex gap-1 px-2 py-2 overflow-x-auto scrollbar-hide flex-shrink-0 border-b border-card-border">
           {visibleTabs.map((tab) => (
             <button
               key={String(tab.key)}
               onClick={() => onFilterChange(tab.key)}
-              className={`flex-shrink-0 text-[10px] px-2.5 py-1 rounded-full transition-colors ${
+              className={`flex-shrink-0 text-xs px-2.5 py-1 rounded-full transition-colors ${
                 filter === tab.key
-                  ? "bg-[#16A34A]/15 text-[#16A34A] border border-[#16A34A]/30"
-                  : "bg-stone-100 text-stone-500 hover:text-stone-700 hover:bg-stone-200"
+                  ? "bg-accent/15 text-accent border border-accent/30"
+                  : "bg-surface text-text-secondary hover:text-text-secondary hover:bg-surface"
               }`}
             >
               {tab.label}
@@ -66,7 +66,7 @@ export default function ConversationList({
       {/* Conversation list */}
       <div className="flex-1 overflow-y-auto px-2 pb-2 pt-1 space-y-0.5">
         {filtered.length === 0 ? (
-          <p className="text-[12px] text-stone-400 text-center py-6 px-3">
+          <p className="text-[12px] text-text-muted text-center py-6 px-3">
             No conversations yet
           </p>
         ) : (

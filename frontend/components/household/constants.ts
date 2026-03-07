@@ -18,9 +18,9 @@ export const ESTATE_STATUS_OPTIONS = [
 ];
 
 export const ESTATE_STATUS_BADGE: Record<string, string> = {
-  none: "bg-red-50 text-red-600",
-  draft: "bg-amber-50 text-amber-600",
-  complete: "bg-green-50 text-green-600",
+  none: "bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400",
+  draft: "bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400",
+  complete: "bg-green-50 text-green-600 dark:bg-green-950/30 dark:text-green-400",
 };
 
 export const PAY_PERIODS = [
@@ -160,20 +160,20 @@ export const REL_ICON: Record<string, string> = {
 };
 
 export const REL_COLOR: Record<string, string> = {
-  self:            "bg-[#16A34A]/10 border-[#16A34A]/20",
-  spouse:          "bg-blue-50 border-blue-100",
-  child:           "bg-green-50 border-green-100",
-  other_dependent: "bg-purple-50 border-purple-100",
-  parent:          "bg-amber-50 border-amber-100",
-  other:           "bg-stone-50 border-stone-200",
+  self:            "bg-accent/10 border-accent/20",
+  spouse:          "bg-blue-50 border-blue-100 dark:bg-blue-950/20 dark:border-blue-900",
+  child:           "bg-green-50 border-green-100 dark:bg-green-950/20 dark:border-green-900",
+  other_dependent: "bg-purple-50 border-purple-100 dark:bg-purple-950/20 dark:border-purple-900",
+  parent:          "bg-amber-50 border-amber-100 dark:bg-amber-950/20 dark:border-amber-900",
+  other:           "bg-surface border-border",
 };
 
 export const MILESTONE_CATEGORY_COLOR: Record<string, string> = {
-  retirement: "bg-purple-50 text-purple-700 border-purple-100",
-  healthcare:  "bg-blue-50 text-blue-700 border-blue-100",
-  education:   "bg-green-50 text-green-700 border-green-100",
-  insurance:   "bg-amber-50 text-amber-700 border-amber-100",
-  tax:         "bg-red-50 text-red-700 border-red-100",
+  retirement: "bg-purple-50 text-purple-700 border-purple-100 dark:bg-purple-950/30 dark:text-purple-400 dark:border-purple-900",
+  healthcare:  "bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900",
+  education:   "bg-green-50 text-green-700 border-green-100 dark:bg-green-950/30 dark:text-green-400 dark:border-green-900",
+  insurance:   "bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900",
+  tax:         "bg-red-50 text-red-700 border-red-100 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900",
 };
 
 export function calcAge(dob: string | null): number | null {

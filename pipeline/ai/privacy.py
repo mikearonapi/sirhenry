@@ -31,6 +31,8 @@ class PIISanitizer:
         pairs: list[tuple[str, str]] = []
 
         if household:
+            if household.spouse_a_preferred_name:
+                pairs.append((household.spouse_a_preferred_name, "Primary Earner"))
             if household.spouse_a_name:
                 pairs.append((household.spouse_a_name, "Primary Earner"))
             if household.spouse_b_name:
@@ -57,9 +59,9 @@ class PIISanitizer:
         self._reverse.sort(key=lambda p: len(p[0]), reverse=True)
 
     def sanitize_text(self, text: str) -> str:
-        """Replace all registered PII with generic labels."""
+        """Replace all registered PII with generic labels (case-insensitive)."""
         for real_value, label in self._replacements:
-            text = text.replace(real_value, label)
+            text = re.sub(re.escape(real_value), label, text, flags=re.IGNORECASE)
         return text
 
     def desanitize_text(self, text: str) -> str:

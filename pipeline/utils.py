@@ -2,14 +2,17 @@
 Shared utilities for the pipeline — eliminates duplication across importers.
 """
 import hashlib
+import logging
 import os
 import time
 
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker, create_async_engine
 
-load_dotenv(override=True)
+load_dotenv()
 
 def _default_database_url() -> str:
     """Resolve the default database path, preferring a user-home directory when available."""
@@ -42,6 +45,7 @@ def to_float(val) -> float:
     try:
         return float(s)
     except ValueError:
+        logger.warning("to_float: could not convert %r — returning 0.0", val)
         return 0.0
 
 
@@ -82,6 +86,34 @@ def call_claude_with_retry(client, max_retries=3, **kwargs):
                 raise
             wait = 2 ** attempt
             time.sleep(wait)
+
+
+_async_claude_client = None
+
+
+def get_async_claude_client():
+    """Singleton async Anthropic client for importers that need async API calls."""
+    global _async_claude_client
+    if _async_claude_client is None:
+        import anthropic
+        _async_claude_client = anthropic.AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+    return _async_claude_client
+
+
+async def call_claude_async_with_retry(client, max_retries=3, **kwargs):
+    """Async Claude API call with exponential backoff retry on rate limits/transient errors."""
+    import asyncio
+    for attempt in range(max_retries):
+        try:
+            return await client.messages.create(**kwargs)
+        except Exception as e:
+            err_str = str(e).lower()
+            if attempt == max_retries - 1 or not any(
+                w in err_str for w in ("rate", "overloaded", "timeout", "529")
+            ):
+                raise
+            wait = 2 ** attempt
+            await asyncio.sleep(wait)
 
 
 def create_engine_and_session() -> tuple[AsyncEngine, async_sessionmaker]:

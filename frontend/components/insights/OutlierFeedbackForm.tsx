@@ -46,7 +46,7 @@ export default function OutlierFeedbackForm({ tx, onClassify, onUndo }: Props) {
           <button
             onClick={handleUndo}
             disabled={submitting}
-            className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium text-stone-500 bg-stone-100 rounded-lg hover:bg-stone-200 transition-colors disabled:opacity-50"
+            className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-text-muted bg-surface rounded-lg hover:bg-surface-hover transition-colors disabled:opacity-50"
           >
             <RotateCcw size={12} /> Undo
           </button>
@@ -58,7 +58,7 @@ export default function OutlierFeedbackForm({ tx, onClassify, onUndo }: Props) {
                   key={key}
                   onClick={() => handleClassify(key)}
                   disabled={submitting}
-                  className={`flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium rounded-lg border transition-colors disabled:opacity-50 ${cfg.bg} ${cfg.text} ${cfg.border} hover:opacity-80`}
+                  className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-colors disabled:opacity-50 ${cfg.bg} ${cfg.text} ${cfg.border} hover:opacity-80`}
                 >
                   {submitting ? <Loader2 size={12} className="animate-spin" /> : cfg.icon}
                   {cfg.label}
@@ -75,7 +75,7 @@ export default function OutlierFeedbackForm({ tx, onClassify, onUndo }: Props) {
               setShowNote(!showNote);
               setNoteText("");
             }}
-            className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium text-stone-500 rounded-lg hover:bg-stone-100 transition-colors"
+            className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-text-muted rounded-lg hover:bg-surface transition-colors"
           >
             <MessageSquare size={12} />
             {showNote ? "Cancel note" : "Add note"}
@@ -91,7 +91,7 @@ export default function OutlierFeedbackForm({ tx, onClassify, onUndo }: Props) {
             value={noteText}
             onChange={(e) => setNoteText(e.target.value)}
             placeholder="e.g. Annual school tuition, paid every July"
-            className="flex-1 text-xs border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A]"
+            className="flex-1 text-xs border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
             onKeyDown={(e) => {
               if (e.key === "Escape") {
                 setShowNote(false);
@@ -101,7 +101,7 @@ export default function OutlierFeedbackForm({ tx, onClassify, onUndo }: Props) {
           />
           <button
             onClick={() => { setShowNote(false); setNoteText(""); }}
-            className="p-1.5 text-stone-400 hover:text-stone-600"
+            className="p-1.5 text-text-muted hover:text-text-secondary"
           >
             <X size={14} />
           </button>

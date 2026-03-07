@@ -97,6 +97,8 @@ async def _initial_sync_and_dedup(item_id: int, merged_account_ids: list[int]) -
             if not item or not item.access_token:
                 return
 
+            item.sync_phase = "syncing"
+
             try:
                 from pipeline.plaid.sync import sync_item, snapshot_net_worth
                 added, updated = await sync_item(s, item)
@@ -110,10 +112,12 @@ async def _initial_sync_and_dedup(item_id: int, merged_account_ids: list[int]) -
                 logger.error(f"Initial sync failed for {item.institution_name}: {e}")
                 item.status = "error"
                 item.error_code = str(e)[:100]
+                item.sync_phase = "error"
                 return
 
             # AI categorization for new transactions
             if added > 0:
+                item.sync_phase = "categorizing"
                 try:
                     from pipeline.ai.categorizer import categorize_transactions
                     await asyncio.wait_for(categorize_transactions(s), timeout=120)
@@ -135,6 +139,8 @@ async def _initial_sync_and_dedup(item_id: int, merged_account_ids: list[int]) -
                 await asyncio.wait_for(snapshot_net_worth(s), timeout=30)
             except Exception as e:
                 logger.warning(f"Post-link net worth snapshot failed: {e}")
+
+            item.sync_phase = "complete"
 
 
 @router.get("/link-token")
@@ -203,6 +209,7 @@ async def exchange_token(
         access_token=encrypt_token(result["access_token"]),
         institution_name=body.institution_name,
         status="active",
+        sync_phase="syncing",
     )
     session.add(item)
     await session.flush()
@@ -254,11 +261,33 @@ async def exchange_token(
     background_tasks.add_task(_initial_sync_and_dedup, item.id, merged_account_ids)
 
     return {
+        "id": item.id,
         "item_id": result["item_id"],
         "status": "connected",
         "sync_status": "started",
         "accounts_matched": len(merged_account_ids),
         "accounts_created": accounts_created,
+    }
+
+
+@router.get("/sync-status/{item_id}")
+async def sync_status(
+    item_id: int,
+    session: AsyncSession = Depends(get_session),
+):
+    """Lightweight endpoint for polling sync progress after linking a new institution."""
+    result = await session.execute(
+        select(PlaidItem).where(PlaidItem.id == item_id)
+    )
+    item = result.scalar_one_or_none()
+    if not item:
+        raise HTTPException(status_code=404, detail="Plaid item not found")
+    return {
+        "id": item.id,
+        "status": item.status,
+        "sync_phase": item.sync_phase,
+        "last_synced_at": str(item.last_synced_at) if item.last_synced_at else None,
+        "error_code": item.error_code,
     }
 
 

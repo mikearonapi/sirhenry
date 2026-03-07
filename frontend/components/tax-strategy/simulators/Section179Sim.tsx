@@ -9,7 +9,7 @@ import LabeledInput from "../shared/LabeledInput";
 import CalcButton from "../shared/CalcButton";
 import ResultBox from "../shared/ResultBox";
 
-const INPUT_CLS = "w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A]";
+const INPUT_CLS = "w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent";
 
 const CATEGORIES = [
   { value: "excavators", label: "Excavators" },
@@ -65,7 +65,7 @@ export default function Section179Sim() {
         <LabeledInput label="Equipment Cost" value={equipmentCost} onChange={setEquipmentCost} />
         <LabeledInput label="Business Income" value={businessIncome} onChange={setBusinessIncome} />
         <div>
-          <label className="block text-xs text-stone-500 mb-1">Equipment Type</label>
+          <label className="block text-xs text-text-secondary mb-1">Equipment Type</label>
           <select value={category} onChange={(e) => setCategory(e.target.value)} className={INPUT_CLS}>
             {CATEGORIES.map((c) => (
               <option key={c.value} value={c.value}>{c.label}</option>
@@ -73,7 +73,7 @@ export default function Section179Sim() {
           </select>
         </div>
         <div>
-          <label className="block text-xs text-stone-500 mb-1">Filing Status</label>
+          <label className="block text-xs text-text-secondary mb-1">Filing Status</label>
           <select value={filingStatus} onChange={(e) => setFilingStatus(e.target.value)} className={INPUT_CLS}>
             <option value="single">Single</option>
             <option value="mfj">Married Filing Jointly</option>
@@ -83,12 +83,12 @@ export default function Section179Sim() {
         </div>
         <LabeledInput label="Business Use %" value={businessUsePct} onChange={setBusinessUsePct} />
         <div className="flex flex-col gap-2 justify-end">
-          <label className="flex items-center gap-2 text-sm text-stone-700 cursor-pointer">
-            <input type="checkbox" checked={willRent} onChange={(e) => setWillRent(e.target.checked)} className="rounded border-stone-300" />
+          <label className="flex items-center gap-2 text-sm text-text-secondary cursor-pointer">
+            <input type="checkbox" checked={willRent} onChange={(e) => setWillRent(e.target.checked)} className="rounded border-border" />
             Plan to rent it out
           </label>
-          <label className="flex items-center gap-2 text-sm text-stone-700 cursor-pointer">
-            <input type="checkbox" checked={hasBusiness} onChange={(e) => setHasBusiness(e.target.checked)} className="rounded border-stone-300" />
+          <label className="flex items-center gap-2 text-sm text-text-secondary cursor-pointer">
+            <input type="checkbox" checked={hasBusiness} onChange={(e) => setHasBusiness(e.target.checked)} className="rounded border-border" />
             Have existing business/LLC
           </label>
         </div>
@@ -112,9 +112,9 @@ export default function Section179Sim() {
 
           {/* Rental Analysis */}
           {result.rental_analysis && (
-            <div className="bg-stone-50 rounded-lg p-4 space-y-3">
-              <h4 className="text-sm font-semibold text-stone-800 flex items-center gap-2">
-                <TrendingUp size={14} className="text-[#16A34A]" />
+            <div className="bg-surface rounded-lg p-4 space-y-3">
+              <h4 className="text-sm font-semibold text-text-primary flex items-center gap-2">
+                <TrendingUp size={14} className="text-accent" />
                 Rental Income Strategy: {result.rental_analysis.equipment_name}
               </h4>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -123,15 +123,15 @@ export default function Section179Sim() {
                 <MiniStat label="Annual Gross Rental" value={formatCurrency(result.rental_analysis.annual_rental_gross)} />
                 <MiniStat label="Annual Net Rental" value={formatCurrency(result.rental_analysis.annual_net_rental)} highlight />
               </div>
-              <div className="grid grid-cols-4 gap-2 text-xs text-stone-500">
+              <div className="grid grid-cols-4 gap-2 text-xs text-text-secondary">
                 <span>Maintenance: {formatCurrency(result.rental_analysis.expense_breakdown.maintenance)}</span>
                 <span>Insurance: {formatCurrency(result.rental_analysis.expense_breakdown.insurance)}</span>
                 <span>Storage: {formatCurrency(result.rental_analysis.expense_breakdown.storage)}</span>
                 <span>Transport: {formatCurrency(result.rental_analysis.expense_breakdown.transport)}</span>
               </div>
               <div className="flex gap-4 pt-1 text-sm">
-                <span className="text-stone-600">5-yr Resale: <strong className="font-mono tabular-nums">{formatCurrency(result.rental_analysis.resale_value_5yr)}</strong></span>
-                <span className="text-stone-600">5-yr Total Return: <strong className={`font-mono tabular-nums ${result.rental_analysis.total_return_5yr > 0 ? "text-green-700" : "text-red-700"}`}>{formatCurrency(result.rental_analysis.total_return_5yr)}</strong></span>
+                <span className="text-text-secondary">5-yr Resale: <strong className="font-mono tabular-nums">{formatCurrency(result.rental_analysis.resale_value_5yr)}</strong></span>
+                <span className="text-text-secondary">5-yr Total Return: <strong className={`font-mono tabular-nums ${result.rental_analysis.total_return_5yr > 0 ? "text-green-700" : "text-red-700"}`}>{formatCurrency(result.rental_analysis.total_return_5yr)}</strong></span>
               </div>
             </div>
           )}
@@ -141,14 +141,14 @@ export default function Section179Sim() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <caption className="sr-only">5-year cash flow projection</caption>
-                <thead className="bg-stone-50">
+                <thead className="bg-surface">
                   <tr>
                     {["Year", "Rental Income", "Depreciation", "Tax Savings", "Net Cash Flow", "Cumulative"].map((h) => (
-                      <th key={h} className={`${h === "Year" ? "text-left" : "text-right"} px-3 py-2 text-xs font-semibold text-stone-500`}>{h}</th>
+                      <th key={h} className={`${h === "Year" ? "text-left" : "text-right"} px-3 py-2 text-xs font-semibold text-text-secondary`}>{h}</th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-stone-100">
+                <tbody className="divide-y divide-card-border">
                   {result.five_year_projection.map((yr) => (
                     <tr key={yr.year}>
                       <td className="px-3 py-2 font-medium">{yr.year}</td>
@@ -166,15 +166,15 @@ export default function Section179Sim() {
 
           {/* Exit strategies - what to do with it */}
           <div className="space-y-2">
-            <h4 className="text-sm font-semibold text-stone-800 flex items-center gap-2">
-              <ArrowRightLeft size={14} className="text-[#16A34A]" />
+            <h4 className="text-sm font-semibold text-text-primary flex items-center gap-2">
+              <ArrowRightLeft size={14} className="text-accent" />
               What To Do With It
             </h4>
             <div className="grid gap-2">
               {result.exit_strategies.filter((s) => s.applicable).map((s) => (
-                <div key={s.strategy} className="bg-white border border-stone-200 rounded-lg p-3">
-                  <p className="text-sm font-medium text-stone-800">{s.strategy}</p>
-                  <p className="text-xs text-stone-500 mt-0.5">{s.description}</p>
+                <div key={s.strategy} className="bg-card border border-border rounded-lg p-3">
+                  <p className="text-sm font-medium text-text-primary">{s.strategy}</p>
+                  <p className="text-xs text-text-secondary mt-0.5">{s.description}</p>
                 </div>
               ))}
             </div>
@@ -183,19 +183,19 @@ export default function Section179Sim() {
           {/* Equipment recommendations */}
           {result.recommended_equipment.length > 0 && (
             <div className="space-y-2">
-              <h4 className="text-sm font-semibold text-stone-800 flex items-center gap-2">
-                <Truck size={14} className="text-[#16A34A]" />
+              <h4 className="text-sm font-semibold text-text-primary flex items-center gap-2">
+                <Truck size={14} className="text-accent" />
                 Equipment In Your Budget With Rental Demand
               </h4>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
                 {result.recommended_equipment.map((eq) => (
-                  <div key={eq.name} className="bg-white border border-stone-200 rounded-lg p-3 flex justify-between items-start">
+                  <div key={eq.name} className="bg-card border border-border rounded-lg p-3 flex justify-between items-start">
                     <div>
-                      <p className="text-sm font-medium text-stone-800">{eq.name}</p>
-                      <p className="text-xs text-stone-500">{eq.category} · {eq.cost_range}</p>
+                      <p className="text-sm font-medium text-text-primary">{eq.name}</p>
+                      <p className="text-xs text-text-secondary">{eq.category} · {eq.cost_range}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-mono tabular-nums text-stone-800">{formatCurrency(eq.monthly_rental)}/mo</p>
+                      <p className="text-sm font-mono tabular-nums text-text-primary">{formatCurrency(eq.monthly_rental)}/mo</p>
                       <span className={`inline-block text-xs px-1.5 py-0.5 rounded ${DEMAND_COLORS[eq.demand]}`}>{eq.demand} demand</span>
                     </div>
                   </div>
@@ -228,8 +228,8 @@ function QualBadge({ ok, label }: { ok: boolean; label: string }) {
 function MiniStat({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
     <div>
-      <p className="text-xs text-stone-500">{label}</p>
-      <p className={`text-sm font-semibold font-mono tabular-nums ${highlight ? "text-green-700" : "text-stone-800"}`}>{value}</p>
+      <p className="text-xs text-text-secondary">{label}</p>
+      <p className={`text-sm font-semibold font-mono tabular-nums ${highlight ? "text-green-700" : "text-text-primary"}`}>{value}</p>
     </div>
   );
 }

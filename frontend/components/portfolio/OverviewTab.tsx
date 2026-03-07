@@ -33,13 +33,13 @@ export default function OverviewTab({ holdings, summary, crypto, manualInvestmen
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card padding="lg">
-          <p className="text-xs text-stone-400 font-medium mb-1">Total Portfolio</p>
-          <p className="text-2xl font-bold tracking-tight text-stone-900 font-mono tabular-nums">{formatCurrency(grandTotal)}</p>
+          <p className="text-xs text-text-muted font-medium mb-1">Total Portfolio</p>
+          <p className="text-2xl font-bold tracking-tight text-text-primary font-mono tabular-nums">{formatCurrency(grandTotal)}</p>
         </Card>
         <Card padding="lg">
           {hasCostBasis ? (
             <>
-              <p className="text-xs text-stone-400 font-medium mb-1">Total Gain/Loss</p>
+              <p className="text-xs text-text-muted font-medium mb-1">Total Gain/Loss</p>
               <p className={`text-2xl font-bold tracking-tight font-mono tabular-nums ${totalGainLoss >= 0 ? "text-green-600" : "text-red-600"}`}>
                 {totalGainLoss >= 0 ? "+" : ""}{formatCurrency(totalGainLoss)}
               </p>
@@ -51,40 +51,40 @@ export default function OverviewTab({ holdings, summary, crypto, manualInvestmen
             </>
           ) : weightedAvgReturn != null ? (
             <>
-              <p className="text-xs text-stone-400 font-medium mb-1">Avg Annual Return</p>
+              <p className="text-xs text-text-muted font-medium mb-1">Avg Annual Return</p>
               <p className={`text-2xl font-bold tracking-tight font-mono tabular-nums ${weightedAvgReturn >= 0 ? "text-green-600" : "text-red-600"}`}>
                 {weightedAvgReturn >= 0 ? "+" : ""}{weightedAvgReturn.toFixed(2)}%
               </p>
-              <p className="text-xs text-stone-400 mt-0.5">Weighted across accounts</p>
+              <p className="text-xs text-text-muted mt-0.5">Weighted across accounts</p>
             </>
           ) : (
             <>
-              <p className="text-xs text-stone-400 font-medium mb-1">Total Gain/Loss</p>
-              <p className="text-xl font-semibold text-stone-400">Not tracked</p>
-              <p className="text-xs text-stone-400 mt-0.5">Add cost basis to track</p>
+              <p className="text-xs text-text-muted font-medium mb-1">Total Gain/Loss</p>
+              <p className="text-xl font-semibold text-text-muted">Not tracked</p>
+              <p className="text-xs text-text-muted mt-0.5">Add cost basis to track</p>
             </>
           )}
         </Card>
         <Card padding="lg">
-          <p className="text-xs text-stone-400 font-medium mb-1">Holdings</p>
-          <p className="text-2xl font-bold tracking-tight text-stone-900">{summary?.holdings_count ?? (holdings.length + crypto.length)}</p>
-          <p className="text-xs text-stone-400 mt-0.5">
+          <p className="text-xs text-text-muted font-medium mb-1">Holdings</p>
+          <p className="text-2xl font-bold tracking-tight text-text-primary">{summary?.holdings_count ?? (holdings.length + crypto.length)}</p>
+          <p className="text-xs text-text-muted mt-0.5">
             {holdings.length > 0 ? `${holdings.length} stocks/ETFs` : ""}
             {holdings.length > 0 && crypto.length > 0 ? " · " : ""}
             {crypto.length > 0 ? `${crypto.length} crypto` : ""}
           </p>
         </Card>
         <Card padding="lg">
-          <p className="text-xs text-stone-400 font-medium mb-1">Accounts</p>
-          <p className="text-2xl font-bold tracking-tight text-stone-900">{plaidAccounts.length + manualInvestments.length}</p>
-          <p className="text-xs text-stone-400 mt-0.5">{plaidAccounts.length} linked · {manualInvestments.length} manual</p>
+          <p className="text-xs text-text-muted font-medium mb-1">Accounts</p>
+          <p className="text-2xl font-bold tracking-tight text-text-primary">{plaidAccounts.length + manualInvestments.length}</p>
+          <p className="text-xs text-text-muted mt-0.5">{plaidAccounts.length} linked · {manualInvestments.length} manual</p>
         </Card>
       </div>
 
       {/* Top Holdings */}
       {summary?.top_holdings && summary.top_holdings.length > 0 && (
         <Card padding="lg">
-          <h2 className="text-sm font-semibold text-stone-700 mb-4">Top Holdings</h2>
+          <h2 className="text-sm font-semibold text-text-secondary mb-4">Top Holdings</h2>
           <div className="space-y-3">
             {summary.top_holdings.map((h, i) => {
               const pct = grandTotal > 0 ? (h.value / grandTotal) * 100 : 0;
@@ -96,8 +96,8 @@ export default function OverviewTab({ holdings, summary, crypto, manualInvestmen
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-stone-800">{h.ticker}</span>
-                        {h.name && <span className="text-xs text-stone-400 truncate">{h.name}</span>}
+                        <span className="text-sm font-semibold text-text-primary">{h.ticker}</span>
+                        {h.name && <span className="text-xs text-text-muted truncate">{h.name}</span>}
                       </div>
                       <div className="flex items-center gap-3">
                         <span className="text-sm font-semibold font-mono tabular-nums">{formatCurrency(h.value)}</span>
@@ -121,7 +121,7 @@ export default function OverviewTab({ holdings, summary, crypto, manualInvestmen
       {/* Linked Investment Accounts */}
       {plaidAccounts.length > 0 && (
         <Card padding="lg">
-          <h2 className="text-sm font-semibold text-stone-700 mb-4">Linked Investment Accounts</h2>
+          <h2 className="text-sm font-semibold text-text-secondary mb-4">Linked Investment Accounts</h2>
           <div className="space-y-3">
             {plaidAccounts.map((acct, i) => {
               const weight = totalPlaidValue > 0 ? ((acct.current_balance ?? 0) / totalPlaidValue * 100) : 0;
@@ -130,12 +130,12 @@ export default function OverviewTab({ holdings, summary, crypto, manualInvestmen
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
-                      <span className="text-sm text-stone-700">{acct.name}</span>
-                      {acct.subtype && <Badge className="bg-stone-100 text-stone-500">{acct.subtype}</Badge>}
+                      <span className="text-sm text-text-secondary">{acct.name}</span>
+                      {acct.subtype && <Badge className="bg-surface text-text-secondary">{acct.subtype}</Badge>}
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="text-sm font-semibold font-mono tabular-nums">{formatCurrency(acct.current_balance ?? 0)}</span>
-                      <span className="text-xs text-stone-400 w-12 text-right tabular-nums">{weight.toFixed(1)}%</span>
+                      <span className="text-xs text-text-muted w-12 text-right tabular-nums">{weight.toFixed(1)}%</span>
                     </div>
                   </div>
                   <ProgressBar value={weight} color={COLORS[i % COLORS.length]} size="sm" />
@@ -149,20 +149,20 @@ export default function OverviewTab({ holdings, summary, crypto, manualInvestmen
       {/* Manual Investment Accounts */}
       {manualInvestments.length > 0 && (
         <Card padding="lg">
-          <h2 className="text-sm font-semibold text-stone-700 mb-4">Investment Accounts</h2>
+          <h2 className="text-sm font-semibold text-text-secondary mb-4">Investment Accounts</h2>
           <div className="space-y-3">
             {manualInvestments.map((asset) => (
               <div key={asset.id} className="flex items-center justify-between py-2">
                 <div>
-                  <p className="text-sm font-medium text-stone-800">{asset.name}</p>
-                  <p className="text-xs text-stone-400">{asset.institution ?? asset.custodian ?? asset.account_subtype ?? "Investment"}</p>
+                  <p className="text-sm font-medium text-text-primary">{asset.name}</p>
+                  <p className="text-xs text-text-muted">{asset.institution ?? asset.custodian ?? asset.account_subtype ?? "Investment"}</p>
                 </div>
                 <span className="text-sm font-semibold font-mono tabular-nums">{formatCurrency(asset.current_value)}</span>
               </div>
             ))}
           </div>
-          <p className="text-xs text-stone-400 mt-4 pt-3 border-t border-stone-100">
-            Manage accounts on the <a href="/accounts" className="text-[#16A34A] hover:underline">Accounts page</a>.
+          <p className="text-xs text-text-muted mt-4 pt-3 border-t border-card-border">
+            Manage accounts on the <a href="/accounts" className="text-accent hover:underline">Accounts page</a>.
           </p>
         </Card>
       )}
@@ -170,17 +170,17 @@ export default function OverviewTab({ holdings, summary, crypto, manualInvestmen
       {/* Cryptocurrency */}
       {crypto.length > 0 && (
         <Card padding="lg">
-          <h2 className="text-sm font-semibold text-stone-700 mb-4">Cryptocurrency</h2>
+          <h2 className="text-sm font-semibold text-text-secondary mb-4">Cryptocurrency</h2>
           <div className="space-y-3">
             {crypto.map((c) => (
               <div key={c.id} className="flex items-center justify-between py-2">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center text-xs font-bold text-amber-600">
+                  <div className="w-8 h-8 rounded-full bg-amber-50 dark:bg-amber-950/40 flex items-center justify-center text-xs font-bold text-amber-600 dark:text-amber-400">
                     {c.symbol.slice(0, 3)}
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-stone-800">{c.symbol.toUpperCase()}</p>
-                    <p className="text-xs text-stone-400">{c.name ?? c.coin_id} · {c.quantity} units</p>
+                    <p className="text-sm font-medium text-text-primary">{c.symbol.toUpperCase()}</p>
+                    <p className="text-xs text-text-muted">{c.name ?? c.coin_id} · {c.quantity} units</p>
                   </div>
                 </div>
                 <div className="text-right">

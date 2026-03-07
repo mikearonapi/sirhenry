@@ -146,10 +146,10 @@ export default function RecurringPage() {
     <div className="space-y-6">
       {/* Toast */}
       {toast && (
-        <div className="fixed top-4 right-4 z-50 bg-stone-800 text-white px-4 py-2.5 rounded-lg shadow-lg flex items-center gap-2 text-sm animate-in slide-in-from-top-2">
+        <div className="fixed top-4 right-4 z-50 bg-text-primary text-white px-4 py-2.5 rounded-lg shadow-lg flex items-center gap-2 text-sm animate-in slide-in-from-top-2">
           <Check size={14} className="text-green-400" />
           {toast}
-          <button onClick={() => setToast(null)} className="ml-2 text-stone-400 hover:text-white">
+          <button onClick={() => setToast(null)} className="ml-2 text-text-muted hover:text-white">
             <X size={12} />
           </button>
         </div>
@@ -158,24 +158,24 @@ export default function RecurringPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-stone-900 tracking-tight">Recurring</h1>
-          <span className="text-sm text-stone-500">{monthName(viewMonth.month)} {viewMonth.year}</span>
+          <h1 className="text-2xl font-bold text-text-primary tracking-tight">Recurring</h1>
+          <span className="text-sm text-text-secondary">{monthName(viewMonth.month)} {viewMonth.year}</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex bg-stone-100 rounded-lg p-0.5">
+          <div className="flex bg-surface rounded-lg p-0.5">
             <button
               onClick={() => setFilterMode("monthly")}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${filterMode === "monthly" ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700"}`}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${filterMode === "monthly" ? "bg-card text-text-primary shadow-sm" : "text-text-secondary hover:text-text-primary"}`}
             >Monthly</button>
             <button
               onClick={() => setFilterMode("all")}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${filterMode === "all" ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700"}`}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${filterMode === "all" ? "bg-card text-text-primary shadow-sm" : "text-text-secondary hover:text-text-primary"}`}
             >All recurring</button>
           </div>
           <button
             onClick={handleDetect}
             disabled={detecting}
-            className="flex items-center gap-2 bg-[#16A34A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#15803D] disabled:opacity-60 shadow-sm"
+            className="flex items-center gap-2 bg-accent text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-60 shadow-sm"
           >
             {detecting ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
             {detecting ? "Detecting..." : "Auto-Detect"}
@@ -192,8 +192,8 @@ export default function RecurringPage() {
                 <TrendingUp size={18} className="text-green-500" />
               </div>
               <div>
-                <p className="text-xs text-stone-400 font-medium uppercase">Monthly Cost</p>
-                <p className="text-xl font-bold text-stone-900 tabular-nums">{formatCurrency(summary.total_monthly_cost)}</p>
+                <p className="text-xs text-text-muted font-medium uppercase">Monthly Cost</p>
+                <p className="text-xl font-bold text-text-primary tabular-nums">{formatCurrency(summary.total_monthly_cost)}</p>
               </div>
             </div>
           </Card>
@@ -203,8 +203,8 @@ export default function RecurringPage() {
                 <DollarSign size={18} className="text-blue-500" />
               </div>
               <div>
-                <p className="text-xs text-stone-400 font-medium uppercase">Annual Cost</p>
-                <p className="text-xl font-bold text-stone-900 tabular-nums">{formatCurrency(summary.total_annual_cost)}</p>
+                <p className="text-xs text-text-muted font-medium uppercase">Annual Cost</p>
+                <p className="text-xl font-bold text-text-primary tabular-nums">{formatCurrency(summary.total_annual_cost)}</p>
               </div>
             </div>
           </Card>
@@ -214,8 +214,8 @@ export default function RecurringPage() {
                 <RotateCcw size={18} className="text-purple-500" />
               </div>
               <div>
-                <p className="text-xs text-stone-400 font-medium uppercase">Active</p>
-                <p className="text-xl font-bold text-stone-900">{summary.subscription_count}</p>
+                <p className="text-xs text-text-muted font-medium uppercase">Active</p>
+                <p className="text-xl font-bold text-text-primary">{summary.subscription_count}</p>
               </div>
             </div>
           </Card>
@@ -231,7 +231,7 @@ export default function RecurringPage() {
       )}
 
       {loading ? (
-        <div className="flex justify-center py-12"><Loader2 className="animate-spin text-stone-300" size={24} /></div>
+        <div className="flex justify-center py-12"><Loader2 className="animate-spin text-text-muted" size={24} /></div>
       ) : active.length === 0 ? (
         <EmptyState
           icon={<RotateCcw size={40} />}
@@ -244,44 +244,44 @@ export default function RecurringPage() {
           <div className="lg:col-span-2 space-y-4">
             {/* Active subscriptions */}
             <Card padding="none">
-              <div className="px-5 py-3 border-b border-stone-100 flex items-center gap-2">
-                <ChevronRight size={14} className="text-stone-400" />
-                <span className="text-xs font-semibold text-stone-500 uppercase tracking-wider">Active ({activeOnly.length})</span>
+              <div className="px-5 py-3 border-b border-card-border flex items-center gap-2">
+                <ChevronRight size={14} className="text-text-muted" />
+                <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Active ({activeOnly.length})</span>
               </div>
-              <div className="divide-y divide-stone-50">
+              <div className="divide-y divide-border-light">
                 {activeOnly.map((item) => {
                   const fb = FREQ_BADGE[item.frequency];
                   const daysStr = daysUntil(item.next_expected_date);
                   return (
-                    <div key={item.id} className="flex items-center px-4 sm:px-5 py-3.5 hover:bg-stone-50/50 group">
-                      <div className="w-9 h-9 rounded-full bg-stone-100 flex items-center justify-center text-sm font-bold text-stone-500 shrink-0 mr-3">
+                    <div key={item.id} className="flex items-center px-4 sm:px-5 py-3.5 hover:bg-surface/50 group">
+                      <div className="w-9 h-9 rounded-full bg-surface flex items-center justify-center text-sm font-bold text-text-secondary shrink-0 mr-3">
                         {item.name.charAt(0).toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0 mr-2 sm:mr-4">
-                        <p className="text-sm font-medium text-stone-800 truncate">{item.name}</p>
+                        <p className="text-sm font-medium text-text-primary truncate">{item.name}</p>
                         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                           <Badge variant={fb?.variant ?? "default"} dot>{fb?.label ?? item.frequency}</Badge>
-                          {item.category && <span className="text-[10px] text-stone-400">{item.category}</span>}
+                          {item.category && <span className="text-xs text-text-muted">{item.category}</span>}
                         </div>
                       </div>
                       <div className="hidden sm:block w-28 text-right mr-4">
-                        <p className="text-xs text-stone-500">
+                        <p className="text-xs text-text-secondary">
                           {item.next_expected_date ? new Date(item.next_expected_date).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—"}
                         </p>
-                        {daysStr && <p className="text-[11px] text-stone-400">{daysStr}</p>}
+                        {daysStr && <p className="text-xs text-text-muted">{daysStr}</p>}
                       </div>
-                      <span className="text-sm font-semibold tabular-nums text-stone-900 min-w-[70px] text-right">
+                      <span className="text-sm font-semibold tabular-nums text-text-primary min-w-[70px] text-right">
                         {formatCurrency(Math.abs(item.amount))}
                       </span>
                       {/* Actions */}
                       <div className="flex items-center gap-1 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => openEdit(item)} className="p-1 rounded hover:bg-stone-100 text-stone-400 hover:text-stone-600" aria-label="Edit">
+                        <button onClick={() => openEdit(item)} className="p-1 rounded hover:bg-surface text-text-muted hover:text-text-secondary" aria-label="Edit">
                           <Edit2 size={12} />
                         </button>
-                        <button onClick={() => handleStatusChange(item.id, "paused")} className="p-1 rounded hover:bg-amber-50 text-stone-400 hover:text-amber-600" aria-label="Pause">
+                        <button onClick={() => handleStatusChange(item.id, "paused")} className="p-1 rounded hover:bg-amber-50 text-text-muted hover:text-amber-600" aria-label="Pause">
                           <Pause size={12} />
                         </button>
-                        <button onClick={() => handleStatusChange(item.id, "cancelled")} className="p-1 rounded hover:bg-red-50 text-stone-400 hover:text-red-500" aria-label="Cancel">
+                        <button onClick={() => handleStatusChange(item.id, "cancelled")} className="p-1 rounded hover:bg-red-50 text-text-muted hover:text-red-500" aria-label="Cancel">
                           <X size={12} />
                         </button>
                       </div>
@@ -294,26 +294,26 @@ export default function RecurringPage() {
             {/* Paused subscriptions */}
             {paused.length > 0 && (
               <Card padding="none">
-                <div className="px-5 py-3 border-b border-stone-100 flex items-center gap-2">
+                <div className="px-5 py-3 border-b border-card-border flex items-center gap-2">
                   <Pause size={14} className="text-amber-400" />
-                  <span className="text-xs font-semibold text-stone-500 uppercase tracking-wider">Paused ({paused.length})</span>
+                  <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Paused ({paused.length})</span>
                 </div>
-                <div className="divide-y divide-stone-50">
+                <div className="divide-y divide-border-light">
                   {paused.map((item) => (
                     <div key={item.id} className="flex items-center px-5 py-3 opacity-70 group">
                       <div className="w-9 h-9 rounded-full bg-amber-50 flex items-center justify-center text-sm font-bold text-amber-500 shrink-0 mr-3">
                         {item.name.charAt(0).toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm text-stone-600 truncate">{item.name}</p>
-                        <span className="text-[10px] text-amber-500">Paused</span>
+                        <p className="text-sm text-text-secondary truncate">{item.name}</p>
+                        <span className="text-xs text-amber-500">Paused</span>
                       </div>
-                      <span className="text-sm tabular-nums text-stone-500 mr-2">{formatCurrency(Math.abs(item.amount))}</span>
+                      <span className="text-sm tabular-nums text-text-secondary mr-2">{formatCurrency(Math.abs(item.amount))}</span>
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
-                        <button onClick={() => handleStatusChange(item.id, "active")} className="p-1 rounded hover:bg-green-50 text-stone-400 hover:text-green-600" aria-label="Resume">
+                        <button onClick={() => handleStatusChange(item.id, "active")} className="p-1 rounded hover:bg-green-50 text-text-muted hover:text-green-600" aria-label="Resume">
                           <Play size={12} />
                         </button>
-                        <button onClick={() => handleStatusChange(item.id, "cancelled")} className="p-1 rounded hover:bg-red-50 text-stone-400 hover:text-red-500" aria-label="Cancel">
+                        <button onClick={() => handleStatusChange(item.id, "cancelled")} className="p-1 rounded hover:bg-red-50 text-text-muted hover:text-red-500" aria-label="Cancel">
                           <X size={12} />
                         </button>
                       </div>
@@ -326,23 +326,23 @@ export default function RecurringPage() {
             {/* Cancelled */}
             {cancelled.length > 0 && (
               <div>
-                <h3 className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-2">
+                <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">
                   Cancelled ({cancelled.length})
                 </h3>
                 <Card padding="none">
-                  <div className="divide-y divide-stone-50">
+                  <div className="divide-y divide-border-light">
                     {cancelled.map((item) => (
                       <div key={item.id} className="flex items-center px-5 py-3 opacity-50 group">
-                        <div className="w-9 h-9 rounded-full bg-stone-100 flex items-center justify-center text-sm font-bold text-stone-400 shrink-0 mr-3">
+                        <div className="w-9 h-9 rounded-full bg-surface flex items-center justify-center text-sm font-bold text-text-muted shrink-0 mr-3">
                           {item.name.charAt(0).toUpperCase()}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm text-stone-500 line-through truncate">{item.name}</p>
+                          <p className="text-sm text-text-secondary line-through truncate">{item.name}</p>
                         </div>
-                        <span className="text-sm tabular-nums text-stone-400 mr-2">{formatCurrency(Math.abs(item.amount))}</span>
+                        <span className="text-sm tabular-nums text-text-muted mr-2">{formatCurrency(Math.abs(item.amount))}</span>
                         <button
                           onClick={() => handleStatusChange(item.id, "active")}
-                          className="text-xs text-stone-400 hover:text-green-600 opacity-0 group-hover:opacity-100"
+                          className="text-xs text-text-muted hover:text-green-600 opacity-0 group-hover:opacity-100"
                         >
                           Reactivate
                         </button>
@@ -358,18 +358,18 @@ export default function RecurringPage() {
           <div className="space-y-4">
             {categoryBreakdown.length > 0 && (
               <Card>
-                <h3 className="text-xs font-semibold text-stone-500 uppercase tracking-wider mb-3">Cost Breakdown</h3>
+                <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3">Cost Breakdown</h3>
                 <div className="space-y-2.5">
                   {categoryBreakdown.map(([cat, amount]) => {
                     const pct = maxCategoryAmount > 0 ? (amount / maxCategoryAmount) * 100 : 0;
-                    const color = CATEGORY_COLORS[cat] ?? "bg-stone-400";
+                    const color = CATEGORY_COLORS[cat] ?? "bg-text-muted";
                     return (
                       <div key={cat}>
                         <div className="flex justify-between text-xs mb-1">
-                          <span className="text-stone-600 truncate mr-2">{cat}</span>
-                          <span className="text-stone-800 font-medium tabular-nums shrink-0">{formatCurrency(amount)}/mo</span>
+                          <span className="text-text-secondary truncate mr-2">{cat}</span>
+                          <span className="text-text-primary font-medium tabular-nums shrink-0">{formatCurrency(amount)}/mo</span>
                         </div>
-                        <div className="h-2 bg-stone-100 rounded-full overflow-hidden">
+                        <div className="h-2 bg-surface rounded-full overflow-hidden">
                           <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
                         </div>
                       </div>
@@ -377,10 +377,10 @@ export default function RecurringPage() {
                   })}
                 </div>
                 {summary && (
-                  <div className="mt-4 pt-3 border-t border-stone-100">
+                  <div className="mt-4 pt-3 border-t border-card-border">
                     <div className="flex justify-between text-sm">
-                      <span className="text-stone-500">Total monthly</span>
-                      <span className="font-semibold text-stone-900 tabular-nums">{formatCurrency(summary.total_monthly_cost)}</span>
+                      <span className="text-text-secondary">Total monthly</span>
+                      <span className="font-semibold text-text-primary tabular-nums">{formatCurrency(summary.total_monthly_cost)}</span>
                     </div>
                   </div>
                 )}
@@ -394,42 +394,42 @@ export default function RecurringPage() {
       {editItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setEditItem(null)} />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-5">
+          <div className="relative bg-card rounded-2xl shadow-2xl w-full max-w-sm mx-4 p-5">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-stone-900">Edit Subscription</h3>
-              <button onClick={() => setEditItem(null)} className="p-1 rounded-lg hover:bg-stone-100 text-stone-400">
+              <h3 className="font-semibold text-text-primary">Edit Subscription</h3>
+              <button onClick={() => setEditItem(null)} className="p-1 rounded-lg hover:bg-surface text-text-muted">
                 <X size={16} />
               </button>
             </div>
             <div className="space-y-3">
               <div>
-                <p className="text-sm font-medium text-stone-800">{editItem.name}</p>
-                <p className="text-xs text-stone-400">{formatCurrency(Math.abs(editItem.amount))} / {editItem.frequency}</p>
+                <p className="text-sm font-medium text-text-primary">{editItem.name}</p>
+                <p className="text-xs text-text-muted">{formatCurrency(Math.abs(editItem.amount))} / {editItem.frequency}</p>
               </div>
               <div>
-                <label className="block text-xs font-medium text-stone-500 mb-1">Category</label>
+                <label className="block text-xs font-medium text-text-secondary mb-1">Category</label>
                 <input
                   type="text"
                   value={editCategory}
                   onChange={(e) => setEditCategory(e.target.value)}
-                  className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A]"
+                  className="w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
                   placeholder="e.g. TV, Streaming & Entertainment"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-stone-500 mb-1">Notes</label>
+                <label className="block text-xs font-medium text-text-secondary mb-1">Notes</label>
                 <textarea
                   value={editNotes}
                   onChange={(e) => setEditNotes(e.target.value)}
                   rows={2}
-                  className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A] resize-none"
+                  className="w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent resize-none"
                   placeholder="Add notes..."
                 />
               </div>
               <button
                 onClick={handleEditSave}
                 disabled={editSaving}
-                className="w-full flex items-center justify-center gap-2 bg-[#16A34A] text-white text-sm font-medium py-2 rounded-lg hover:bg-[#15803D] disabled:opacity-40"
+                className="w-full flex items-center justify-center gap-2 bg-accent text-white text-sm font-medium py-2 rounded-lg hover:bg-accent-hover disabled:opacity-40"
               >
                 {editSaving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
                 Save

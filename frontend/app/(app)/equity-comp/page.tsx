@@ -163,7 +163,7 @@ export default function EquityCompPage() {
   const fmt = (n: number) => formatCurrency(n);
   const pct = (n: number) => formatPercent(n * 100);
 
-  if (loading) return <div className="flex items-center justify-center h-96"><Loader2 className="animate-spin text-stone-400" size={32} /></div>;
+  if (loading) return <div className="flex items-center justify-center h-96"><Loader2 className="animate-spin text-text-muted" size={32} /></div>;
 
   return (
     <div className="space-y-6">
@@ -176,13 +176,13 @@ export default function EquityCompPage() {
       )}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-stone-900">Equity Compensation</h1>
-          <p className="text-stone-500 text-sm mt-1">Track grants, model tax impact, and optimize your equity strategy</p>
+          <h1 className="text-2xl font-bold text-text-primary">Equity Compensation</h1>
+          <p className="text-text-secondary text-sm mt-1">Track grants, model tax impact, and optimize your equity strategy</p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => window.dispatchEvent(new CustomEvent("ask-henry", { detail: { message: "Help me plan my equity compensation strategy. What should I know about RSU/ISO taxes?" } }))}
-            className="flex items-center gap-1.5 text-xs text-[#16A34A] hover:text-[#15803D] transition-colors"
+            className="flex items-center gap-1.5 text-xs text-accent hover:text-accent-hover transition-colors"
           >
             <MessageCircle size={14} />
             Ask <SirHenryName />
@@ -197,12 +197,12 @@ export default function EquityCompPage() {
               setRefreshing(false);
             }}
             disabled={refreshing}
-            className="flex items-center gap-2 border border-stone-200 text-stone-700 px-3 py-2 rounded-lg text-sm font-medium hover:bg-stone-50 disabled:opacity-50"
+            className="flex items-center gap-2 border border-border text-text-secondary px-3 py-2 rounded-lg text-sm font-medium hover:bg-surface disabled:opacity-50"
           >
             <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
             {refreshing ? "Refreshing..." : "Refresh Prices"}
           </button>
-          <button onClick={() => setShowAddForm(true)} className="flex items-center gap-2 px-4 py-2 bg-[#16A34A] text-white rounded-lg hover:bg-[#15803D] text-sm font-medium">
+          <button onClick={() => setShowAddForm(true)} className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover text-sm font-medium">
             <Plus size={16} /> Add Grant
           </button>
         </div>
@@ -211,32 +211,32 @@ export default function EquityCompPage() {
       {/* Dashboard Stats */}
       {dashboard && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white rounded-xl border border-stone-200 p-5">
+          <div className="bg-card rounded-xl border border-border p-5">
             <div className="flex items-center gap-3 mb-2">
               <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center"><DollarSign size={20} className="text-blue-600" /></div>
-              <div><p className="text-xs text-stone-500">Total Equity Value</p><p className="text-xl font-bold text-stone-900 font-mono tabular-nums">{fmt(dashboard.total_equity_value)}</p></div>
+              <div><p className="text-xs text-text-secondary">Total Equity Value</p><p className="text-xl font-bold text-text-primary font-mono tabular-nums">{fmt(dashboard.total_equity_value)}</p></div>
             </div>
           </div>
-          <div className="bg-white rounded-xl border border-stone-200 p-5">
+          <div className="bg-card rounded-xl border border-border p-5">
             <div className="flex items-center gap-3 mb-2">
               <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center"><Calendar size={20} className="text-green-600" /></div>
-              <div><p className="text-xs text-stone-500">Upcoming Vests (12mo)</p><p className="text-xl font-bold text-stone-900 font-mono tabular-nums">{fmt(dashboard.upcoming_vest_value_12mo)}</p></div>
+              <div><p className="text-xs text-text-secondary">Upcoming Vests (12mo)</p><p className="text-xl font-bold text-text-primary font-mono tabular-nums">{fmt(dashboard.upcoming_vest_value_12mo)}</p></div>
             </div>
           </div>
-          <div className="bg-white rounded-xl border border-stone-200 p-5">
+          <div className="bg-card rounded-xl border border-border p-5">
             <div className="flex items-center gap-3 mb-2">
-              <div className={`w-10 h-10 rounded-lg ${dashboard.total_withholding_gap > 5000 ? "bg-red-50" : "bg-stone-50"} flex items-center justify-center`}>
-                <AlertTriangle size={20} className={dashboard.total_withholding_gap > 5000 ? "text-red-600" : "text-stone-400"} />
+              <div className={`w-10 h-10 rounded-lg ${dashboard.total_withholding_gap > 5000 ? "bg-red-50" : "bg-surface"} flex items-center justify-center`}>
+                <AlertTriangle size={20} className={dashboard.total_withholding_gap > 5000 ? "text-red-600" : "text-text-muted"} />
               </div>
-              <div><p className="text-xs text-stone-500">Withholding Gap</p><p className={`text-xl font-bold ${dashboard.total_withholding_gap > 5000 ? "text-red-600" : "text-stone-900"}`}>{fmt(dashboard.total_withholding_gap)}</p></div>
+              <div><p className="text-xs text-text-secondary">Withholding Gap</p><p className={`text-xl font-bold ${dashboard.total_withholding_gap > 5000 ? "text-red-600" : "text-text-primary"}`}>{fmt(dashboard.total_withholding_gap)}</p></div>
             </div>
           </div>
-          <div className="bg-white rounded-xl border border-stone-200 p-5">
+          <div className="bg-card rounded-xl border border-border p-5">
             <div className="flex items-center gap-3 mb-2">
               <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center"><PieChart size={20} className="text-purple-600" /></div>
               <div>
-                <p className="text-xs text-stone-500">Concentration Risk</p>
-                <p className={`text-xl font-bold font-mono tabular-nums ${concentrationResult ? RISK_COLORS[concentrationResult.risk_level] : "text-stone-900"}`}>
+                <p className="text-xs text-text-secondary">Concentration Risk</p>
+                <p className={`text-xl font-bold font-mono tabular-nums ${concentrationResult ? RISK_COLORS[concentrationResult.risk_level] : "text-text-primary"}`}>
                   {concentrationResult ? `${concentrationResult.concentration_pct.toFixed(0)}%` : "—"}
                 </p>
               </div>
@@ -247,50 +247,50 @@ export default function EquityCompPage() {
 
       {/* Add Grant Modal */}
       {showAddForm && (
-        <div className="bg-white rounded-xl border border-stone-200 p-6">
+        <div className="bg-card rounded-xl border border-border p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-stone-900">Add Equity Grant</h2>
-            <button onClick={() => setShowAddForm(false)}><X size={18} className="text-stone-400" /></button>
+            <h2 className="text-lg font-semibold text-text-primary">Add Equity Grant</h2>
+            <button onClick={() => setShowAddForm(false)}><X size={18} className="text-text-muted" /></button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-medium text-stone-600 mb-1">Employer</label>
-              <input className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm" value={form.employer_name} onChange={e => setForm({ ...form, employer_name: e.target.value })} />
+              <label className="block text-xs font-medium text-text-secondary mb-1">Employer</label>
+              <input className="w-full border border-border rounded-lg px-3 py-2 text-sm" value={form.employer_name} onChange={e => setForm({ ...form, employer_name: e.target.value })} />
             </div>
             <div>
-              <label className="block text-xs font-medium text-stone-600 mb-1">Grant Type</label>
-              <select className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm" value={form.grant_type} onChange={e => setForm({ ...form, grant_type: e.target.value as "rsu" | "iso" | "nso" | "espp" })}>
+              <label className="block text-xs font-medium text-text-secondary mb-1">Grant Type</label>
+              <select className="w-full border border-border rounded-lg px-3 py-2 text-sm" value={form.grant_type} onChange={e => setForm({ ...form, grant_type: e.target.value as "rsu" | "iso" | "nso" | "espp" })}>
                 <option value="rsu">RSU</option><option value="iso">ISO</option><option value="nso">NSO</option><option value="espp">ESPP</option>
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-stone-600 mb-1">Grant Date</label>
-              <input type="date" className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm" value={form.grant_date} onChange={e => setForm({ ...form, grant_date: e.target.value })} />
+              <label className="block text-xs font-medium text-text-secondary mb-1">Grant Date</label>
+              <input type="date" className="w-full border border-border rounded-lg px-3 py-2 text-sm" value={form.grant_date} onChange={e => setForm({ ...form, grant_date: e.target.value })} />
             </div>
             <div>
-              <label className="block text-xs font-medium text-stone-600 mb-1">Total Shares</label>
-              <input type="number" className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm" value={form.total_shares || ""} onChange={e => setForm({ ...form, total_shares: Number(e.target.value) })} />
+              <label className="block text-xs font-medium text-text-secondary mb-1">Total Shares</label>
+              <input type="number" className="w-full border border-border rounded-lg px-3 py-2 text-sm" value={form.total_shares || ""} onChange={e => setForm({ ...form, total_shares: Number(e.target.value) })} />
             </div>
             <div>
-              <label className="block text-xs font-medium text-stone-600 mb-1">Current FMV / Share</label>
-              <input type="number" step="0.01" className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm" value={form.current_fmv || ""} onChange={e => setForm({ ...form, current_fmv: Number(e.target.value) })} />
+              <label className="block text-xs font-medium text-text-secondary mb-1">Current FMV / Share</label>
+              <input type="number" step="0.01" className="w-full border border-border rounded-lg px-3 py-2 text-sm" value={form.current_fmv || ""} onChange={e => setForm({ ...form, current_fmv: Number(e.target.value) })} />
             </div>
             <div>
-              <label className="block text-xs font-medium text-stone-600 mb-1">Strike Price (options)</label>
-              <input type="number" step="0.01" className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm" value={form.strike_price || ""} onChange={e => setForm({ ...form, strike_price: Number(e.target.value) })} />
+              <label className="block text-xs font-medium text-text-secondary mb-1">Strike Price (options)</label>
+              <input type="number" step="0.01" className="w-full border border-border rounded-lg px-3 py-2 text-sm" value={form.strike_price || ""} onChange={e => setForm({ ...form, strike_price: Number(e.target.value) })} />
             </div>
             <div>
-              <label className="block text-xs font-medium text-stone-600 mb-1">Ticker</label>
-              <input className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm" placeholder="e.g. ACN" value={form.ticker} onChange={e => setForm({ ...form, ticker: e.target.value })} />
+              <label className="block text-xs font-medium text-text-secondary mb-1">Ticker</label>
+              <input className="w-full border border-border rounded-lg px-3 py-2 text-sm" placeholder="e.g. ACN" value={form.ticker} onChange={e => setForm({ ...form, ticker: e.target.value })} />
             </div>
           </div>
-          <button onClick={handleAddGrant} className="mt-4 px-6 py-2 bg-[#16A34A] text-white rounded-lg text-sm font-medium hover:bg-[#15803D]">Save Grant</button>
+          <button onClick={handleAddGrant} className="mt-4 px-6 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover">Save Grant</button>
         </div>
       )}
 
       {/* Grant Manager */}
-      <div className="bg-white rounded-xl border border-stone-200">
-        <div className="px-5 py-4 border-b border-stone-100"><h2 className="font-semibold text-stone-900">Your Grants</h2></div>
+      <div className="bg-card rounded-xl border border-border">
+        <div className="px-5 py-4 border-b border-card-border"><h2 className="font-semibold text-text-primary">Your Grants</h2></div>
         {grants.length === 0 ? (
           <div className="p-8">
             <EmptyState
@@ -300,42 +300,42 @@ export default function EquityCompPage() {
               henryTip="At $200K+ income, your RSU vests are withheld at 22% but your marginal rate is likely 32-37%. That gap adds up fast — I can help you plan for it."
               askHenryPrompt="I just got a stock grant from my employer. What should I know about the tax implications?"
               action={
-                <button onClick={() => setShowAddForm(true)} className="bg-[#16A34A] text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-[#15803D] shadow-sm">
+                <button onClick={() => setShowAddForm(true)} className="bg-accent text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-accent-hover shadow-sm">
                   Add Your First Grant
                 </button>
               }
             />
           </div>
         ) : (
-          <div className="divide-y divide-stone-100">
+          <div className="divide-y divide-card-border">
             {grants.map(g => (
               <div key={g.id} className="px-5 py-4">
                 <div className="flex items-center justify-between cursor-pointer" onClick={() => setExpandedGrant(expandedGrant === g.id ? null : g.id)}>
                   <div className="flex items-center gap-3">
-                    <Briefcase size={18} className="text-stone-400" />
+                    <Briefcase size={18} className="text-text-muted" />
                     <div>
-                      <p className="font-medium text-stone-900">{g.employer_name} {g.ticker && <span className="text-stone-400 text-sm">({g.ticker})</span>}</p>
+                      <p className="font-medium text-text-primary">{g.employer_name} {g.ticker && <span className="text-text-muted text-sm">({g.ticker})</span>}</p>
                       <div className="flex items-center gap-2 mt-0.5">
-                        <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${GRANT_TYPE_COLORS[g.grant_type]}`}>{g.grant_type.toUpperCase()}</span>
-                        <span className="text-xs text-stone-400">{g.total_shares.toLocaleString()} shares</span>
-                        <span className="text-xs text-stone-400">Granted {g.grant_date}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${GRANT_TYPE_COLORS[g.grant_type]}`}>{g.grant_type.toUpperCase()}</span>
+                        <span className="text-xs text-text-muted">{g.total_shares.toLocaleString()} shares</span>
+                        <span className="text-xs text-text-muted">Granted {g.grant_date}</span>
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="text-right">
-                      <p className="font-semibold text-stone-900 font-mono tabular-nums">{g.current_fmv ? fmt(g.total_shares * g.current_fmv) : "—"}</p>
-                      <p className="text-xs text-stone-400">{g.vested_shares.toLocaleString()} vested / {g.unvested_shares.toLocaleString()} unvested</p>
+                      <p className="font-semibold text-text-primary font-mono tabular-nums">{g.current_fmv ? fmt(g.total_shares * g.current_fmv) : "—"}</p>
+                      <p className="text-xs text-text-muted">{g.vested_shares.toLocaleString()} vested / {g.unvested_shares.toLocaleString()} unvested</p>
                     </div>
-                    {expandedGrant === g.id ? <ChevronUp size={16} className="text-stone-400" /> : <ChevronDown size={16} className="text-stone-400" />}
+                    {expandedGrant === g.id ? <ChevronUp size={16} className="text-text-muted" /> : <ChevronDown size={16} className="text-text-muted" />}
                   </div>
                 </div>
                 {expandedGrant === g.id && (
-                  <div className="mt-4 pt-4 border-t border-stone-100 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                    <div><p className="text-stone-500 text-xs">Grant Date</p><p className="font-medium">{g.grant_date}</p></div>
-                    <div><p className="text-stone-500 text-xs">Current FMV</p><p className="font-medium">{g.current_fmv ? `$${g.current_fmv.toFixed(2)}` : "—"}</p></div>
-                    <div><p className="text-stone-500 text-xs">Strike Price</p><p className="font-medium">{g.strike_price ? `$${g.strike_price.toFixed(2)}` : "N/A"}</p></div>
-                    <div><p className="text-stone-500 text-xs">Expiration</p><p className="font-medium">{g.expiration_date || "N/A"}</p></div>
+                  <div className="mt-4 pt-4 border-t border-card-border grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div><p className="text-text-secondary text-xs">Grant Date</p><p className="font-medium">{g.grant_date}</p></div>
+                    <div><p className="text-text-secondary text-xs">Current FMV</p><p className="font-medium">{g.current_fmv ? `$${g.current_fmv.toFixed(2)}` : "—"}</p></div>
+                    <div><p className="text-text-secondary text-xs">Strike Price</p><p className="font-medium">{g.strike_price ? `$${g.strike_price.toFixed(2)}` : "N/A"}</p></div>
+                    <div><p className="text-text-secondary text-xs">Expiration</p><p className="font-medium">{g.expiration_date || "N/A"}</p></div>
                     <div className="col-span-2 md:col-span-4 flex justify-end">
                       <button onClick={() => handleDelete(g.id)} className="text-red-500 hover:text-red-700 text-xs flex items-center gap-1"><Trash2 size={14} /> Delete</button>
                     </div>
@@ -348,9 +348,9 @@ export default function EquityCompPage() {
       </div>
 
       {/* Analysis Tools */}
-      <div className="bg-white rounded-xl border border-stone-200">
-        <div className="px-5 py-4 border-b border-stone-100">
-          <h2 className="font-semibold text-stone-900 mb-3">Analysis Tools</h2>
+      <div className="bg-card rounded-xl border border-border">
+        <div className="px-5 py-4 border-b border-card-border">
+          <h2 className="font-semibold text-text-primary mb-3">Analysis Tools</h2>
           <div className="flex gap-2 flex-wrap">
             {([
               ["vesting", "Vesting Calendar", Calendar],
@@ -360,7 +360,7 @@ export default function EquityCompPage() {
               ["leave", "What If I Leave?", LogOut],
               ["espp", "ESPP Optimizer", ShoppingCart],
             ] as const).map(([key, label, Icon]) => (
-              <button key={key} onClick={() => setActiveTab(key)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition ${activeTab === key ? "bg-[#16A34A] text-white" : "bg-stone-100 text-stone-600 hover:bg-stone-200"}`}>
+              <button key={key} onClick={() => setActiveTab(key)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition ${activeTab === key ? "bg-accent text-white" : "bg-surface text-text-secondary hover:bg-surface"}`}>
                 <Icon size={14} />{label}
               </button>
             ))}
@@ -371,44 +371,44 @@ export default function EquityCompPage() {
           {/* Withholding Gap Tab */}
           {activeTab === "withholding" && (
             <div className="space-y-4">
-              <p className="text-sm text-stone-600">Federal supplemental withholding is only 22%, but your actual marginal rate is likely 32-37%. This tool calculates the gap.</p>
+              <p className="text-sm text-text-secondary">Federal supplemental withholding is only 22%, but your actual marginal rate is likely 32-37%. This tool calculates the gap.</p>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-stone-600 mb-1">Vest Income</label>
-                  <input type="number" className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm" value={gapForm.vest_income} onChange={e => setGapForm({ ...gapForm, vest_income: Number(e.target.value) })} />
+                  <label className="block text-xs font-medium text-text-secondary mb-1">Vest Income</label>
+                  <input type="number" className="w-full border border-border rounded-lg px-3 py-2 text-sm" value={gapForm.vest_income} onChange={e => setGapForm({ ...gapForm, vest_income: Number(e.target.value) })} />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-stone-600 mb-1">Other W-2 Income</label>
-                  <input type="number" className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm" value={gapForm.other_income} onChange={e => setGapForm({ ...gapForm, other_income: Number(e.target.value) })} />
+                  <label className="block text-xs font-medium text-text-secondary mb-1">Other W-2 Income</label>
+                  <input type="number" className="w-full border border-border rounded-lg px-3 py-2 text-sm" value={gapForm.other_income} onChange={e => setGapForm({ ...gapForm, other_income: Number(e.target.value) })} />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-stone-600 mb-1">Filing Status</label>
-                  <select className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm" value={gapForm.filing_status} onChange={e => setGapForm({ ...gapForm, filing_status: e.target.value })}>
+                  <label className="block text-xs font-medium text-text-secondary mb-1">Filing Status</label>
+                  <select className="w-full border border-border rounded-lg px-3 py-2 text-sm" value={gapForm.filing_status} onChange={e => setGapForm({ ...gapForm, filing_status: e.target.value })}>
                     <option value="mfj">Married Filing Jointly</option><option value="single">Single</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-stone-600 mb-1">State</label>
-                  <input className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm" value={gapForm.state} onChange={e => setGapForm({ ...gapForm, state: e.target.value })} />
+                  <label className="block text-xs font-medium text-text-secondary mb-1">State</label>
+                  <input className="w-full border border-border rounded-lg px-3 py-2 text-sm" value={gapForm.state} onChange={e => setGapForm({ ...gapForm, state: e.target.value })} />
                 </div>
               </div>
-              <button onClick={runWithholdingGap} disabled={analyzing} className="px-4 py-2 bg-[#16A34A] text-white rounded-lg text-sm font-medium hover:bg-[#15803D] disabled:opacity-50">
+              <button onClick={runWithholdingGap} disabled={analyzing} className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-50">
                 {analyzing ? "Calculating..." : "Calculate Gap"}
               </button>
               {gapResult && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-stone-50 rounded-lg p-4">
-                  <div><p className="text-xs text-stone-500">Withheld at 22%</p><p className="font-semibold font-mono tabular-nums">{fmt(gapResult.total_withholding_at_supplemental)}</p></div>
-                  <div><p className="text-xs text-stone-500">Actual Tax Owed</p><p className="font-semibold font-mono tabular-nums">{fmt(gapResult.total_tax_at_marginal)}</p></div>
-                  <div><p className="text-xs text-stone-500">Marginal Rate</p><p className="font-semibold font-mono tabular-nums">{pct(gapResult.actual_marginal_rate)}</p></div>
-                  <div><p className="text-xs text-stone-500">Withholding Gap</p><p className={`font-bold text-lg font-mono tabular-nums ${gapResult.withholding_gap > 0 ? "text-red-600" : "text-green-600"}`}>{fmt(gapResult.withholding_gap)}</p></div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-surface rounded-lg p-4">
+                  <div><p className="text-xs text-text-secondary">Withheld at 22%</p><p className="font-semibold font-mono tabular-nums">{fmt(gapResult.total_withholding_at_supplemental)}</p></div>
+                  <div><p className="text-xs text-text-secondary">Actual Tax Owed</p><p className="font-semibold font-mono tabular-nums">{fmt(gapResult.total_tax_at_marginal)}</p></div>
+                  <div><p className="text-xs text-text-secondary">Marginal Rate</p><p className="font-semibold font-mono tabular-nums">{pct(gapResult.actual_marginal_rate)}</p></div>
+                  <div><p className="text-xs text-text-secondary">Withholding Gap</p><p className={`font-bold text-lg font-mono tabular-nums ${gapResult.withholding_gap > 0 ? "text-red-600" : "text-green-600"}`}>{fmt(gapResult.withholding_gap)}</p></div>
                   {gapResult.quarterly_payments.length > 0 && (
                     <div className="col-span-2 md:col-span-4">
-                      <p className="text-xs font-medium text-stone-600 mb-2">Recommended Quarterly Estimated Payments</p>
+                      <p className="text-xs font-medium text-text-secondary mb-2">Recommended Quarterly Estimated Payments</p>
                       <div className="flex gap-3">
                         {gapResult.quarterly_payments.map(q => (
-                          <div key={q.quarter} className="bg-white rounded-lg p-3 border border-stone-200 flex-1 text-center">
-                            <p className="text-xs text-stone-500">Q{q.quarter} — {q.due_date}</p>
-                            <p className="font-semibold text-stone-900">{fmt(q.amount)}</p>
+                          <div key={q.quarter} className="bg-card rounded-lg p-3 border border-border flex-1 text-center">
+                            <p className="text-xs text-text-secondary">Q{q.quarter} — {q.due_date}</p>
+                            <p className="font-semibold text-text-primary">{fmt(q.amount)}</p>
                           </div>
                         ))}
                       </div>
@@ -422,49 +422,49 @@ export default function EquityCompPage() {
           {/* Sell Strategy Tab */}
           {activeTab === "sell" && (
             <div className="space-y-4">
-              <p className="text-sm text-stone-600">Compare immediate sell, hold for LTCG treatment, or staged selling to optimize after-tax proceeds.</p>
+              <p className="text-sm text-text-secondary">Compare immediate sell, hold for LTCG treatment, or staged selling to optimize after-tax proceeds.</p>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-stone-600 mb-1">Shares</label>
-                  <input type="number" className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm" value={sellForm.shares} onChange={e => setSellForm({ ...sellForm, shares: Number(e.target.value) })} />
+                  <label className="block text-xs font-medium text-text-secondary mb-1">Shares</label>
+                  <input type="number" className="w-full border border-border rounded-lg px-3 py-2 text-sm" value={sellForm.shares} onChange={e => setSellForm({ ...sellForm, shares: Number(e.target.value) })} />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-stone-600 mb-1">Cost Basis / Share</label>
-                  <input type="number" step="0.01" className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm" value={sellForm.cost_basis_per_share} onChange={e => setSellForm({ ...sellForm, cost_basis_per_share: Number(e.target.value) })} />
+                  <label className="block text-xs font-medium text-text-secondary mb-1">Cost Basis / Share</label>
+                  <input type="number" step="0.01" className="w-full border border-border rounded-lg px-3 py-2 text-sm" value={sellForm.cost_basis_per_share} onChange={e => setSellForm({ ...sellForm, cost_basis_per_share: Number(e.target.value) })} />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-stone-600 mb-1">Current Price</label>
-                  <input type="number" step="0.01" className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm" value={sellForm.current_price} onChange={e => setSellForm({ ...sellForm, current_price: Number(e.target.value) })} />
+                  <label className="block text-xs font-medium text-text-secondary mb-1">Current Price</label>
+                  <input type="number" step="0.01" className="w-full border border-border rounded-lg px-3 py-2 text-sm" value={sellForm.current_price} onChange={e => setSellForm({ ...sellForm, current_price: Number(e.target.value) })} />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-stone-600 mb-1">Other Income</label>
-                  <input type="number" className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm" value={sellForm.other_income} onChange={e => setSellForm({ ...sellForm, other_income: Number(e.target.value) })} />
+                  <label className="block text-xs font-medium text-text-secondary mb-1">Other Income</label>
+                  <input type="number" className="w-full border border-border rounded-lg px-3 py-2 text-sm" value={sellForm.other_income} onChange={e => setSellForm({ ...sellForm, other_income: Number(e.target.value) })} />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-stone-600 mb-1">Holding (months)</label>
-                  <input type="number" className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm" value={sellForm.holding_period_months} onChange={e => setSellForm({ ...sellForm, holding_period_months: Number(e.target.value) })} />
+                  <label className="block text-xs font-medium text-text-secondary mb-1">Holding (months)</label>
+                  <input type="number" className="w-full border border-border rounded-lg px-3 py-2 text-sm" value={sellForm.holding_period_months} onChange={e => setSellForm({ ...sellForm, holding_period_months: Number(e.target.value) })} />
                 </div>
               </div>
-              <button onClick={runSellStrategy} disabled={analyzing} className="px-4 py-2 bg-[#16A34A] text-white rounded-lg text-sm font-medium hover:bg-[#15803D] disabled:opacity-50">
+              <button onClick={runSellStrategy} disabled={analyzing} className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-50">
                 {analyzing ? "Calculating..." : "Compare Strategies"}
               </button>
               {sellResult && (
                 <div className="space-y-3">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div className="bg-stone-50 rounded-lg p-4 border border-stone-200">
-                      <p className="text-xs font-medium text-stone-500 mb-2">Sell Now</p>
-                      <p className="text-lg font-bold text-stone-900 font-mono tabular-nums">{fmt(sellResult.immediate_sell.net_proceeds)}</p>
-                      <p className="text-xs text-stone-500">Tax: {fmt(sellResult.immediate_sell.tax)} at {pct(sellResult.immediate_sell.tax_rate)}</p>
+                    <div className="bg-surface rounded-lg p-4 border border-border">
+                      <p className="text-xs font-medium text-text-secondary mb-2">Sell Now</p>
+                      <p className="text-lg font-bold text-text-primary font-mono tabular-nums">{fmt(sellResult.immediate_sell.net_proceeds)}</p>
+                      <p className="text-xs text-text-secondary">Tax: {fmt(sellResult.immediate_sell.tax)} at {pct(sellResult.immediate_sell.tax_rate)}</p>
                     </div>
-                    <div className="bg-stone-50 rounded-lg p-4 border border-stone-200">
-                      <p className="text-xs font-medium text-stone-500 mb-2">Hold 1 Year (projected)</p>
-                      <p className="text-lg font-bold text-stone-900 font-mono tabular-nums">{fmt(sellResult.hold_one_year.net_proceeds)}</p>
-                      <p className="text-xs text-stone-500">Tax: {fmt(sellResult.hold_one_year.tax)} at {pct(sellResult.hold_one_year.tax_rate)}</p>
+                    <div className="bg-surface rounded-lg p-4 border border-border">
+                      <p className="text-xs font-medium text-text-secondary mb-2">Hold 1 Year (projected)</p>
+                      <p className="text-lg font-bold text-text-primary font-mono tabular-nums">{fmt(sellResult.hold_one_year.net_proceeds)}</p>
+                      <p className="text-xs text-text-secondary">Tax: {fmt(sellResult.hold_one_year.tax)} at {pct(sellResult.hold_one_year.tax_rate)}</p>
                     </div>
-                    <div className="bg-stone-50 rounded-lg p-4 border border-stone-200">
-                      <p className="text-xs font-medium text-stone-500 mb-2">Staged (50/50)</p>
-                      <p className="text-lg font-bold text-stone-900 font-mono tabular-nums">{fmt(sellResult.staged_sell.net_proceeds)}</p>
-                      <p className="text-xs text-stone-500">Tax: {fmt(sellResult.staged_sell.total_tax)}</p>
+                    <div className="bg-surface rounded-lg p-4 border border-border">
+                      <p className="text-xs font-medium text-text-secondary mb-2">Staged (50/50)</p>
+                      <p className="text-lg font-bold text-text-primary font-mono tabular-nums">{fmt(sellResult.staged_sell.net_proceeds)}</p>
+                      <p className="text-xs text-text-secondary">Tax: {fmt(sellResult.staged_sell.total_tax)}</p>
                     </div>
                   </div>
                   <div className="bg-blue-50 rounded-lg p-3 text-sm text-blue-800">{sellResult.recommendation}</div>
@@ -476,34 +476,34 @@ export default function EquityCompPage() {
           {/* AMT Calculator Tab */}
           {activeTab === "amt" && (
             <div className="space-y-4">
-              <p className="text-sm text-stone-600">For ISO holders: calculate how many shares you can exercise without triggering the Alternative Minimum Tax.</p>
+              <p className="text-sm text-text-secondary">For ISO holders: calculate how many shares you can exercise without triggering the Alternative Minimum Tax.</p>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-stone-600 mb-1">ISO Shares Available</label>
-                  <input type="number" className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm" value={amtForm.iso_shares_available} onChange={e => setAmtForm({ ...amtForm, iso_shares_available: Number(e.target.value) })} />
+                  <label className="block text-xs font-medium text-text-secondary mb-1">ISO Shares Available</label>
+                  <input type="number" className="w-full border border-border rounded-lg px-3 py-2 text-sm" value={amtForm.iso_shares_available} onChange={e => setAmtForm({ ...amtForm, iso_shares_available: Number(e.target.value) })} />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-stone-600 mb-1">Strike Price</label>
-                  <input type="number" step="0.01" className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm" value={amtForm.strike_price} onChange={e => setAmtForm({ ...amtForm, strike_price: Number(e.target.value) })} />
+                  <label className="block text-xs font-medium text-text-secondary mb-1">Strike Price</label>
+                  <input type="number" step="0.01" className="w-full border border-border rounded-lg px-3 py-2 text-sm" value={amtForm.strike_price} onChange={e => setAmtForm({ ...amtForm, strike_price: Number(e.target.value) })} />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-stone-600 mb-1">Current FMV</label>
-                  <input type="number" step="0.01" className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm" value={amtForm.current_fmv} onChange={e => setAmtForm({ ...amtForm, current_fmv: Number(e.target.value) })} />
+                  <label className="block text-xs font-medium text-text-secondary mb-1">Current FMV</label>
+                  <input type="number" step="0.01" className="w-full border border-border rounded-lg px-3 py-2 text-sm" value={amtForm.current_fmv} onChange={e => setAmtForm({ ...amtForm, current_fmv: Number(e.target.value) })} />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-stone-600 mb-1">Other Income</label>
-                  <input type="number" className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm" value={amtForm.other_income} onChange={e => setAmtForm({ ...amtForm, other_income: Number(e.target.value) })} />
+                  <label className="block text-xs font-medium text-text-secondary mb-1">Other Income</label>
+                  <input type="number" className="w-full border border-border rounded-lg px-3 py-2 text-sm" value={amtForm.other_income} onChange={e => setAmtForm({ ...amtForm, other_income: Number(e.target.value) })} />
                 </div>
               </div>
-              <button onClick={runAMT} disabled={analyzing} className="px-4 py-2 bg-[#16A34A] text-white rounded-lg text-sm font-medium hover:bg-[#15803D] disabled:opacity-50">
+              <button onClick={runAMT} disabled={analyzing} className="px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-50">
                 {analyzing ? "Calculating..." : "Calculate AMT Crossover"}
               </button>
               {amtResult && (
-                <div className="bg-stone-50 rounded-lg p-4 space-y-3">
+                <div className="bg-surface rounded-lg p-4 space-y-3">
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    <div><p className="text-xs text-stone-500">Safe Exercise Shares</p><p className="text-xl font-bold text-green-600 font-mono tabular-nums">{amtResult.safe_exercise_shares.toLocaleString()}</p></div>
-                    <div><p className="text-xs text-stone-500">AMT Trigger Point</p><p className="font-semibold font-mono tabular-nums">{fmt(amtResult.amt_trigger_point)}</p></div>
-                    <div><p className="text-xs text-stone-500">Bargain Element / Share</p><p className="font-semibold font-mono tabular-nums">{fmt(amtResult.iso_bargain_element)}</p></div>
+                    <div><p className="text-xs text-text-secondary">Safe Exercise Shares</p><p className="text-xl font-bold text-green-600 font-mono tabular-nums">{amtResult.safe_exercise_shares.toLocaleString()}</p></div>
+                    <div><p className="text-xs text-text-secondary">AMT Trigger Point</p><p className="font-semibold font-mono tabular-nums">{fmt(amtResult.amt_trigger_point)}</p></div>
+                    <div><p className="text-xs text-text-secondary">Bargain Element / Share</p><p className="font-semibold font-mono tabular-nums">{fmt(amtResult.iso_bargain_element)}</p></div>
                   </div>
                   <div className="bg-blue-50 rounded-lg p-3 text-sm text-blue-800">{amtResult.recommendation}</div>
                 </div>
@@ -514,14 +514,14 @@ export default function EquityCompPage() {
           {/* What If I Leave Tab */}
           {activeTab === "leave" && (
             <div className="space-y-4">
-              <p className="text-sm text-stone-600">See what you&apos;d forfeit and what it would cost to exercise if you left your employer. Uses your current grants above.</p>
+              <p className="text-sm text-text-secondary">See what you&apos;d forfeit and what it would cost to exercise if you left your employer. Uses your current grants above.</p>
               {grants.length === 0 ? (
-                <p className="text-stone-400 text-sm">Add grants above first.</p>
+                <p className="text-text-muted text-sm">Add grants above first.</p>
               ) : (
-                <div className="bg-stone-50 rounded-lg p-4">
-                  <p className="text-sm text-stone-600 mb-2">Based on your {grants.length} active grant(s):</p>
+                <div className="bg-surface rounded-lg p-4">
+                  <p className="text-sm text-text-secondary mb-2">Based on your {grants.length} active grant(s):</p>
                   {grants.map(g => (
-                    <div key={g.id} className="flex justify-between py-2 border-b border-stone-200 last:border-0 text-sm">
+                    <div key={g.id} className="flex justify-between py-2 border-b border-border last:border-0 text-sm">
                       <span>{g.employer_name} — {g.grant_type.toUpperCase()}</span>
                       <span className="text-red-600 font-medium">Forfeit: {g.current_fmv ? fmt(g.unvested_shares * g.current_fmv) : "—"}</span>
                     </div>

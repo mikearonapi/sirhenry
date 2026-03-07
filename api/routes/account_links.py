@@ -12,7 +12,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.database import get_session
-from api.models.schemas import AccountLinkOut, LinkAccountIn, MergeResultOut, SuggestedLinkOut
+from api.models.schemas import AccountLinkOut, LinkAccountIn, MergeResultOut, ResolveDuplicateIn, SuggestedLinkOut
 from pipeline.db.schema import Account, AccountLink, Document, PlaidAccount, Transaction
 
 logger = logging.getLogger(__name__)
@@ -256,14 +256,12 @@ async def auto_dedup(
 
 @router.post("/resolve-duplicate")
 async def resolve_duplicate(
-    body: dict,
+    body: ResolveDuplicateIn,
     session: AsyncSession = Depends(get_session),
 ):
     """Manually resolve a duplicate pair: keep one, exclude the other."""
-    keep_id = body.get("keep_id")
-    exclude_id = body.get("exclude_id")
-    if not keep_id or not exclude_id:
-        raise HTTPException(400, "Both keep_id and exclude_id are required")
+    keep_id = body.keep_id
+    exclude_id = body.exclude_id
 
     result = await session.execute(
         select(Transaction).where(Transaction.id == exclude_id)

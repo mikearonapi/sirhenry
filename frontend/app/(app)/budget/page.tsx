@@ -117,7 +117,7 @@ function prevMonth(year: number, month: number) {
 
 function varianceColor(variance: number, section: BudgetSection): string {
   if (section === "expense") return variance >= 0 ? "text-green-600" : "text-red-600";
-  return variance <= 0 ? "text-green-600" : "text-stone-500";
+  return variance <= 0 ? "text-green-600" : "text-text-secondary";
 }
 
 // ── Main component ───────────────────────────────────────────────────────────
@@ -320,17 +320,17 @@ export default function BudgetPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <h1 className="text-2xl font-bold text-stone-900 tracking-tight">{monthName(month)} {year}</h1>
-          <div className="flex bg-stone-100 rounded-lg p-0.5">
-            <button onClick={() => setActiveView("budget")} className={`px-3 py-1.5 rounded-md text-xs font-medium ${activeView === "budget" ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700"}`}>Budget</button>
-            <button onClick={() => setActiveView("forecast")} className={`px-3 py-1.5 rounded-md text-xs font-medium ${activeView === "forecast" ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700"}`}>Forecast</button>
+          <h1 className="text-2xl font-bold text-text-primary tracking-tight">{monthName(month)} {year}</h1>
+          <div className="flex bg-surface rounded-lg p-0.5">
+            <button onClick={() => setActiveView("budget")} className={`px-3 py-1.5 rounded-md text-xs font-medium ${activeView === "budget" ? "bg-card text-text-primary shadow-sm" : "text-text-secondary hover:text-text-secondary"}`}>Budget</button>
+            <button onClick={() => setActiveView("forecast")} className={`px-3 py-1.5 rounded-md text-xs font-medium ${activeView === "forecast" ? "bg-card text-text-primary shadow-sm" : "text-text-secondary hover:text-text-secondary"}`}>Forecast</button>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => { if (month === 1) { setYear(year - 1); setMonth(12); } else setMonth(month - 1); }} aria-label="Previous month" className="p-2 hover:bg-stone-100 rounded-lg border border-stone-200"><ChevronLeft size={14} className="text-stone-500" /></button>
-          <button onClick={() => { if (month === 12) { setYear(year + 1); setMonth(1); } else setMonth(month + 1); }} aria-label="Next month" className="p-2 hover:bg-stone-100 rounded-lg border border-stone-200"><ChevronRight size={14} className="text-stone-500" /></button>
-          <button onClick={() => { setYear(now.getFullYear()); setMonth(now.getMonth() + 1); }} className="p-2 hover:bg-stone-100 rounded-lg border border-stone-200 text-stone-500 text-xs font-medium px-3">Today</button>
-          <button onClick={() => setShowAddForm(!showAddForm)} className="flex items-center gap-1.5 text-xs bg-[#16A34A] text-white rounded-lg px-3 py-2 hover:bg-[#15803D] shadow-sm"><Plus size={12} /> Add Line</button>
+          <button onClick={() => { if (month === 1) { setYear(year - 1); setMonth(12); } else setMonth(month - 1); }} aria-label="Previous month" className="p-2 hover:bg-surface rounded-lg border border-border"><ChevronLeft size={14} className="text-text-secondary" /></button>
+          <button onClick={() => { if (month === 12) { setYear(year + 1); setMonth(1); } else setMonth(month + 1); }} aria-label="Next month" className="p-2 hover:bg-surface rounded-lg border border-border"><ChevronRight size={14} className="text-text-secondary" /></button>
+          <button onClick={() => { setYear(now.getFullYear()); setMonth(now.getMonth() + 1); }} className="p-2 hover:bg-surface rounded-lg border border-border text-text-secondary text-xs font-medium px-3">Today</button>
+          <button onClick={() => setShowAddForm(!showAddForm)} className="flex items-center gap-1.5 text-xs bg-accent text-white rounded-lg px-3 py-2 hover:bg-accent-hover shadow-sm"><Plus size={12} /> Add Line</button>
         </div>
       </div>
 
@@ -348,7 +348,7 @@ export default function BudgetPage() {
         <div className="lg:col-span-3 space-y-6">
           {/* Toolbar */}
           <div className="flex items-center gap-3 flex-wrap">
-            <button onClick={handleCopyPrevious} disabled={copying} className="flex items-center gap-1.5 text-xs border border-stone-200 rounded-lg px-3 py-2 text-stone-600 hover:bg-stone-50 disabled:opacity-50">
+            <button onClick={handleCopyPrevious} disabled={copying} className="flex items-center gap-1.5 text-xs border border-border rounded-lg px-3 py-2 text-text-secondary hover:bg-surface disabled:opacity-50">
               {copying ? <Loader2 size={12} className="animate-spin" /> : <Copy size={12} />}
               Copy from {monthName(prev.month)}
             </button>
@@ -358,12 +358,12 @@ export default function BudgetPage() {
                 Auto-budget {unbudgeted.length} categories
               </button>
             )}
-            <div className="flex bg-stone-100 rounded-lg p-0.5 ml-auto">
+            <div className="flex bg-surface rounded-lg p-0.5 ml-auto">
               {(["all", "personal", "business"] as const).map((s) => (
                 <button
                   key={s}
                   onClick={() => setSegmentFilter(s)}
-                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${segmentFilter === s ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700"}`}
+                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${segmentFilter === s ? "bg-card text-text-primary shadow-sm" : "text-text-secondary hover:text-text-secondary"}`}
                 >
                   {s === "all" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
                 </button>
@@ -376,40 +376,40 @@ export default function BudgetPage() {
             <Card padding="md">
               <div className="flex gap-2 flex-wrap items-end">
                 <div className="flex-1 min-w-48">
-                  <label className="block text-xs text-stone-500 mb-1">Category</label>
-                  <select value={addCategory} onChange={(e) => { setAddCategory(e.target.value); setCustomCategory(""); }} className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A] bg-white">
+                  <label className="block text-xs text-text-secondary mb-1">Category</label>
+                  <select value={addCategory} onChange={(e) => { setAddCategory(e.target.value); setCustomCategory(""); }} className="w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent bg-card">
                     <option value="">Select category...</option>
                     {categories.length > 0 && (<optgroup label="From Your Transactions">{categories.map((m) => <option key={m.category} value={m.category}>{m.category}</option>)}</optgroup>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-stone-500 mb-1">Or custom</label>
-                  <input type="text" value={customCategory} onChange={(e) => { setCustomCategory(e.target.value); setAddCategory(""); }} placeholder="Type custom..." className="w-36 text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20" />
+                  <label className="block text-xs text-text-secondary mb-1">Or custom</label>
+                  <input type="text" value={customCategory} onChange={(e) => { setCustomCategory(e.target.value); setAddCategory(""); }} placeholder="Type custom..." className="w-36 text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20" />
                 </div>
                 <div>
-                  <label className="block text-xs text-stone-500 mb-1">Amount</label>
-                  <input type="number" value={addAmount} onChange={(e) => setAddAmount(e.target.value)} placeholder="$0" min="0" step="10" className="w-24 text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20" />
+                  <label className="block text-xs text-text-secondary mb-1">Amount</label>
+                  <input type="number" value={addAmount} onChange={(e) => setAddAmount(e.target.value)} placeholder="$0" min="0" step="10" className="w-24 text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20" />
                 </div>
-                <button onClick={handleAdd} disabled={saving || !effectiveCategory || !addAmount} className="flex items-center gap-1 bg-[#16A34A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#15803D] disabled:opacity-60">
+                <button onClick={handleAdd} disabled={saving || !effectiveCategory || !addAmount} className="flex items-center gap-1 bg-accent text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-60">
                   {saving ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />} Add
                 </button>
-                <button onClick={() => setShowAddForm(false)} className="text-xs text-stone-400 hover:text-stone-600 px-2 py-2">Cancel</button>
+                <button onClick={() => setShowAddForm(false)} className="text-xs text-text-muted hover:text-text-secondary px-2 py-2">Cancel</button>
               </div>
             </Card>
           )}
 
           {loading ? (
-            <div className="flex justify-center py-12"><Loader2 className="animate-spin text-stone-300" size={24} /></div>
+            <div className="flex justify-center py-12"><Loader2 className="animate-spin text-text-muted" size={24} /></div>
           ) : budgets.length === 0 ? (
             <Card padding="lg" className="text-center">
-              <Target className="mx-auto text-stone-200 mb-3" size={36} />
-              <p className="text-stone-400 text-sm">No budget set for {monthName(month)} {year}.</p>
-              <p className="text-stone-300 text-xs mt-1 mb-4">Add budget lines above or copy from {monthName(prev.month)}.</p>
+              <Target className="mx-auto text-text-muted mb-3" size={36} />
+              <p className="text-text-muted text-sm">No budget set for {monthName(month)} {year}.</p>
+              <p className="text-text-muted text-xs mt-1 mb-4">Add budget lines above or copy from {monthName(prev.month)}.</p>
               <div className="flex items-center justify-center gap-3">
                 <button
                   onClick={handleGenerateSmartBudget}
                   disabled={generatingSmart}
-                  className="flex items-center gap-2 bg-[#16A34A] text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-[#15803d] disabled:opacity-50 shadow-sm"
+                  className="flex items-center gap-2 bg-accent text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-50 shadow-sm"
                 >
                   {generatingSmart ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
                   Generate Smart Budget
@@ -417,7 +417,7 @@ export default function BudgetPage() {
                 <button
                   onClick={handleCopyPrevious}
                   disabled={copying}
-                  className="flex items-center gap-1.5 text-sm border border-stone-200 rounded-lg px-4 py-2.5 text-stone-600 hover:bg-stone-50 disabled:opacity-50"
+                  className="flex items-center gap-1.5 text-sm border border-border rounded-lg px-4 py-2.5 text-text-secondary hover:bg-surface disabled:opacity-50"
                 >
                   {copying ? <Loader2 size={14} className="animate-spin" /> : <Copy size={14} />}
                   Copy from {monthName(prev.month)}
@@ -431,9 +431,9 @@ export default function BudgetPage() {
             <div>
               <div className="flex items-center px-4 py-2 mb-1">
                 <span className="flex-1 text-xs font-semibold text-green-700 uppercase tracking-wider">Income</span>
-                <span className="w-24 text-right text-xs font-semibold text-stone-400 uppercase tracking-wider">Budget</span>
-                <span className="w-24 text-right text-xs font-semibold text-stone-400 uppercase tracking-wider">Actual</span>
-                <span className="w-28 text-right text-xs font-semibold text-stone-400 uppercase tracking-wider">Remaining</span>
+                <span className="w-24 text-right text-xs font-semibold text-text-muted uppercase tracking-wider">Budget</span>
+                <span className="w-24 text-right text-xs font-semibold text-text-muted uppercase tracking-wider">Actual</span>
+                <span className="w-28 text-right text-xs font-semibold text-text-muted uppercase tracking-wider">Remaining</span>
                 <span className="w-12" />
               </div>
               <Card padding="none">
@@ -457,8 +457,8 @@ export default function BudgetPage() {
                 )}
                 <div className="flex items-center px-4 py-3 border-t-2 border-green-200 bg-green-50/30">
                   <span className="flex-1 text-sm font-bold text-green-800">Total Income</span>
-                  <span className="w-24 text-right text-sm font-bold tabular-nums text-stone-800">{formatCurrency(totalIncomeBudget)}</span>
-                  <span className="w-24 text-right text-sm font-bold tabular-nums text-stone-600">{formatCurrency(totalIncomeActual)}</span>
+                  <span className="w-24 text-right text-sm font-bold tabular-nums text-text-primary">{formatCurrency(totalIncomeBudget)}</span>
+                  <span className="w-24 text-right text-sm font-bold tabular-nums text-text-secondary">{formatCurrency(totalIncomeActual)}</span>
                   <span className={`w-28 text-right text-sm font-bold tabular-nums ${varianceColor(totalIncomeBudget - totalIncomeActual, "income")}`}>{formatCurrency(totalIncomeBudget - totalIncomeActual)}</span>
                   <span className="w-12" />
                 </div>
@@ -489,12 +489,12 @@ export default function BudgetPage() {
                   <span className="text-xs text-amber-600 tabular-nums font-medium">{formatCurrency(unbudgeted.reduce((s, u) => s + u.actual_amount, 0))} spent</span>
                 </button>
                 {showUnbudgeted && (
-                  <div className="divide-y divide-stone-50">
+                  <div className="divide-y divide-border-light">
                     {unbudgeted.map((u) => (
-                      <div key={u.category} className="flex items-center px-4 py-2.5 hover:bg-stone-50/50">
-                        <div className="flex-1 pl-7"><p className="text-sm text-stone-600">{u.category}</p></div>
-                        <span className="text-sm tabular-nums text-stone-500 mr-4">{formatCurrency(u.actual_amount)}</span>
-                        <button onClick={() => handleQuickBudget(u.category, u.actual_amount)} disabled={saving} className="text-xs text-[#16A34A] hover:underline font-medium">+ Budget</button>
+                      <div key={u.category} className="flex items-center px-4 py-2.5 hover:bg-surface/50">
+                        <div className="flex-1 pl-7"><p className="text-sm text-text-secondary">{u.category}</p></div>
+                        <span className="text-sm tabular-nums text-text-secondary mr-4">{formatCurrency(u.actual_amount)}</span>
+                        <button onClick={() => handleQuickBudget(u.category, u.actual_amount)} disabled={saving} className="text-xs text-accent hover:underline font-medium">+ Budget</button>
                       </div>
                     ))}
                   </div>
@@ -507,9 +507,9 @@ export default function BudgetPage() {
             <div>
               <div className="flex items-center px-4 py-2 mb-1">
                 <span className="flex-1 text-xs font-semibold text-blue-700 uppercase tracking-wider">Contributions</span>
-                <span className="w-24 text-right text-xs font-semibold text-stone-400 uppercase tracking-wider">Budget</span>
-                <span className="w-24 text-right text-xs font-semibold text-stone-400 uppercase tracking-wider">Actual</span>
-                <span className="w-28 text-right text-xs font-semibold text-stone-400 uppercase tracking-wider">Remaining</span>
+                <span className="w-24 text-right text-xs font-semibold text-text-muted uppercase tracking-wider">Budget</span>
+                <span className="w-24 text-right text-xs font-semibold text-text-muted uppercase tracking-wider">Actual</span>
+                <span className="w-28 text-right text-xs font-semibold text-text-muted uppercase tracking-wider">Remaining</span>
                 <span className="w-12" />
               </div>
               <Card padding="none">
@@ -533,8 +533,8 @@ export default function BudgetPage() {
                 )}
                 <div className="flex items-center px-4 py-3 border-t-2 border-blue-200 bg-blue-50/30">
                   <span className="flex-1 text-sm font-bold text-blue-800">Total Contributions</span>
-                  <span className="w-24 text-right text-sm font-bold tabular-nums text-stone-800">{formatCurrency(totalGoalBudget)}</span>
-                  <span className="w-24 text-right text-sm font-bold tabular-nums text-stone-600">{formatCurrency(totalGoalActual)}</span>
+                  <span className="w-24 text-right text-sm font-bold tabular-nums text-text-primary">{formatCurrency(totalGoalBudget)}</span>
+                  <span className="w-24 text-right text-sm font-bold tabular-nums text-text-secondary">{formatCurrency(totalGoalActual)}</span>
                   <span className={`w-28 text-right text-sm font-bold tabular-nums ${varianceColor(totalGoalBudget - totalGoalActual, "goal")}`}>{formatCurrency(totalGoalBudget - totalGoalActual)}</span>
                   <span className="w-12" />
                 </div>
@@ -550,35 +550,35 @@ export default function BudgetPage() {
           <Card padding="lg" className={isBalanced ? "ring-1 ring-green-200 bg-green-50/20" : unallocated > 0 ? "ring-1 ring-amber-200 bg-amber-50/20" : "ring-1 ring-red-200 bg-red-50/20"}>
             <div className="text-center">
               <p className={`text-3xl font-bold tracking-tight ${isBalanced ? "text-green-600" : unallocated > 0 ? "text-amber-600" : "text-red-600"}`}>{formatCurrency(Math.abs(unallocated))}</p>
-              <p className="text-xs text-stone-500 mt-1">{isBalanced ? "Balanced budget" : unallocated > 0 ? "Left to budget" : "Over-allocated"}</p>
+              <p className="text-xs text-text-secondary mt-1">{isBalanced ? "Balanced budget" : unallocated > 0 ? "Left to budget" : "Over-allocated"}</p>
             </div>
           </Card>
 
           {budgets.length > 0 && (
             <Card padding="lg">
-              <h3 className="text-xs font-semibold text-stone-500 uppercase tracking-wider mb-3">Summary</h3>
+              <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3">Summary</h3>
               <div className="space-y-3">
                 <div>
-                  <div className="flex justify-between text-xs text-stone-500 mb-1"><span>Income</span><span className="font-medium">{formatCurrency(totalIncomeBudget)} budget</span></div>
+                  <div className="flex justify-between text-xs text-text-secondary mb-1"><span>Income</span><span className="font-medium">{formatCurrency(totalIncomeBudget)} budget</span></div>
                   <ProgressBar value={totalIncomeActual} max={totalIncomeBudget || 1} color="#16a34a" size="sm" />
-                  <div className="flex justify-between text-xs mt-1"><span className="text-stone-600">{formatCurrency(totalIncomeActual)} earned</span><span className="text-stone-400">{formatCurrency(Math.max(0, totalIncomeBudget - totalIncomeActual))} remaining</span></div>
+                  <div className="flex justify-between text-xs mt-1"><span className="text-text-secondary">{formatCurrency(totalIncomeActual)} earned</span><span className="text-text-muted">{formatCurrency(Math.max(0, totalIncomeBudget - totalIncomeActual))} remaining</span></div>
                 </div>
                 <div>
-                  <div className="flex justify-between text-xs text-stone-500 mb-1"><span>Expenses</span><span className="font-medium">{formatCurrency(totalExpenseBudget)} budget</span></div>
+                  <div className="flex justify-between text-xs text-text-secondary mb-1"><span>Expenses</span><span className="font-medium">{formatCurrency(totalExpenseBudget)} budget</span></div>
                   <ProgressBar value={totalExpenseActual} max={totalExpenseBudget || 1} color="#16A34A" size="sm" />
-                  <div className="flex justify-between text-xs mt-1"><span className="text-stone-600">{formatCurrency(totalExpenseActual)} spent</span><span className="text-stone-400">{formatCurrency(Math.max(0, totalExpenseBudget - totalExpenseActual))} remaining</span></div>
+                  <div className="flex justify-between text-xs mt-1"><span className="text-text-secondary">{formatCurrency(totalExpenseActual)} spent</span><span className="text-text-muted">{formatCurrency(Math.max(0, totalExpenseBudget - totalExpenseActual))} remaining</span></div>
                 </div>
                 <div>
-                  <div className="flex justify-between text-xs text-stone-500 mb-1"><span>Goals</span><span className="font-medium">{formatCurrency(totalGoalBudget)} budget</span></div>
+                  <div className="flex justify-between text-xs text-text-secondary mb-1"><span>Goals</span><span className="font-medium">{formatCurrency(totalGoalBudget)} budget</span></div>
                   <ProgressBar value={totalGoalActual} max={totalGoalBudget || 1} color="#2563eb" size="sm" />
-                  <div className="flex justify-between text-xs mt-1"><span className="text-stone-600">{formatCurrency(totalGoalActual)} contributed</span><span className="text-stone-400">{formatCurrency(Math.max(0, totalGoalBudget - totalGoalActual))} remaining</span></div>
+                  <div className="flex justify-between text-xs mt-1"><span className="text-text-secondary">{formatCurrency(totalGoalActual)} contributed</span><span className="text-text-muted">{formatCurrency(Math.max(0, totalGoalBudget - totalGoalActual))} remaining</span></div>
                 </div>
-                <div className="border-t border-stone-100 pt-3">
+                <div className="border-t border-card-border pt-3">
                   <div className="space-y-1.5 text-xs">
-                    <div className="flex justify-between"><span className="text-stone-400">Income</span><span className="tabular-nums text-stone-700 font-medium">{formatCurrency(totalIncomeBudget)}</span></div>
-                    <div className="flex justify-between"><span className="text-stone-400">- Expenses</span><span className="tabular-nums text-stone-700 font-medium">-{formatCurrency(totalExpenseBudget)}</span></div>
-                    <div className="flex justify-between"><span className="text-stone-400">- Goals</span><span className="tabular-nums text-stone-700 font-medium">-{formatCurrency(totalGoalBudget)}</span></div>
-                    <div className="flex justify-between border-t border-stone-200 pt-1.5">
+                    <div className="flex justify-between"><span className="text-text-muted">Income</span><span className="tabular-nums text-text-secondary font-medium">{formatCurrency(totalIncomeBudget)}</span></div>
+                    <div className="flex justify-between"><span className="text-text-muted">- Expenses</span><span className="tabular-nums text-text-secondary font-medium">-{formatCurrency(totalExpenseBudget)}</span></div>
+                    <div className="flex justify-between"><span className="text-text-muted">- Goals</span><span className="tabular-nums text-text-secondary font-medium">-{formatCurrency(totalGoalBudget)}</span></div>
+                    <div className="flex justify-between border-t border-border pt-1.5">
                       <span className={`font-semibold ${isBalanced ? "text-green-700" : unallocated > 0 ? "text-amber-700" : "text-red-700"}`}>{isBalanced ? "= Balanced" : unallocated > 0 ? "= Unallocated" : "= Over-allocated"}</span>
                       <span className={`tabular-nums font-bold ${isBalanced ? "text-green-700" : unallocated > 0 ? "text-amber-700" : "text-red-700"}`}>{formatCurrency(unallocated)}</span>
                     </div>
@@ -606,10 +606,10 @@ export default function BudgetPage() {
             <Card padding="lg">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-7 h-7 rounded-lg bg-green-50 flex items-center justify-center"><DollarSign size={14} className="text-green-600" /></div>
-                <span className="text-[10px] font-medium text-stone-500 uppercase tracking-wider">Normalized</span>
+                <span className="text-xs font-medium text-text-secondary uppercase tracking-wider">Normalized</span>
               </div>
-              <p className="text-xl font-bold text-stone-900 tabular-nums">{formatCurrency(insights.data.summary.normalized_monthly_budget, true)}</p>
-              <p className="text-[11px] text-stone-400 mt-1">per month (excl. outliers)</p>
+              <p className="text-xl font-bold text-text-primary tabular-nums">{formatCurrency(insights.data.summary.normalized_monthly_budget, true)}</p>
+              <p className="text-xs text-text-muted mt-1">per month (excl. outliers)</p>
             </Card>
           )}
         </div>
@@ -619,30 +619,30 @@ export default function BudgetPage() {
         <Card padding="lg">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <Sparkles size={16} className="text-[#16A34A]" />
-              <h3 className="text-sm font-semibold text-stone-800">Smart Budget Preview</h3>
+              <Sparkles size={16} className="text-accent" />
+              <h3 className="text-sm font-semibold text-text-primary">Smart Budget Preview</h3>
             </div>
             <div className="flex items-center gap-2">
-              <button onClick={() => { setSmartPreview(false); setSmartLines([]); }} className="text-xs text-stone-400 hover:text-stone-600 px-2 py-1">Cancel</button>
-              <button onClick={handleApplySmartBudget} disabled={applyingSmart} className="flex items-center gap-1.5 text-xs bg-[#16A34A] text-white rounded-lg px-3 py-1.5 hover:bg-[#15803d] disabled:opacity-50">
+              <button onClick={() => { setSmartPreview(false); setSmartLines([]); }} className="text-xs text-text-muted hover:text-text-secondary px-2 py-1">Cancel</button>
+              <button onClick={handleApplySmartBudget} disabled={applyingSmart} className="flex items-center gap-1.5 text-xs bg-accent text-white rounded-lg px-3 py-1.5 hover:bg-accent-hover disabled:opacity-50">
                 {applyingSmart ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
                 Apply All ({smartLines.length} lines)
               </button>
             </div>
           </div>
-          <div className="divide-y divide-stone-100">
+          <div className="divide-y divide-card-border">
             {smartLines.map((line, i) => (
               <div key={i} className="flex items-center py-2.5 text-sm">
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-stone-700">{line.category}</p>
-                  <p className="text-xs text-stone-400">{line.source}</p>
+                  <p className="font-medium text-text-secondary">{line.category}</p>
+                  <p className="text-xs text-text-muted">{line.source}</p>
                 </div>
-                <span className="text-sm font-mono tabular-nums text-stone-800">{formatCurrency(line.budget_amount)}</span>
+                <span className="text-sm font-mono tabular-nums text-text-primary">{formatCurrency(line.budget_amount)}</span>
               </div>
             ))}
             <div className="flex items-center pt-3 mt-1">
-              <span className="flex-1 text-sm font-bold text-stone-800">Total</span>
-              <span className="text-sm font-bold font-mono tabular-nums text-stone-800">
+              <span className="flex-1 text-sm font-bold text-text-primary">Total</span>
+              <span className="text-sm font-bold font-mono tabular-nums text-text-primary">
                 {formatCurrency(smartLines.reduce((s, l) => s + l.budget_amount, 0))}
               </span>
             </div>

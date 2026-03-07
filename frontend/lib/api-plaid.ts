@@ -18,6 +18,7 @@ export function getPlaidLinkToken(): Promise<{ link_token: string }> {
 }
 
 export function exchangePlaidPublicToken(publicToken: string, institution: string): Promise<{
+  id: number;
   item_id: string;
   status: string;
   sync_status?: string;
@@ -28,6 +29,16 @@ export function exchangePlaidPublicToken(publicToken: string, institution: strin
     method: "POST",
     body: JSON.stringify({ public_token: publicToken, institution_name: institution }),
   });
+}
+
+export function getPlaidSyncStatus(itemId: number): Promise<{
+  id: number;
+  status: string;
+  sync_phase: string | null;
+  last_synced_at: string | null;
+  error_code: string | null;
+}> {
+  return request(`/plaid/sync-status/${itemId}`);
 }
 
 export function deletePlaidItem(itemId: number): Promise<{ status: string; institution: string }> {

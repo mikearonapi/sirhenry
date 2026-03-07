@@ -188,15 +188,15 @@ export default function ConnectEmployer({ onConnectionComplete }: ConnectEmploye
   const hasConnections = activeConnections.length > 0;
 
   return (
-    <div className="bg-white border border-stone-100 rounded-xl shadow-sm overflow-hidden">
+    <div className="bg-card border border-card-border rounded-xl shadow-sm overflow-hidden">
       {/* Header */}
       <div className="p-5 pb-4 flex items-start gap-3">
         <div className="w-9 h-9 rounded-lg bg-green-50 flex items-center justify-center shrink-0">
-          <Briefcase size={18} className="text-[#16A34A]" />
+          <Briefcase size={18} className="text-accent" />
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-semibold text-stone-900">Connect Your Employer</h3>
-          <p className="text-xs text-stone-500 mt-0.5">
+          <h3 className="text-sm font-semibold text-text-primary">Connect Your Employer</h3>
+          <p className="text-xs text-text-secondary mt-0.5">
             Link your payroll provider to auto-import income, benefits, and tax withholdings
           </p>
         </div>
@@ -215,7 +215,7 @@ export default function ConnectEmployer({ onConnectionComplete }: ConnectEmploye
 
       {/* Loading state */}
       {loadingConnections ? (
-        <div className="px-5 pb-5 flex items-center gap-2 text-stone-400">
+        <div className="px-5 pb-5 flex items-center gap-2 text-text-muted">
           <Loader2 size={14} className="animate-spin" />
           <span className="text-xs">Loading connections...</span>
         </div>
@@ -228,21 +228,21 @@ export default function ConnectEmployer({ onConnectionComplete }: ConnectEmploye
                 const summary = cascadeSummaries.get(conn.id);
                 const badge = STATUS_BADGES[conn.status];
                 return (
-                  <div key={conn.id} className="border border-stone-100 rounded-lg p-3">
+                  <div key={conn.id} className="border border-card-border rounded-lg p-3">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <CheckCircle size={14} className="text-[#16A34A]" />
-                        <span className="text-sm font-medium text-stone-900">
+                        <CheckCircle size={14} className="text-accent" />
+                        <span className="text-sm font-medium text-text-primary">
                           {conn.employer_name ?? "Employer"}
                         </span>
                       </div>
-                      <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${badge.className}`}>
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${badge.className}`}>
                         {badge.label}
                       </span>
                     </div>
 
                     {conn.last_synced_at && (
-                      <p className="text-[11px] text-stone-400 mb-2">
+                      <p className="text-xs text-text-muted mb-2">
                         Last synced {new Date(conn.last_synced_at).toLocaleDateString("en-US", {
                           month: "short", day: "numeric", year: "numeric",
                         })}
@@ -251,14 +251,14 @@ export default function ConnectEmployer({ onConnectionComplete }: ConnectEmploye
 
                     {/* Cascade summary */}
                     {summary && (
-                      <div className="bg-stone-50 rounded-lg p-3 mb-2">
-                        <p className="text-xs font-medium text-stone-700 mb-1.5">
+                      <div className="bg-surface rounded-lg p-3 mb-2">
+                        <p className="text-xs font-medium text-text-secondary mb-1.5">
                           Imported from {summary.employer ?? "employer"}:
                         </p>
-                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-stone-600">
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-text-secondary">
                           {summary.annual_income != null && summary.annual_income > 0 && (
                             <span>
-                              <span className="font-mono font-medium text-stone-800">
+                              <span className="font-mono font-medium text-text-primary">
                                 {formatCurrency(summary.annual_income, true)}
                               </span>
                               {" "}salary
@@ -276,12 +276,12 @@ export default function ConnectEmployer({ onConnectionComplete }: ConnectEmploye
 
                     {/* Data flow badges */}
                     <div className="flex flex-wrap gap-1.5">
-                      <span className="text-[10px] text-stone-400 leading-5">Data flowing to:</span>
+                      <span className="text-xs text-text-muted leading-5">Data flowing to:</span>
                       {DATA_FLOW_BADGES.map((b) => (
                         <a
                           key={b.href}
                           href={b.href}
-                          className="inline-flex items-center gap-1 text-[10px] font-medium text-[#16A34A] bg-green-50 hover:bg-green-100 px-2 py-0.5 rounded-full transition-colors"
+                          className="inline-flex items-center gap-1 text-xs font-medium text-accent bg-green-50 hover:bg-green-100 px-2 py-0.5 rounded-full transition-colors"
                         >
                           {b.label}
                           <ArrowRight size={9} />
@@ -300,14 +300,14 @@ export default function ConnectEmployer({ onConnectionComplete }: ConnectEmploye
               {connections.filter((c) => c.status !== "active").map((conn) => {
                 const badge = STATUS_BADGES[conn.status];
                 return (
-                  <div key={conn.id} className="flex items-center gap-2 border border-stone-100 rounded-lg p-3">
+                  <div key={conn.id} className="flex items-center gap-2 border border-card-border rounded-lg p-3">
                     {conn.status === "syncing" && <Loader2 size={14} className="animate-spin text-blue-500" />}
                     {conn.status === "error" && <AlertCircle size={14} className="text-red-500" />}
                     {conn.status === "pending" && <Loader2 size={14} className="animate-spin text-amber-500" />}
-                    <span className="text-sm text-stone-700 flex-1">
+                    <span className="text-sm text-text-secondary flex-1">
                       {conn.employer_name ?? "Employer"}
                     </span>
-                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${badge.className}`}>
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${badge.className}`}>
                       {badge.label}
                     </span>
                   </div>
@@ -329,7 +329,7 @@ export default function ConnectEmployer({ onConnectionComplete }: ConnectEmploye
             {connectionState === "error" ? (
               <button
                 onClick={handleRetry}
-                className="flex items-center gap-2 bg-[#16A34A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#15803D] shadow-sm transition-colors"
+                className="flex items-center gap-2 bg-accent text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-hover shadow-sm transition-colors"
               >
                 <RefreshCw size={14} />
                 Retry connection
@@ -337,7 +337,7 @@ export default function ConnectEmployer({ onConnectionComplete }: ConnectEmploye
             ) : connectionState === "connecting" ? (
               <button
                 disabled
-                className="flex items-center gap-2 bg-stone-200 text-stone-500 px-4 py-2 rounded-lg text-sm font-medium cursor-not-allowed"
+                className="flex items-center gap-2 bg-surface text-text-secondary px-4 py-2 rounded-lg text-sm font-medium cursor-not-allowed"
               >
                 <Loader2 size={14} className="animate-spin" />
                 Opening Plaid...
@@ -345,7 +345,7 @@ export default function ConnectEmployer({ onConnectionComplete }: ConnectEmploye
             ) : connectionState === "syncing" ? (
               <button
                 disabled
-                className="flex items-center gap-2 bg-stone-200 text-stone-500 px-4 py-2 rounded-lg text-sm font-medium cursor-not-allowed"
+                className="flex items-center gap-2 bg-surface text-text-secondary px-4 py-2 rounded-lg text-sm font-medium cursor-not-allowed"
               >
                 <Loader2 size={14} className="animate-spin" />
                 Syncing...
@@ -353,7 +353,7 @@ export default function ConnectEmployer({ onConnectionComplete }: ConnectEmploye
             ) : (
               <button
                 onClick={handleConnect}
-                className="flex items-center gap-2 bg-[#16A34A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#15803D] shadow-sm transition-colors"
+                className="flex items-center gap-2 bg-accent text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-hover shadow-sm transition-colors"
               >
                 <Briefcase size={14} />
                 {hasConnections ? "Connect another employer" : "Connect your employer"}

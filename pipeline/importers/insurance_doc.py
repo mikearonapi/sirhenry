@@ -170,9 +170,9 @@ async def import_insurance_doc(
 async def _extract_with_claude(text: str, images: list) -> dict | None:
     """Send document content to Claude for field extraction."""
     import os
-    from anthropic import AsyncAnthropic
+    from pipeline.utils import get_async_claude_client, call_claude_async_with_retry
 
-    client = AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+    client = get_async_claude_client()
 
     content = []
     for img in images:
@@ -188,7 +188,8 @@ async def _extract_with_claude(text: str, images: list) -> dict | None:
         content.append({"type": "text", "text": f"Document text:\n{text}"})
     content.append({"type": "text", "text": INSURANCE_EXTRACTION_PROMPT})
 
-    response = await client.messages.create(
+    response = await call_claude_async_with_retry(
+        client,
         model="claude-sonnet-4-20250514",
         max_tokens=2000,
         messages=[{"role": "user", "content": content}],

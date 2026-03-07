@@ -9,7 +9,7 @@ import LabeledInput from "../shared/LabeledInput";
 import CalcButton from "../shared/CalcButton";
 import ResultBox from "../shared/ResultBox";
 
-const INPUT_CLS = "w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A]";
+const INPUT_CLS = "w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent";
 
 export default function RealEstateSTRSim() {
   const [propertyValue, setPropertyValue] = useState("");
@@ -49,7 +49,7 @@ export default function RealEstateSTRSim() {
         <LabeledInput label="Hours/Week Managing" value={hoursPerWeek} onChange={setHoursPerWeek} />
         <LabeledInput label="W-2 Income" value={w2Income} onChange={setW2Income} />
         <div>
-          <label className="block text-xs text-stone-500 mb-1">Filing Status</label>
+          <label className="block text-xs text-text-secondary mb-1">Filing Status</label>
           <select value={filingStatus} onChange={(e) => setFilingStatus(e.target.value)} className={INPUT_CLS}>
             <option value="single">Single</option>
             <option value="mfj">Married Filing Jointly</option>
@@ -74,15 +74,15 @@ export default function RealEstateSTRSim() {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="bg-stone-50 rounded-lg p-3">
-              <p className="text-xs text-stone-500 mb-1">With Cost Segregation (Year 1)</p>
-              <p className={`font-semibold font-mono tabular-nums ${result.cost_seg_net_income_year_one < 0 ? "text-green-700" : "text-stone-800"}`}>
+            <div className="bg-surface rounded-lg p-3">
+              <p className="text-xs text-text-secondary mb-1">With Cost Segregation (Year 1)</p>
+              <p className={`font-semibold font-mono tabular-nums ${result.cost_seg_net_income_year_one < 0 ? "text-green-700" : "text-text-primary"}`}>
                 Net: {formatCurrency(result.cost_seg_net_income_year_one)}
               </p>
             </div>
-            <div className="bg-stone-50 rounded-lg p-3">
-              <p className="text-xs text-stone-500 mb-1">Standard Depreciation</p>
-              <p className={`font-semibold font-mono tabular-nums ${result.standard_net_income < 0 ? "text-green-700" : "text-stone-800"}`}>
+            <div className="bg-surface rounded-lg p-3">
+              <p className="text-xs text-text-secondary mb-1">Standard Depreciation</p>
+              <p className={`font-semibold font-mono tabular-nums ${result.standard_net_income < 0 ? "text-green-700" : "text-text-primary"}`}>
                 Net: {formatCurrency(result.standard_net_income)}
               </p>
             </div>

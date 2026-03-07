@@ -1,56 +1,62 @@
 "use client";
 import { useState, useEffect } from "react";
+import BrandLogo from "@/components/ui/BrandLogo";
 
 /**
  * Full-screen splash shown on first app launch.
  * Black background, centered "Sir HENRY" with brand subtitle.
- * Fades out after a brief hold, then calls onComplete.
+ * Loading dots are absolutely positioned so they never shift the logo.
+ * Holds for at least 2s, then fades out and calls onComplete.
  */
-export default function SplashScreen({ onComplete }: { onComplete: () => void }) {
-  const [phase, setPhase] = useState<"hold" | "fade">("hold");
+export default function SplashScreen({
+  onComplete,
+  ready = true,
+}: {
+  onComplete: () => void;
+  ready?: boolean;
+}) {
+  const [minTimeElapsed, setMinTimeElapsed] = useState(false);
 
+  // Minimum display time: 2s
   useEffect(() => {
-    // Hold the splash for 2s, then start fade-out
-    const holdTimer = setTimeout(() => setPhase("fade"), 2000);
-    return () => clearTimeout(holdTimer);
+    const timer = setTimeout(() => setMinTimeElapsed(true), 2000);
+    return () => clearTimeout(timer);
   }, []);
 
+  // Proceed immediately when ready — no fade-out.
+  // LoginScreen starts with brand in same position, so the cut is seamless.
   useEffect(() => {
-    if (phase === "fade") {
-      const fadeTimer = setTimeout(onComplete, 600);
-      return () => clearTimeout(fadeTimer);
+    if (minTimeElapsed && ready) {
+      onComplete();
     }
-  }, [phase, onComplete]);
+  }, [minTimeElapsed, ready, onComplete]);
 
   return (
-    <div
-      className={`fixed inset-0 z-50 bg-black flex flex-col items-center justify-center transition-opacity duration-600 ${
-        phase === "fade" ? "opacity-0" : "opacity-100"
-      }`}
-    >
-      {/* Brand name */}
-      <h1 className="text-white text-5xl md:text-6xl tracking-tight">
-        <span
-          className="italic font-light"
-          style={{ fontFamily: "var(--font-display)" }}
-        >
-          Sir
-        </span>
-        <span
-          className="ml-[0.2em] tracking-wide font-extrabold"
-          style={{ fontFamily: "var(--font-display)" }}
-        >
-          HENRY
-        </span>
-      </h1>
+    <div className="fixed inset-0 z-50 bg-black">
+      {/* Centered brand — uses absolute positioning so nothing shifts it */}
+      <div className="absolute inset-0">
+        <BrandLogo className="h-full" />
+      </div>
 
-      {/* Subtitle */}
-      <p
-        className="mt-3 text-[#16A34A] text-sm md:text-base font-medium tracking-wide"
-        style={{ fontFamily: "var(--font-display)" }}
+      {/* Loading indicator — absolutely positioned below center, never shifts logo */}
+      <div
+        className={`absolute left-1/2 top-[calc(50%+72px)] -translate-x-1/2 flex items-center gap-1.5 transition-opacity duration-500 ${
+          !ready && minTimeElapsed ? "opacity-100" : "opacity-0"
+        }`}
       >
-        Your AI financial advisor
-      </p>
+        <div
+          className="w-1 h-1 rounded-full bg-white/30 animate-pulse"
+          style={{ animationDelay: "0ms" }}
+        />
+        <div
+          className="w-1 h-1 rounded-full bg-white/30 animate-pulse"
+          style={{ animationDelay: "300ms" }}
+        />
+        <div
+          className="w-1 h-1 rounded-full bg-white/30 animate-pulse"
+          style={{ animationDelay: "600ms" }}
+        />
+      </div>
     </div>
   );
 }

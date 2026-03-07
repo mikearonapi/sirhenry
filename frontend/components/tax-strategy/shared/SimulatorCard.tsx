@@ -8,10 +8,10 @@ export default function SimulatorCard({ title, purpose, bestFor, children }: {
   children: ReactNode;
 }) {
   return (
-    <div className="bg-white rounded-xl border border-stone-100 shadow-sm p-5 space-y-4">
+    <div className="bg-card rounded-xl border border-card-border shadow-sm p-5 space-y-4">
       <div>
-        <h3 className="text-sm font-semibold text-stone-700">{title}</h3>
-        <p className="text-xs text-stone-500 mt-1 leading-relaxed">{purpose}</p>
+        <h3 className="text-sm font-semibold text-text-secondary">{title}</h3>
+        <p className="text-xs text-text-muted mt-1 leading-relaxed">{purpose}</p>
         {bestFor && (
           <div className="flex items-center gap-1.5 mt-2">
             <Info size={12} className="text-blue-400 flex-shrink-0" />

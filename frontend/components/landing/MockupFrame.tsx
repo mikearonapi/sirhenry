@@ -6,10 +6,10 @@ interface MockupFrameProps {
 }
 
 export default function MockupFrame({ title, dark = true, fadeBottom = true, children }: MockupFrameProps) {
-  const bg = dark ? "bg-[#141416]" : "bg-white";
+  const bg = dark ? "bg-[#141416]" : "bg-card";
   const border = dark ? "border-[#27272A]" : "border-[#E5E7EB]";
   const titleColor = dark ? "text-[#6B7280]" : "text-[#9CA3AF]";
-  const fadeBg = dark ? "from-[#0A0A0B]" : "from-white";
+  const fadeBg = dark ? "from-[#0A0A0B]" : "from-card";
 
   return (
     <div className={`relative rounded-xl border ${border} ${bg} shadow-2xl shadow-[#22C55E]/5 overflow-hidden`}>

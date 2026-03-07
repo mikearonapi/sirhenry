@@ -48,14 +48,14 @@ export default function StrategyTimeline({ strategies, onDismiss, onOpenSimulato
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-semibold text-stone-800">{config.label}</h3>
-                  <span className="text-xs text-stone-400">{config.sublabel}</span>
+                  <h3 className="text-sm font-semibold text-text-primary">{config.label}</h3>
+                  <span className="text-xs text-text-muted">{config.sublabel}</span>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-xs text-stone-500">{items.length} {items.length === 1 ? "strategy" : "strategies"}</span>
+                <span className="text-xs text-text-muted">{items.length} {items.length === 1 ? "strategy" : "strategies"}</span>
                 {savings > 0 && <span className="text-xs font-medium text-green-600 font-mono tabular-nums">{formatCurrency(savings, true)}</span>}
-                {isCollapsed ? <ChevronDown size={14} className="text-stone-400" /> : <ChevronUp size={14} className="text-stone-400" />}
+                {isCollapsed ? <ChevronDown size={14} className="text-text-muted" /> : <ChevronUp size={14} className="text-text-muted" />}
               </div>
             </button>
             {!isCollapsed && (

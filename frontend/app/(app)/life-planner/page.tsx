@@ -309,7 +309,7 @@ export default function LifePlannerPage() {
         actions={
           <button
             onClick={() => window.dispatchEvent(new CustomEvent("ask-henry", { detail: { message: "What major financial decisions should I be planning for? Review my scenarios and life events and give me advice." } }))}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-[#16A34A]/10 text-[#16A34A] hover:bg-[#16A34A]/20 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
           >
             <MessageCircle size={14} /> Ask <SirHenryName />
           </button>
@@ -324,16 +324,16 @@ export default function LifePlannerPage() {
       )}
 
       {loading ? (
-        <div className="flex justify-center py-16"><Loader2 className="animate-spin text-stone-300" size={28} /></div>
+        <div className="flex justify-center py-16"><Loader2 className="animate-spin text-text-muted" size={28} /></div>
       ) : (
         <>
           {/* Suggested Scenarios from Life Events */}
           {!selectedType && scenarioSuggestions.length > 0 && (
-            <Card padding="lg" className="border-[#16A34A]/20 bg-green-50/30">
+            <Card padding="lg" className="border-accent/20 bg-green-50/30">
               <div className="flex items-center gap-2 mb-3">
-                <Sparkles size={16} className="text-[#16A34A]" />
-                <h2 className="text-sm font-semibold text-stone-700">Suggested for You</h2>
-                <span className="text-xs text-stone-400">Based on your life events and financial data</span>
+                <Sparkles size={16} className="text-accent" />
+                <h2 className="text-sm font-semibold text-text-secondary">Suggested for You</h2>
+                <span className="text-xs text-text-muted">Based on your life events and financial data</span>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {scenarioSuggestions.map((sugg, i) => {
@@ -343,19 +343,19 @@ export default function LifePlannerPage() {
                     <button
                       key={i}
                       onClick={() => { setSelectedType(sugg.scenario_type); setResult(null); setParams({}); }}
-                      className="flex items-start gap-3 p-3 rounded-lg bg-white border border-stone-200 hover:border-[#16A34A]/40 hover:shadow-sm transition-all text-left"
+                      className="flex items-start gap-3 p-3 rounded-lg bg-card border border-border hover:border-accent/40 hover:shadow-sm transition-all text-left"
                     >
-                      <div className="w-8 h-8 rounded-lg bg-[#16A34A]/10 flex items-center justify-center shrink-0">
-                        <IconComp size={16} className="text-[#16A34A]" />
+                      <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
+                        <IconComp size={16} className="text-accent" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-stone-800">{sugg.label}</p>
-                        <p className="text-xs text-stone-500 mt-0.5">{sugg.reason}</p>
+                        <p className="text-sm font-medium text-text-primary">{sugg.label}</p>
+                        <p className="text-xs text-text-secondary mt-0.5">{sugg.reason}</p>
                         {sugg.source_detail && (
-                          <p className="text-[10px] text-[#16A34A] mt-1">From: {sugg.source_detail}</p>
+                          <p className="text-xs text-accent mt-1">From: {sugg.source_detail}</p>
                         )}
                       </div>
-                      <ChevronRight size={14} className="text-stone-300 shrink-0 mt-1" />
+                      <ChevronRight size={14} className="text-text-muted shrink-0 mt-1" />
                     </button>
                   );
                 })}
@@ -373,13 +373,13 @@ export default function LifePlannerPage() {
                     <button
                       key={type}
                       onClick={() => selectTemplate(type)}
-                      className="bg-white rounded-xl border border-stone-100 p-5 text-left hover:shadow-md hover:border-[#16A34A]/30 transition-all group"
+                      className="bg-card rounded-xl border border-card-border p-5 text-left hover:shadow-md hover:border-accent/30 transition-all group"
                     >
-                      <div className="w-10 h-10 rounded-lg bg-stone-100 group-hover:bg-[#16A34A]/10 flex items-center justify-center mb-3 transition-colors">
-                        <IconComp size={20} className="text-stone-600 group-hover:text-[#16A34A] transition-colors" />
+                      <div className="w-10 h-10 rounded-lg bg-surface group-hover:bg-accent/10 flex items-center justify-center mb-3 transition-colors">
+                        <IconComp size={20} className="text-text-secondary group-hover:text-accent transition-colors" />
                       </div>
-                      <p className="font-semibold text-sm text-stone-800">{tmpl.label}</p>
-                      <p className="text-xs text-stone-400 mt-1">{tmpl.description}</p>
+                      <p className="font-semibold text-sm text-text-primary">{tmpl.label}</p>
+                      <p className="text-xs text-text-muted mt-1">{tmpl.description}</p>
                     </button>
                   );
                 })}
@@ -388,7 +388,7 @@ export default function LifePlannerPage() {
               {/* Saved Scenarios */}
               {savedScenarios.length > 0 && (
                 <div>
-                  <h2 className="text-xs font-semibold uppercase tracking-wider text-stone-400 mb-3">Saved Scenarios</h2>
+                  <h2 className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-3">Saved Scenarios</h2>
                   <div className="space-y-2">
                     {savedScenarios.map((s) => {
                       const v = s.verdict ? VERDICT_CONFIG[s.verdict] : null;
@@ -397,19 +397,19 @@ export default function LifePlannerPage() {
                       const mc = monteCarloResults[s.id];
                       const ret = retirementResults[s.id];
                       return (
-                        <Card key={s.id} className={`${v?.bg || "bg-white"} border`}>
+                        <Card key={s.id} className={`${v?.bg || "bg-card"} border`}>
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                               <input
                                 type="checkbox"
                                 checked={selectedScenarioIds.has(s.id)}
                                 onChange={() => toggleScenarioSelection(s.id)}
-                                className="rounded border-stone-300 text-[#16A34A] focus:ring-[#16A34A]/20"
+                                className="rounded border-border text-accent focus:ring-accent/20"
                               />
-                              <VIcon size={18} className={v?.color || "text-stone-400"} />
+                              <VIcon size={18} className={v?.color || "text-text-muted"} />
                               <div>
-                                <p className="font-medium text-stone-800 text-sm">{s.name}</p>
-                                <p className="text-xs text-stone-500">
+                                <p className="font-medium text-text-primary text-sm">{s.name}</p>
+                                <p className="text-xs text-text-secondary">
                                   Score: {s.affordability_score?.toFixed(0) ?? "-"}/100
                                   {s.new_monthly_payment ? ` · ${formatCurrency(s.new_monthly_payment)}/mo` : ""}
                                 </p>
@@ -419,7 +419,7 @@ export default function LifePlannerPage() {
                               <button
                                 onClick={() => handleMultiYear(s.id)}
                                 disabled={loadingProjection === s.id}
-                                className="flex items-center gap-1 text-xs text-stone-600 hover:text-[#16A34A] disabled:opacity-60"
+                                className="flex items-center gap-1 text-xs text-text-secondary hover:text-accent disabled:opacity-60"
                                 title="Multi-Year"
                               >
                                 {loadingProjection === s.id ? <Loader2 size={12} className="animate-spin" /> : <TrendingUp size={12} />}
@@ -428,7 +428,7 @@ export default function LifePlannerPage() {
                               <button
                                 onClick={() => handleMonteCarlo(s.id)}
                                 disabled={loadingMonteCarlo === s.id}
-                                className="flex items-center gap-1 text-xs text-stone-600 hover:text-[#16A34A] disabled:opacity-60"
+                                className="flex items-center gap-1 text-xs text-text-secondary hover:text-accent disabled:opacity-60"
                                 title="Monte Carlo"
                               >
                                 {loadingMonteCarlo === s.id ? <Loader2 size={12} className="animate-spin" /> : <BarChart3 size={12} />}
@@ -437,7 +437,7 @@ export default function LifePlannerPage() {
                               <button
                                 onClick={() => handleRetirementImpact(s.id)}
                                 disabled={loadingRetirement === s.id}
-                                className="flex items-center gap-1 text-xs text-stone-600 hover:text-[#16A34A] disabled:opacity-60"
+                                className="flex items-center gap-1 text-xs text-text-secondary hover:text-accent disabled:opacity-60"
                                 title="Retirement Impact"
                               >
                                 {loadingRetirement === s.id ? <Loader2 size={12} className="animate-spin" /> : <Target size={12} />}
@@ -446,7 +446,7 @@ export default function LifePlannerPage() {
                               <button
                                 onClick={() => handleAiAnalysis(s.id)}
                                 disabled={loadingAiAnalysis === s.id}
-                                className="flex items-center gap-1 text-xs text-[#16A34A] hover:text-[#15803D] disabled:opacity-60"
+                                className="flex items-center gap-1 text-xs text-accent hover:text-accent-hover disabled:opacity-60"
                                 title="AI Analysis"
                               >
                                 {loadingAiAnalysis === s.id ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
@@ -455,31 +455,31 @@ export default function LifePlannerPage() {
                               <span className={`text-xs font-semibold px-2 py-0.5 rounded ${v?.color || ""}`}>
                                 {v?.label || s.verdict}
                               </span>
-                              <button onClick={() => toggleFavorite(s)} className={`${s.is_favorite ? "text-amber-400" : "text-stone-300"} hover:text-amber-500`}>
+                              <button onClick={() => toggleFavorite(s)} className={`${s.is_favorite ? "text-amber-400" : "text-text-muted"} hover:text-amber-500`}>
                                 <Star size={14} fill={s.is_favorite ? "currentColor" : "none"} />
                               </button>
-                              <button onClick={() => handleDeleteScenario(s.id)} className="text-stone-300 hover:text-red-500">
+                              <button onClick={() => handleDeleteScenario(s.id)} className="text-text-muted hover:text-red-500">
                                 <Trash2 size={14} />
                               </button>
                             </div>
                           </div>
                           {proj && (
-                            <div className="mt-3 pt-3 border-t border-stone-200 bg-stone-50 rounded-lg p-3">
-                              <p className="text-xs font-semibold text-stone-600 mb-2">Multi-Year Projection (10 years)</p>
+                            <div className="mt-3 pt-3 border-t border-border bg-surface rounded-lg p-3">
+                              <p className="text-xs font-semibold text-text-secondary mb-2">Multi-Year Projection (10 years)</p>
                               <div className="grid grid-cols-2 md:grid-cols-5 gap-2 overflow-x-auto">
                                 {proj.years.slice(0, 10).map((y) => (
-                                  <div key={y.year} className="bg-white rounded p-2 text-xs">
-                                    <p className="text-stone-500">Year {y.year}</p>
-                                    <p className="font-medium text-stone-800">{formatCurrency(y.net_worth ?? 0)}</p>
-                                    <p className="text-stone-400">{formatCurrency(y.cash_flow ?? 0)} CF</p>
+                                  <div key={y.year} className="bg-card rounded p-2 text-xs">
+                                    <p className="text-text-secondary">Year {y.year}</p>
+                                    <p className="font-medium text-text-primary">{formatCurrency(y.net_worth ?? 0)}</p>
+                                    <p className="text-text-muted">{formatCurrency(y.cash_flow ?? 0)} CF</p>
                                   </div>
                                 ))}
                               </div>
                             </div>
                           )}
                           {mc && (
-                            <div className="mt-3 pt-3 border-t border-stone-200 bg-stone-50 rounded-lg p-3">
-                              <p className="text-xs font-semibold text-stone-600 mb-2">Monte Carlo Outcomes ({mc.runs} runs)</p>
+                            <div className="mt-3 pt-3 border-t border-border bg-surface rounded-lg p-3">
+                              <p className="text-xs font-semibold text-text-secondary mb-2">Monte Carlo Outcomes ({mc.runs} runs)</p>
                               <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
                                 {[
                                   { label: "P10", val: mc.p10 },
@@ -488,44 +488,44 @@ export default function LifePlannerPage() {
                                   { label: "P75", val: mc.p75 },
                                   { label: "P90", val: mc.p90 },
                                 ].map(({ label, val }) => (
-                                  <div key={label} className="bg-white rounded p-2 text-xs">
-                                    <p className="text-stone-500">{label}</p>
-                                    <p className="font-medium text-stone-800">{formatCurrency(val)}</p>
+                                  <div key={label} className="bg-card rounded p-2 text-xs">
+                                    <p className="text-text-secondary">{label}</p>
+                                    <p className="font-medium text-text-primary">{formatCurrency(val)}</p>
                                   </div>
                                 ))}
                               </div>
                             </div>
                           )}
                           {ret && (
-                            <div className="mt-3 pt-3 border-t border-stone-200 bg-stone-50 rounded-lg p-3">
-                              <p className="text-xs font-semibold text-stone-600 mb-2">Retirement Impact</p>
+                            <div className="mt-3 pt-3 border-t border-border bg-surface rounded-lg p-3">
+                              <p className="text-xs font-semibold text-text-secondary mb-2">Retirement Impact</p>
                               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
                                 <div>
-                                  <p className="text-stone-500">Years delayed</p>
-                                  <p className="font-medium text-stone-800">{ret.years_delayed}</p>
+                                  <p className="text-text-secondary">Years delayed</p>
+                                  <p className="font-medium text-text-primary">{ret.years_delayed}</p>
                                 </div>
                                 <div>
-                                  <p className="text-stone-500">New retirement age</p>
-                                  <p className="font-medium text-stone-800">{ret.new_retirement_age}</p>
+                                  <p className="text-text-secondary">New retirement age</p>
+                                  <p className="font-medium text-text-primary">{ret.new_retirement_age}</p>
                                 </div>
                                 <div>
-                                  <p className="text-stone-500">New retirement target</p>
-                                  <p className="font-medium text-stone-800">{formatCurrency(ret.new_fire_number)}</p>
+                                  <p className="text-text-secondary">New retirement target</p>
+                                  <p className="font-medium text-text-primary">{formatCurrency(ret.new_fire_number)}</p>
                                 </div>
                                 <div>
-                                  <p className="text-stone-500">Current retirement target</p>
-                                  <p className="font-medium text-stone-800">{formatCurrency(ret.current_fire_number)}</p>
+                                  <p className="text-text-secondary">Current retirement target</p>
+                                  <p className="font-medium text-text-primary">{formatCurrency(ret.current_fire_number)}</p>
                                 </div>
                               </div>
                             </div>
                           )}
                           {(aiAnalysisResults[s.id] || s.ai_analysis) && (
-                            <div className="mt-3 pt-3 border-t border-stone-200 bg-green-50/50 rounded-lg p-3">
+                            <div className="mt-3 pt-3 border-t border-border bg-green-50/50 rounded-lg p-3">
                               <div className="flex items-center gap-2 mb-2">
-                                <Sparkles size={14} className="text-[#16A34A]" />
-                                <p className="text-xs font-semibold text-[#16A34A]"><SirHenryName />{"'"}s Analysis</p>
+                                <Sparkles size={14} className="text-accent" />
+                                <p className="text-xs font-semibold text-accent"><SirHenryName />{"'"}s Analysis</p>
                               </div>
-                              <div className="text-xs text-stone-700 leading-relaxed whitespace-pre-wrap">
+                              <div className="text-xs text-text-secondary leading-relaxed whitespace-pre-wrap">
                                 {aiAnalysisResults[s.id] || s.ai_analysis}
                               </div>
                             </div>
@@ -540,7 +540,7 @@ export default function LifePlannerPage() {
                       <button
                         onClick={handleComposeScenarios}
                         disabled={selectedScenarioIds.size === 0 || loadingCompose}
-                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#16A34A] text-white text-sm font-medium hover:bg-[#15803D] disabled:opacity-60"
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-white text-sm font-medium hover:bg-accent-hover disabled:opacity-60"
                       >
                         {loadingCompose ? <Loader2 size={14} className="animate-spin" /> : null}
                         Combine Scenarios
@@ -549,7 +549,7 @@ export default function LifePlannerPage() {
                         <button
                           onClick={handleCompareScenarios}
                           disabled={loadingCompare}
-                          className="flex items-center gap-2 px-4 py-2 rounded-lg border border-stone-200 text-stone-700 text-sm font-medium hover:bg-stone-50 disabled:opacity-60"
+                          className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-text-secondary text-sm font-medium hover:bg-surface disabled:opacity-60"
                         >
                           {loadingCompare ? <Loader2 size={14} className="animate-spin" /> : <GitCompare size={14} />}
                           Compare
@@ -558,56 +558,56 @@ export default function LifePlannerPage() {
                     </div>
 
                     {composeResult && (
-                      <Card className="bg-stone-50 border-stone-200">
-                        <h3 className="text-sm font-semibold text-stone-800 mb-3">Combined Result</h3>
+                      <Card className="bg-surface border-border">
+                        <h3 className="text-sm font-semibold text-text-primary mb-3">Combined Result</h3>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                          <div className="bg-white rounded-lg p-3">
-                            <p className="text-xs text-stone-500">Total Monthly Impact</p>
-                            <p className="text-lg font-bold text-stone-800 font-mono tabular-nums">{formatCurrency(composeResult.combined_monthly_impact)}</p>
+                          <div className="bg-card rounded-lg p-3">
+                            <p className="text-xs text-text-secondary">Total Monthly Impact</p>
+                            <p className="text-lg font-bold text-text-primary font-mono tabular-nums">{formatCurrency(composeResult.combined_monthly_impact)}</p>
                           </div>
-                          <div className="bg-white rounded-lg p-3">
-                            <p className="text-xs text-stone-500">Savings Rate After</p>
-                            <p className="text-lg font-bold text-stone-800 font-mono tabular-nums">{formatPercent(composeResult.combined_savings_rate_after ?? 0)}</p>
+                          <div className="bg-card rounded-lg p-3">
+                            <p className="text-xs text-text-secondary">Savings Rate After</p>
+                            <p className="text-lg font-bold text-text-primary font-mono tabular-nums">{formatPercent(composeResult.combined_savings_rate_after ?? 0)}</p>
                           </div>
-                          <div className="bg-white rounded-lg p-3">
-                            <p className="text-xs text-stone-500">Affordability Score</p>
-                            <p className="text-lg font-bold text-stone-800 font-mono tabular-nums">{composeResult.combined_affordability_score?.toFixed(0) ?? "-"}/100</p>
+                          <div className="bg-card rounded-lg p-3">
+                            <p className="text-xs text-text-secondary">Affordability Score</p>
+                            <p className="text-lg font-bold text-text-primary font-mono tabular-nums">{composeResult.combined_affordability_score?.toFixed(0) ?? "-"}/100</p>
                           </div>
-                          <div className="bg-white rounded-lg p-3">
-                            <p className="text-xs text-stone-500">Verdict</p>
-                            <p className="text-sm font-semibold text-stone-800">{composeResult.combined_verdict}</p>
+                          <div className="bg-card rounded-lg p-3">
+                            <p className="text-xs text-text-secondary">Verdict</p>
+                            <p className="text-sm font-semibold text-text-primary">{composeResult.combined_verdict}</p>
                           </div>
                         </div>
                         {composeResult.scenarios?.length > 0 && (
-                          <div className="mt-3 pt-3 border-t border-stone-200">
-                            <p className="text-xs text-stone-500 mb-1">Scenarios included</p>
-                            <p className="text-xs text-stone-700">{composeResult.scenarios.map((s: { name: string }) => s.name).join(", ")}</p>
+                          <div className="mt-3 pt-3 border-t border-border">
+                            <p className="text-xs text-text-secondary mb-1">Scenarios included</p>
+                            <p className="text-xs text-text-secondary">{composeResult.scenarios.map((s: { name: string }) => s.name).join(", ")}</p>
                           </div>
                         )}
                       </Card>
                     )}
 
                     {compareResult && (
-                      <Card className="bg-stone-50 border-stone-200">
-                        <h3 className="text-sm font-semibold text-stone-800 mb-3">Scenario Comparison</h3>
+                      <Card className="bg-surface border-border">
+                        <h3 className="text-sm font-semibold text-text-primary mb-3">Scenario Comparison</h3>
                         <div className="grid grid-cols-2 gap-4">
-                          <div className="bg-white rounded-lg p-4 border border-stone-100">
-                            <p className="text-xs font-semibold text-stone-500 mb-2">{compareResult.scenario_a.name}</p>
+                          <div className="bg-card rounded-lg p-4 border border-card-border">
+                            <p className="text-xs font-semibold text-text-secondary mb-2">{compareResult.scenario_a.name}</p>
                             <div className="space-y-1 text-xs">
                               {Object.entries(compareResult.scenario_a.metrics || {}).map(([k, v]) => (
                                 <div key={k} className="flex justify-between">
-                                  <span className="text-stone-500">{k.replace(/_/g, " ")}</span>
+                                  <span className="text-text-secondary">{k.replace(/_/g, " ")}</span>
                                   <span className="font-medium tabular-nums">{typeof v === "number" ? (k.includes("pct") || k.includes("rate") ? formatPercent(v) : formatCurrency(v)) : String(v)}</span>
                                 </div>
                               ))}
                             </div>
                           </div>
-                          <div className="bg-white rounded-lg p-4 border border-stone-100">
-                            <p className="text-xs font-semibold text-stone-500 mb-2">{compareResult.scenario_b.name}</p>
+                          <div className="bg-card rounded-lg p-4 border border-card-border">
+                            <p className="text-xs font-semibold text-text-secondary mb-2">{compareResult.scenario_b.name}</p>
                             <div className="space-y-1 text-xs">
                               {Object.entries(compareResult.scenario_b.metrics || {}).map(([k, v]) => (
                                 <div key={k} className="flex justify-between">
-                                  <span className="text-stone-500">{k.replace(/_/g, " ")}</span>
+                                  <span className="text-text-secondary">{k.replace(/_/g, " ")}</span>
                                   <span className="font-medium tabular-nums">{typeof v === "number" ? (k.includes("pct") || k.includes("rate") ? formatPercent(v) : formatCurrency(v)) : String(v)}</span>
                                 </div>
                               ))}
@@ -615,12 +615,12 @@ export default function LifePlannerPage() {
                           </div>
                         </div>
                         {compareResult.differences && Object.keys(compareResult.differences).length > 0 && (
-                          <div className="mt-3 pt-3 border-t border-stone-200 bg-white rounded-lg p-3">
-                            <p className="text-xs font-semibold text-stone-600 mb-2">Differences</p>
+                          <div className="mt-3 pt-3 border-t border-border bg-card rounded-lg p-3">
+                            <p className="text-xs font-semibold text-text-secondary mb-2">Differences</p>
                             <div className="space-y-1 text-xs">
                               {Object.entries(compareResult.differences).map(([k, v]) => (
                                 <div key={k} className="flex justify-between">
-                                  <span className="text-stone-500">{k.replace(/_/g, " ")}</span>
+                                  <span className="text-text-secondary">{k.replace(/_/g, " ")}</span>
                                   <span className="font-medium tabular-nums">{typeof v === "number" ? (k.includes("pct") || k.includes("rate") ? formatPercent(v) : formatCurrency(v)) : String(v)}</span>
                                 </div>
                               ))}
@@ -638,23 +638,23 @@ export default function LifePlannerPage() {
           {/* Scenario Calculator */}
           {selectedType && tmpl && (
             <>
-              <button onClick={() => { setSelectedType(null); setResult(null); }} className="text-sm text-stone-500 hover:text-stone-700 flex items-center gap-1">
+              <button onClick={() => { setSelectedType(null); setResult(null); }} className="text-sm text-text-secondary hover:text-text-secondary flex items-center gap-1">
                 &larr; Back to templates
               </button>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                 {/* Parameters */}
                 <Card padding="lg">
-                  <h3 className="text-sm font-semibold text-stone-800 mb-1">{tmpl.label}</h3>
-                  <p className="text-xs text-stone-400 mb-4">{tmpl.description}</p>
+                  <h3 className="text-sm font-semibold text-text-primary mb-1">{tmpl.label}</h3>
+                  <p className="text-xs text-text-muted mb-4">{tmpl.description}</p>
                   <div className="space-y-3">
                     {Object.entries(tmpl.parameters).map(([key, def]) => (
                       <div key={key}>
-                        <label className="block text-xs text-stone-500 mb-1">{def.label}</label>
+                        <label className="block text-xs text-text-secondary mb-1">{def.label}</label>
                         {def.type === "text" ? (
-                          <input value={params[key] || ""} onChange={(e) => setParams({ ...params, [key]: e.target.value })} className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20" />
+                          <input value={params[key] || ""} onChange={(e) => setParams({ ...params, [key]: e.target.value })} className="w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20" />
                         ) : (
-                          <input type="number" value={params[key] || 0} onChange={(e) => setParams({ ...params, [key]: Number(e.target.value) })} className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20" />
+                          <input type="number" value={params[key] || 0} onChange={(e) => setParams({ ...params, [key]: Number(e.target.value) })} className="w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20" />
                         )}
                       </div>
                     ))}
@@ -663,7 +663,7 @@ export default function LifePlannerPage() {
 
                 {/* Financial Context */}
                 <Card padding="lg">
-                  <h3 className="text-sm font-semibold text-stone-800 mb-4">Your Financial Snapshot</h3>
+                  <h3 className="text-sm font-semibold text-text-primary mb-4">Your Financial Snapshot</h3>
                   <div className="space-y-3">
                     {[
                       { label: "Annual Income", value: annualIncome, set: setAnnualIncome },
@@ -674,12 +674,12 @@ export default function LifePlannerPage() {
                       { label: "Investments", value: investments, set: setInvestments },
                     ].map(({ label, value, set }) => (
                       <div key={label}>
-                        <label className="block text-xs text-stone-500 mb-1">{label}</label>
-                        <input type="number" value={value} onChange={(e) => set(Number(e.target.value))} className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20" />
+                        <label className="block text-xs text-text-secondary mb-1">{label}</label>
+                        <input type="number" value={value} onChange={(e) => set(Number(e.target.value))} className="w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20" />
                       </div>
                     ))}
                   </div>
-                  <button onClick={handleCalculate} disabled={calculating} className="w-full mt-4 flex items-center justify-center gap-2 bg-[#16A34A] text-white py-3 rounded-lg text-sm font-medium hover:bg-[#15803D] shadow-sm disabled:opacity-60">
+                  <button onClick={handleCalculate} disabled={calculating} className="w-full mt-4 flex items-center justify-center gap-2 bg-accent text-white py-3 rounded-lg text-sm font-medium hover:bg-accent-hover shadow-sm disabled:opacity-60">
                     {calculating ? <Loader2 size={14} className="animate-spin" /> : null}
                     {calculating ? "Calculating..." : "Can I Afford This?"}
                   </button>
@@ -696,11 +696,11 @@ export default function LifePlannerPage() {
                       </div>
                       <div>
                         <p className={`text-2xl font-bold ${verdict.color}`}>{verdict.label}</p>
-                        <p className="text-sm text-stone-600">Affordability Score: {result.affordability_score}/100</p>
+                        <p className="text-sm text-text-secondary">Affordability Score: {result.affordability_score}/100</p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-xs text-stone-500">Score</p>
+                      <p className="text-xs text-text-secondary">Score</p>
                       <div className="relative w-20 h-20">
                         <svg className="w-20 h-20 -rotate-90" viewBox="0 0 36 36">
                           <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#e5e7eb" strokeWidth="3" />
@@ -712,34 +712,34 @@ export default function LifePlannerPage() {
                   </div>
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                    <div className="bg-white/70 rounded-lg p-3">
-                      <p className="text-xs text-stone-500">New Monthly Payment</p>
-                      <p className="text-lg font-bold text-stone-800 font-mono tabular-nums">{formatCurrency(result.new_monthly_payment)}</p>
+                    <div className="bg-card/70 rounded-lg p-3">
+                      <p className="text-xs text-text-secondary">New Monthly Payment</p>
+                      <p className="text-lg font-bold text-text-primary font-mono tabular-nums">{formatCurrency(result.new_monthly_payment)}</p>
                     </div>
-                    <div className="bg-white/70 rounded-lg p-3">
-                      <p className="text-xs text-stone-500">Monthly Surplus After</p>
+                    <div className="bg-card/70 rounded-lg p-3">
+                      <p className="text-xs text-text-secondary">Monthly Surplus After</p>
                       <p className={`text-lg font-bold font-mono tabular-nums ${result.monthly_surplus_after >= 0 ? "text-green-600" : "text-red-600"}`}>
                         {formatCurrency(result.monthly_surplus_after)}
                       </p>
                     </div>
-                    <div className="bg-white/70 rounded-lg p-3">
-                      <p className="text-xs text-stone-500">Savings Rate After</p>
-                      <p className="text-lg font-bold text-stone-800 font-mono tabular-nums">{formatPercent(result.savings_rate_after_pct)}</p>
-                      <p className="text-xs text-stone-400">was {formatPercent(result.savings_rate_before_pct)}</p>
+                    <div className="bg-card/70 rounded-lg p-3">
+                      <p className="text-xs text-text-secondary">Savings Rate After</p>
+                      <p className="text-lg font-bold text-text-primary font-mono tabular-nums">{formatPercent(result.savings_rate_after_pct)}</p>
+                      <p className="text-xs text-text-muted">was {formatPercent(result.savings_rate_before_pct)}</p>
                     </div>
-                    <div className="bg-white/70 rounded-lg p-3">
-                      <p className="text-xs text-stone-500">Total Cost</p>
-                      <p className="text-lg font-bold text-stone-800 font-mono tabular-nums">{formatCurrency(result.total_cost, true)}</p>
+                    <div className="bg-card/70 rounded-lg p-3">
+                      <p className="text-xs text-text-secondary">Total Cost</p>
+                      <p className="text-lg font-bold text-text-primary font-mono tabular-nums">{formatCurrency(result.total_cost, true)}</p>
                     </div>
                   </div>
 
                   {result.breakdown && (
-                    <div className="bg-white/70 rounded-lg p-4">
-                      <p className="text-xs font-semibold text-stone-600 mb-2">Cost Breakdown</p>
+                    <div className="bg-card/70 rounded-lg p-4">
+                      <p className="text-xs font-semibold text-text-secondary mb-2">Cost Breakdown</p>
                       <div className="grid grid-cols-2 gap-2">
                         {Object.entries(result.breakdown).map(([k, v]) => (
                           <div key={k} className="flex justify-between text-xs">
-                            <span className="text-stone-500">{k.replace(/_/g, " ")}</span>
+                            <span className="text-text-secondary">{k.replace(/_/g, " ")}</span>
                             <span className="font-medium tabular-nums">{formatCurrency(v as number)}</span>
                           </div>
                         ))}
@@ -748,10 +748,10 @@ export default function LifePlannerPage() {
                   )}
 
                   <div className="flex gap-3 mt-4">
-                    <button onClick={handleSave} className="bg-stone-900 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-stone-800 shadow-sm">
+                    <button onClick={handleSave} className="bg-text-primary text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-text-secondary shadow-sm">
                       Save This Scenario
                     </button>
-                    <button onClick={() => setResult(null)} className="text-sm text-stone-500 hover:text-stone-700 px-3">
+                    <button onClick={() => setResult(null)} className="text-sm text-text-secondary hover:text-text-secondary px-3">
                       Adjust Parameters
                     </button>
                   </div>

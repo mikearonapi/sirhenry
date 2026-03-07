@@ -1,16 +1,11 @@
 "use client";
-import { useState, useCallback, useEffect, useMemo } from "react";
-import { ArrowLeft, ArrowRight, Check, Sparkles } from "lucide-react";
-import StepHousehold from "./StepHousehold";
-import StepAccounts from "./StepAccounts";
-import StepEmployer from "./StepEmployer";
-import StepBenefits from "./StepBenefits";
-import StepInsurance from "./StepInsurance";
-import StepLifeEvents from "./StepLifeEvents";
-import StepBusiness from "./StepBusiness";
-import StepRulesLearning from "./StepRulesLearning";
-import StepComplete from "./StepComplete";
-import SirHenryName from "@/components/ui/SirHenryName";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { ArrowLeft, ArrowRight, Check, Loader2 } from "lucide-react";
+import StepAboutYou from "./StepAboutYou";
+import StepConnect from "./StepConnect";
+import StepBenefitsCoverage from "./StepBenefitsCoverage";
+import StepLifeBusiness from "./StepLifeBusiness";
+import StepFinish from "./StepFinish";
 import { markSetupComplete } from "@/components/AppShell";
 import type { HouseholdProfile, OtherIncomeSource } from "@/types/household";
 import { getHouseholdProfiles } from "@/lib/api-household";
@@ -22,29 +17,21 @@ import type { Account } from "@/types/accounts";
 import type { InsurancePolicy } from "@/types/insurance";
 import type { LifeEvent } from "@/types/life-events";
 import type { BusinessEntity } from "@/types/business";
+import { OB_CTA, OB_CTA_SECONDARY } from "./styles";
 
 export type SetupStep =
-  | "household"
-  | "accounts"
-  | "employer"
-  | "benefits"
-  | "insurance"
-  | "life-events"
-  | "business"
-  | "rules"
-  | "complete";
+  | "about-you"
+  | "connect"
+  | "benefits-coverage"
+  | "life-business"
+  | "finish";
 
-// Full step definitions — business may be auto-skipped at runtime
 const ALL_STEPS: { key: SetupStep; label: string }[] = [
-  { key: "household", label: "Household" },
-  { key: "accounts", label: "Accounts" },
-  { key: "employer", label: "Employer" },
-  { key: "benefits", label: "Benefits" },
-  { key: "insurance", label: "Insurance" },
-  { key: "business", label: "Business" },
-  { key: "life-events", label: "Life Events" },
-  { key: "rules", label: "AI Learning" },
-  { key: "complete", label: "Done" },
+  { key: "about-you", label: "About You" },
+  { key: "connect", label: "Connect" },
+  { key: "benefits-coverage", label: "Benefits" },
+  { key: "life-business", label: "Life & Biz" },
+  { key: "finish", label: "Finish" },
 ];
 
 export interface SetupData {
@@ -55,30 +42,15 @@ export interface SetupData {
   entities: BusinessEntity[];
 }
 
-/** Check if the household profile indicates business/K-1/1099 income. */
-function hasBusinessIncome(household: HouseholdProfile | null): boolean {
-  if (!household) return false;
-  const json = household.other_income_sources_json;
-  if (!json) return false;
-  try {
-    const sources: OtherIncomeSource[] = JSON.parse(json);
-    return sources.some(
-      (s) =>
-        s.amount > 0 &&
-        (s.type === "partnership_k1" || s.type === "business_1099")
-    );
-  } catch {
-    return false;
-  }
-}
+/** Steps call this to register their save function so the wizard can auto-save on Continue. */
+export type RegisterSaveFn = (save: (() => Promise<void>) | null) => void;
 
 interface SetupWizardProps {
-  /** Called when the user finishes setup (from full-screen onboarding flow). */
   onComplete?: () => void;
 }
 
 export default function SetupWizard({ onComplete }: SetupWizardProps = {}) {
-  const [step, setStep] = useState<SetupStep>("household");
+  const [step, setStep] = useState<SetupStep>("about-you");
   const [data, setData] = useState<SetupData>({
     household: null,
     accounts: [],
@@ -87,6 +59,18 @@ export default function SetupWizard({ onComplete }: SetupWizardProps = {}) {
     entities: [],
   });
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  // Steps register their save function here so the wizard can auto-save on Continue
+  const stepSaveRef = useRef<(() => Promise<void>) | null>(null);
+  const registerSave: RegisterSaveFn = useCallback((fn) => {
+    stepSaveRef.current = fn;
+  }, []);
+
+  // Clear registered save when step changes
+  useEffect(() => {
+    stepSaveRef.current = null;
+  }, [step]);
 
   const loadExistingData = useCallback(async () => {
     try {
@@ -97,15 +81,38 @@ export default function SetupWizard({ onComplete }: SetupWizardProps = {}) {
         getLifeEvents().catch(() => []),
         getBusinessEntities().catch(() => []),
       ]);
-      setData({
-        household: (profiles as HouseholdProfile[])[0] ?? null,
-        accounts: accounts as Account[],
-        policies: policies as InsurancePolicy[],
-        lifeEvents: events as LifeEvent[],
-        entities: entities as BusinessEntity[],
-      });
+      const household = (profiles as HouseholdProfile[])[0] ?? null;
+      const accts = accounts as Account[];
+      const pols = policies as InsurancePolicy[];
+      const evts = events as LifeEvent[];
+      const ents = entities as BusinessEntity[];
+
+      setData({ household, accounts: accts, policies: pols, lifeEvents: evts, entities: ents });
+
+      // Auto-advance to first incomplete step on re-entry
+      const income = (household?.spouse_a_income ?? 0) + (household?.spouse_b_income ?? 0);
+      const activeAccounts = accts.filter((a) => a.is_active);
+      if (household && income > 0) {
+        if (activeAccounts.length > 0) {
+          // Household + accounts done
+          if (household.spouse_a_employer) {
+            // Employer done too — check insurance
+            const activePolicies = pols.filter((p) => p.is_active);
+            if (activePolicies.length > 0) {
+              // Household, accounts, employer, benefits, insurance done
+              setStep("life-business");
+            } else {
+              setStep("benefits-coverage");
+            }
+          } else {
+            setStep("connect");
+          }
+        } else {
+          setStep("connect");
+        }
+      }
     } catch {
-      // Silent — we'll start fresh
+      // Silent — start fresh
     } finally {
       setLoading(false);
     }
@@ -115,34 +122,33 @@ export default function SetupWizard({ onComplete }: SetupWizardProps = {}) {
     loadExistingData();
   }, [loadExistingData]);
 
-  // Auto-skip business step if no K-1/1099 income AND no existing entities
-  const showBusiness = hasBusinessIncome(data.household) || data.entities.length > 0;
+  const currentIndex = ALL_STEPS.findIndex((s) => s.key === step);
+  const progressPercent = ((currentIndex + 1) / ALL_STEPS.length) * 100;
 
-  // Compute active steps based on whether business should be shown
-  const activeSteps = useMemo(
-    () => ALL_STEPS.filter((s) => s.key !== "business" || showBusiness),
-    [showBusiness]
-  );
-  const visibleSteps = activeSteps.filter((s) => s.key !== "complete");
-
-  const currentIndex = activeSteps.findIndex((s) => s.key === step);
-
-  function goNext() {
-    if (currentIndex < activeSteps.length - 1) {
-      setStep(activeSteps[currentIndex + 1].key);
+  async function goNext() {
+    // Auto-save the current step if it registered a save function
+    if (stepSaveRef.current) {
+      setSaving(true);
+      try {
+        await stepSaveRef.current();
+      } catch {
+        setSaving(false);
+        return;
+      }
+      setSaving(false);
+    }
+    if (currentIndex < ALL_STEPS.length - 1) {
+      setStep(ALL_STEPS[currentIndex + 1].key);
     }
   }
+
   function goBack() {
     if (currentIndex > 0) {
-      setStep(activeSteps[currentIndex - 1].key);
+      setStep(ALL_STEPS[currentIndex - 1].key);
     }
   }
+
   function goTo(key: SetupStep) {
-    // If navigating to a skipped step, go to the closest available
-    if (!activeSteps.some((s) => s.key === key)) {
-      setStep("complete");
-      return;
-    }
     setStep(key);
   }
 
@@ -153,152 +159,141 @@ export default function SetupWizard({ onComplete }: SetupWizardProps = {}) {
   function handleFinish() {
     markSetupComplete();
     if (onComplete) {
-      // Full-screen onboarding flow — notify AppShell to transition to main app
       onComplete();
-    } else {
-      // Sidebar-embedded flow — show completion screen
-      setStep("complete");
     }
   }
 
   const hasTransactions = data.accounts.filter((a) => a.is_active).length > 0;
+  const isLastStep = step === "finish";
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-pulse text-stone-400 text-sm">Loading your data...</div>
+      <div className="fixed inset-0 z-50 bg-background flex items-center justify-center">
+        <div className="animate-pulse text-text-muted text-sm">Loading your data...</div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
-      {/* Header */}
-      {step !== "complete" && (
-        <div className="mb-8">
-          <div className="flex items-center gap-2 mb-1">
-            <Sparkles size={18} className="text-[#16A34A]" />
-            <span className="text-xs font-medium text-[#16A34A] uppercase tracking-wider">
-              Setup
-            </span>
-          </div>
-          <h1 className="text-2xl font-bold text-stone-900 font-display tracking-tight">
-            Set up your financial profile
-          </h1>
-          <p className="text-stone-500 text-sm mt-1">
-            This helps <SirHenryName /> optimize your taxes, insurance, and wealth strategy.
-          </p>
-        </div>
-      )}
-
-      {/* Progress bar */}
-      {step !== "complete" && (
-        <div className="mb-8">
-          <div className="flex gap-1.5">
-            {visibleSteps.map((s, i) => {
-              const isComplete = i < currentIndex;
-              const isCurrent = s.key === step;
-              return (
-                <button
-                  key={s.key}
-                  onClick={() => goTo(s.key)}
-                  className="flex-1 group"
-                >
-                  <div
-                    className={`h-1.5 rounded-full transition-colors ${
-                      isComplete
-                        ? "bg-[#16A34A]"
-                        : isCurrent
-                        ? "bg-[#16A34A]/50"
-                        : "bg-stone-200"
-                    }`}
-                  />
-                  <span
-                    className={`text-[10px] mt-1 block transition-colors ${
-                      isCurrent
-                        ? "text-stone-700 font-medium"
-                        : isComplete
-                        ? "text-[#16A34A]"
-                        : "text-stone-400"
-                    }`}
-                  >
-                    {s.label}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Step content */}
-      <div className="mb-6">
-        {step === "household" && (
-          <StepHousehold data={data} onRefresh={refreshData} />
-        )}
-        {step === "accounts" && (
-          <StepAccounts data={data} onRefresh={refreshData} />
-        )}
-        {step === "employer" && (
-          <StepEmployer onNext={goNext} onRefresh={refreshData} />
-        )}
-        {step === "benefits" && (
-          <StepBenefits data={data} onRefresh={refreshData} />
-        )}
-        {step === "insurance" && (
-          <StepInsurance data={data} onRefresh={refreshData} />
-        )}
-        {step === "business" && (
-          <StepBusiness data={data} onRefresh={refreshData} />
-        )}
-        {step === "life-events" && (
-          <StepLifeEvents data={data} onRefresh={refreshData} />
-        )}
-        {step === "rules" && (
-          <StepRulesLearning hasTransactions={hasTransactions} />
-        )}
-        {step === "complete" && <StepComplete data={data} onGoTo={goTo} />}
+    <div className="fixed inset-0 z-50 bg-background flex flex-col">
+      {/* ── Thin progress bar at top ── */}
+      <div className="h-1 bg-border w-full flex-shrink-0">
+        <div
+          className="h-full bg-text-primary transition-all duration-500 ease-out"
+          style={{ width: `${progressPercent}%` }}
+        />
       </div>
 
-      {/* Navigation */}
-      {step !== "complete" && (
-        <div className="flex items-center justify-between pt-4 border-t border-stone-100">
+      {/* ── Step dots / labels ── */}
+      <div className="flex items-center justify-center gap-6 pt-5 pb-2 flex-shrink-0">
+        {ALL_STEPS.map((s, i) => {
+          const isComplete = i < currentIndex;
+          const isCurrent = s.key === step;
+          return (
+            <button
+              key={s.key}
+              onClick={() => goTo(s.key)}
+              className="flex items-center gap-1.5 group"
+            >
+              <div
+                className={`w-2 h-2 rounded-full transition-colors ${
+                  isComplete
+                    ? "bg-text-primary"
+                    : isCurrent
+                    ? "bg-text-primary"
+                    : "bg-text-muted"
+                }`}
+              />
+              <span
+                className={`text-xs transition-colors hidden sm:inline ${
+                  isCurrent
+                    ? "text-text-primary font-medium"
+                    : isComplete
+                    ? "text-text-secondary"
+                    : "text-text-muted"
+                }`}
+              >
+                {s.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── Step content — scrollable area ── */}
+      <div className="flex-1 overflow-y-auto pb-28">
+        <div className="max-w-3xl mx-auto px-6 pt-6">
+          <div
+            key={step}
+            className="animate-in fade-in slide-in-from-bottom-2 duration-300"
+          >
+            {step === "about-you" && (
+              <StepAboutYou data={data} onRefresh={refreshData} registerSave={registerSave} />
+            )}
+            {step === "connect" && (
+              <StepConnect data={data} onRefresh={refreshData} />
+            )}
+            {step === "benefits-coverage" && (
+              <StepBenefitsCoverage data={data} onRefresh={refreshData} registerSave={registerSave} />
+            )}
+            {step === "life-business" && (
+              <StepLifeBusiness data={data} onRefresh={refreshData} registerSave={registerSave} />
+            )}
+            {step === "finish" && (
+              <StepFinish data={data} hasTransactions={hasTransactions} onGoTo={goTo} />
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Fixed bottom navigation bar ── */}
+      <div className="fixed bottom-0 inset-x-0 bg-card/80 backdrop-blur-sm border-t border-border px-6 py-4 z-10">
+        <div className="max-w-3xl mx-auto flex items-center justify-between">
           <button
             onClick={goBack}
             disabled={currentIndex === 0}
-            className="flex items-center gap-1.5 px-4 py-2 text-sm text-stone-500 hover:text-stone-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            className={`${OB_CTA_SECONDARY} ${
+              currentIndex === 0 ? "opacity-0 pointer-events-none" : ""
+            }`}
           >
-            <ArrowLeft size={14} />
+            <ArrowLeft size={16} />
             Back
           </button>
 
           <div className="flex items-center gap-3">
-            <button
-              onClick={handleFinish}
-              className="text-xs text-stone-400 hover:text-stone-600 transition-colors"
-            >
-              Skip to finish
-            </button>
+            {/* Finish later on optional steps */}
+            {(step === "benefits-coverage" || step === "life-business") && (
+              <button
+                onClick={handleFinish}
+                className="text-xs text-text-muted hover:text-text-secondary transition-colors"
+              >
+                Finish later
+              </button>
+            )}
 
-            <button
-              onClick={currentIndex === visibleSteps.length - 1 ? handleFinish : goNext}
-              className="flex items-center gap-1.5 bg-[#16A34A] text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-[#15803d] shadow-sm transition-colors"
-            >
-              {currentIndex === visibleSteps.length - 1 ? (
-                <>
-                  <Check size={14} />
-                  Finish
-                </>
-              ) : (
-                <>
-                  Continue
-                  <ArrowRight size={14} />
-                </>
-              )}
-            </button>
+            {isLastStep ? (
+              <button onClick={handleFinish} className={OB_CTA}>
+                <Check size={16} />
+                Go to Dashboard
+              </button>
+            ) : (
+              <button onClick={goNext} disabled={saving} className={OB_CTA}>
+                {saving ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    Continue
+                    <ArrowRight size={16} />
+                  </>
+                )}
+              </button>
+            )}
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

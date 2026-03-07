@@ -1,0 +1,28 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicklasxyz/tauri-v2/main/crates/tauri/src/capabilities/schema.json",
+  "identifier": "default",
+  "description": "Default capabilities for the main window",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "shell:allow-open",
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [
+        {
+          "name": "sirhenry-api",
+          "sidecar": true
+        }
+      ]
+    },
+    {
+      "identifier": "shell:allow-spawn",
+      "allow": [
+        {
+          "name": "sirhenry-api",
+          "sidecar": true
+        }
+      ]
+    }
+  ]
+}

@@ -66,10 +66,10 @@ export default function DocumentCoverage({ checklist, year, onUploadComplete }: 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
       {/* Left: Coverage checklist */}
-      <div className="lg:col-span-2 bg-white rounded-xl border border-stone-100 shadow-sm p-5 print:shadow-none print:border-stone-200">
+      <div className="lg:col-span-2 bg-card rounded-xl border border-card-border shadow-sm p-5 print:shadow-none print:border-border">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold text-stone-700">Document Coverage</h2>
-          <span className="text-xs text-stone-400">{docComplete}/{docItems.length} types received</span>
+          <h2 className="text-sm font-semibold text-text-secondary">Document Coverage</h2>
+          <span className="text-xs text-text-muted">{docComplete}/{docItems.length} types received</span>
         </div>
         <div className="space-y-1.5">
           {docItems.map((item) => (
@@ -86,13 +86,13 @@ export default function DocumentCoverage({ checklist, year, onUploadComplete }: 
           onDrop={onDrop}
           onClick={() => inputRef.current?.click()}
           className={`h-full min-h-[200px] border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-3 cursor-pointer transition-colors ${
-            dragOver ? "border-[#16A34A] bg-green-50/50" : "border-stone-200 hover:border-stone-300 bg-white"
+            dragOver ? "border-accent bg-green-50/50" : "border-border hover:border-border bg-card"
           }`}
         >
           {status === "uploading" ? (
             <>
-              <Loader2 size={28} className="animate-spin text-[#16A34A]" />
-              <p className="text-sm text-stone-500">{statusMessage}</p>
+              <Loader2 size={28} className="animate-spin text-accent" />
+              <p className="text-sm text-text-secondary">{statusMessage}</p>
             </>
           ) : status === "success" ? (
             <>
@@ -106,10 +106,10 @@ export default function DocumentCoverage({ checklist, year, onUploadComplete }: 
             </>
           ) : (
             <>
-              <Upload size={28} className="text-stone-300" />
+              <Upload size={28} className="text-text-muted" />
               <div className="text-center">
-                <p className="text-sm font-medium text-stone-600">Drop tax documents here</p>
-                <p className="text-xs text-stone-400 mt-1">PDF, JPG, PNG — W-2, 1099, K-1, 1098</p>
+                <p className="text-sm font-medium text-text-secondary">Drop tax documents here</p>
+                <p className="text-xs text-text-muted mt-1">PDF, JPG, PNG — W-2, 1099, K-1, 1098</p>
               </div>
             </>
           )}
@@ -133,17 +133,17 @@ function CoverageRow({ item }: { item: TaxChecklistItem }) {
 
   return (
     <div className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${
-      isComplete ? "bg-green-50/50" : "bg-stone-50/30"
+      isComplete ? "bg-green-50/50" : "bg-surface/30"
     }`}>
       {isComplete ? (
         <CheckCircle size={16} className="text-green-500 flex-shrink-0" />
       ) : (
-        <Circle size={16} className="text-stone-300 flex-shrink-0" />
+        <Circle size={16} className="text-text-muted flex-shrink-0" />
       )}
-      <span className={`flex-1 font-medium ${isComplete ? "text-green-800" : "text-stone-600"}`}>
+      <span className={`flex-1 font-medium ${isComplete ? "text-green-800" : "text-text-secondary"}`}>
         {formLabel}
       </span>
-      <span className="text-xs text-stone-400">{item.detail}</span>
+      <span className="text-xs text-text-muted">{item.detail}</span>
     </div>
   );
 }

@@ -239,7 +239,7 @@ async def _create_tax_items(session: AsyncSession, data: dict[str, Any]) -> int:
             continue
 
         tax_item = TaxItem(
-            source_document_id=0,
+            source_document_id=None,  # No physical document — sourced from Plaid payroll
             tax_year=tax_year,
             form_type="w2",
             payer_name=employer_name,
@@ -281,15 +281,48 @@ def _estimate_annual_income(stub: dict[str, Any]) -> float:
     return round(gross * multiplier, 2)
 
 
+import re
+
+_CORP_SUFFIXES = re.compile(r"\b(llc|inc|corp|co|ltd|lp|plc|group|holdings)\b\.?", re.IGNORECASE)
+
+
+def _normalize_employer(name: str) -> str:
+    """Normalize employer name for comparison: lowercase, strip suffixes."""
+    n = (name or "").lower().strip()
+    n = _CORP_SUFFIXES.sub("", n).strip().rstrip(",").strip()
+    return n
+
+
+def _employer_matches(name_a: str, name_b: str) -> bool:
+    """Bidirectional substring match on normalized employer names."""
+    a = _normalize_employer(name_a)
+    b = _normalize_employer(name_b)
+    if not a or not b:
+        return False
+    return a in b or b in a
+
+
 def _match_to_spouse(profile: HouseholdProfile, employer: str) -> str:
-    """Match an employer to spouse A or B. Returns 'a' or 'b'."""
-    emp_lower = (employer or "").lower().strip()
-    if profile.spouse_a_employer and emp_lower in profile.spouse_a_employer.lower():
+    """Match an employer to spouse A or B. Returns 'a' or 'b'.
+
+    Uses normalized bidirectional matching and prefers the spouse slot
+    that doesn't already have an employer set.
+    """
+    match_a = bool(profile.spouse_a_employer) and _employer_matches(employer, profile.spouse_a_employer)
+    match_b = bool(profile.spouse_b_employer) and _employer_matches(employer, profile.spouse_b_employer)
+
+    if match_a and not match_b:
         return "a"
-    if profile.spouse_b_employer and emp_lower in profile.spouse_b_employer.lower():
+    if match_b and not match_a:
         return "b"
-    if not profile.spouse_a_employer or profile.spouse_a_income == 0:
+    if match_a and match_b:
+        return "a"  # both match — default to primary
+
+    # No match — assign to empty slot
+    if not profile.spouse_a_employer or (profile.spouse_a_income or 0) == 0:
         return "a"
+    if not profile.spouse_b_employer or (profile.spouse_b_income or 0) == 0:
+        return "b"
     return "b"
 
 

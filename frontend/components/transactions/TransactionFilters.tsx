@@ -47,19 +47,19 @@ export default function TransactionFilters({
       <Card padding="none">
         <div className="px-4 py-2.5 flex items-center gap-3">
           <div className="flex-1 relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
             <input
               type="text"
               value={search}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder="Search transactions..."
-              className="w-full pl-9 pr-3 py-1.5 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A]"
+              className="w-full pl-9 pr-3 py-1.5 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
             />
           </div>
           <select
             value={segment}
             onChange={(e) => onSegmentChange(e.target.value)}
-            className="text-sm border border-stone-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A] bg-white"
+            className="text-sm border border-border rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent bg-card"
           >
             <option value="">All segments</option>
             {SEGMENTS.slice(1).map((s) => (
@@ -69,46 +69,46 @@ export default function TransactionFilters({
         </div>
 
         {showFilters && (
-          <div className="px-4 py-2.5 border-t border-stone-100 flex flex-wrap gap-3">
+          <div className="px-4 py-2.5 border-t border-card-border flex flex-wrap gap-3">
             <div>
-              <label className="block text-xs text-stone-500 mb-1">Category</label>
+              <label className="block text-xs text-text-secondary mb-1">Category</label>
               <select
                 value={categoryFilter}
                 onChange={(e) => onCategoryFilterChange(e.target.value)}
-                className="text-sm border border-stone-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 bg-white max-w-[200px]"
+                className="text-sm border border-border rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-accent/20 bg-card max-w-[200px]"
               >
                 <option value="">All categories</option>
                 {allCategories.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-xs text-stone-500 mb-1">Entity</label>
+              <label className="block text-xs text-text-secondary mb-1">Entity</label>
               <select
                 value={entityFilter ?? ""}
                 onChange={(e) => onEntityFilterChange(e.target.value ? Number(e.target.value) : undefined)}
-                className="text-sm border border-stone-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 bg-white"
+                className="text-sm border border-border rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-accent/20 bg-card"
               >
                 <option value="">All entities</option>
                 {entities.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-xs text-stone-500 mb-1">Year</label>
+              <label className="block text-xs text-text-secondary mb-1">Year</label>
               <select
                 value={year ?? ""}
                 onChange={(e) => onYearChange(e.target.value ? Number(e.target.value) : undefined)}
-                className="text-sm border border-stone-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 bg-white"
+                className="text-sm border border-border rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-accent/20 bg-card"
               >
                 <option value="">All years</option>
                 {years.map((y) => <option key={y} value={y}>{y}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-xs text-stone-500 mb-1">Month</label>
+              <label className="block text-xs text-text-secondary mb-1">Month</label>
               <select
                 value={month ?? ""}
                 onChange={(e) => onMonthChange(e.target.value ? Number(e.target.value) : undefined)}
-                className="text-sm border border-stone-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 bg-white"
+                className="text-sm border border-border rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-accent/20 bg-card"
               >
                 <option value="">All months</option>
                 {months.map((m) => <option key={m} value={m}>{monthName(m)}</option>)}
@@ -118,7 +118,7 @@ export default function TransactionFilters({
               <div className="flex items-end">
                 <button
                   onClick={onClearAll}
-                  className="text-xs text-[#16A34A] hover:underline font-medium py-1.5"
+                  className="text-xs text-accent hover:underline font-medium py-1.5"
                 >
                   Clear all
                 </button>
@@ -144,14 +144,14 @@ export function FilterToggleButton({
       onClick={onToggle}
       className={`flex items-center gap-2 text-sm border rounded-lg px-3 py-2 transition-colors ${
         showFilters || activeFilterCount > 0
-          ? "border-[#16A34A] text-[#16A34A] bg-[#DCFCE7]"
-          : "border-stone-200 text-stone-600 hover:bg-stone-50"
+          ? "border-accent text-accent bg-accent-light"
+          : "border-border text-text-secondary hover:bg-surface"
       }`}
     >
       <Filter size={14} />
       Filters
       {activeFilterCount > 0 && (
-        <span className="w-5 h-5 rounded-full bg-[#16A34A] text-white text-xs flex items-center justify-center">
+        <span className="w-5 h-5 rounded-full bg-accent text-white text-xs flex items-center justify-center">
           {activeFilterCount}
         </span>
       )}

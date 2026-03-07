@@ -47,7 +47,7 @@ function groupLines(lines: RetirementBudgetLine[]): GroupedLines[] {
 
 function ChangeIndicator({ multiplier }: { multiplier: number }) {
   if (multiplier === 0) return <span className="text-red-500 text-xs font-medium">-100%</span>;
-  if (multiplier === 1) return <span className="text-stone-400 text-xs">—</span>;
+  if (multiplier === 1) return <span className="text-text-muted text-xs">—</span>;
   const pct = Math.round((multiplier - 1) * 100);
   if (pct < 0) return <span className="text-green-600 text-xs font-medium flex items-center gap-0.5"><TrendingDown size={10} />{pct}%</span>;
   return <span className="text-amber-600 text-xs font-medium flex items-center gap-0.5"><TrendingUp size={10} />+{pct}%</span>;
@@ -73,14 +73,14 @@ function BudgetRow({
   }
 
   return (
-    <tr className="border-b border-stone-100 hover:bg-stone-50/50">
-      <td className="py-1.5 pl-6 pr-2 text-xs text-stone-600">
+    <tr className="border-b border-card-border hover:bg-surface/50">
+      <td className="py-1.5 pl-6 pr-2 text-xs text-text-secondary">
         {line.category}
         {line.source === "spending_history" && (
-          <span className="ml-1 text-[10px] text-stone-400">(est.)</span>
+          <span className="ml-1 text-xs text-text-muted">(est.)</span>
         )}
       </td>
-      <td className="py-1.5 px-2 text-xs text-stone-700 text-right font-mono">
+      <td className="py-1.5 px-2 text-xs text-text-secondary text-right font-mono">
         ${Math.round(line.current_monthly).toLocaleString()}
       </td>
       <td className="py-1.5 px-2 text-right">
@@ -95,7 +95,7 @@ function BudgetRow({
               onChange={(e) => setEditMult(Number(e.target.value) / 100)}
               className="w-16 h-3 accent-[#16A34A]"
             />
-            <span className="text-[10px] text-stone-500 w-8 text-right font-mono">
+            <span className="text-xs text-text-secondary w-8 text-right font-mono">
               {Math.round(editMult * 100)}%
             </span>
             <button
@@ -107,13 +107,13 @@ function BudgetRow({
             </button>
             <button
               onClick={() => { setEditing(false); setEditMult(line.multiplier); }}
-              className="p-0.5 text-stone-400 hover:text-stone-600"
+              className="p-0.5 text-text-muted hover:text-text-secondary"
             >
               <X size={12} />
             </button>
           </div>
         ) : (
-          <span className={`text-xs font-mono ${line.retirement_monthly === 0 ? "text-stone-300 line-through" : "text-stone-700"}`}>
+          <span className={`text-xs font-mono ${line.retirement_monthly === 0 ? "text-text-muted line-through" : "text-text-secondary"}`}>
             ${Math.round(line.retirement_monthly).toLocaleString()}
           </span>
         )}
@@ -121,14 +121,14 @@ function BudgetRow({
       <td className="py-1.5 px-2 text-right">
         <ChangeIndicator multiplier={line.multiplier} />
       </td>
-      <td className="py-1.5 px-2 text-xs text-stone-400 max-w-[120px] truncate">
+      <td className="py-1.5 px-2 text-xs text-text-muted max-w-[120px] truncate">
         {line.reason !== "Same as current" && line.reason}
       </td>
       <td className="py-1.5 pr-3 pl-1 w-6">
         {!editing && (
           <button
             onClick={() => setEditing(true)}
-            className="p-0.5 text-stone-300 hover:text-stone-500"
+            className="p-0.5 text-text-muted hover:text-text-secondary"
           >
             <Pencil size={11} />
           </button>
@@ -165,7 +165,7 @@ export default function RetirementBudgetTable({ retirementAge, onTotalChange }: 
 
   if (loading) {
     return (
-      <div className="bg-white rounded-xl border border-stone-200 p-8 text-center text-stone-400 text-sm">
+      <div className="bg-card rounded-xl border border-border p-8 text-center text-text-muted text-sm">
         Loading your retirement budget...
       </div>
     );
@@ -173,7 +173,7 @@ export default function RetirementBudgetTable({ retirementAge, onTotalChange }: 
 
   if (error || !budget) {
     return (
-      <div className="bg-white rounded-xl border border-stone-200 p-8 text-center text-red-500 text-sm">
+      <div className="bg-card rounded-xl border border-border p-8 text-center text-red-500 text-sm">
         {error || "No budget data available"}
       </div>
     );
@@ -188,47 +188,47 @@ export default function RetirementBudgetTable({ retirementAge, onTotalChange }: 
     <div className="space-y-4">
       {/* Summary cards */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="bg-white rounded-xl border border-stone-200 p-4">
-          <p className="text-xs text-stone-400 mb-1">Current Monthly</p>
-          <p className="text-xl font-semibold font-mono text-stone-800">
+        <div className="bg-card rounded-xl border border-border p-4">
+          <p className="text-xs text-text-muted mb-1">Current Monthly</p>
+          <p className="text-xl font-semibold font-mono text-text-primary">
             ${Math.round(budget.current_monthly_total).toLocaleString()}
           </p>
-          <p className="text-[10px] text-stone-400">${Math.round(budget.current_annual_total).toLocaleString()}/yr</p>
+          <p className="text-xs text-text-muted">${Math.round(budget.current_annual_total).toLocaleString()}/yr</p>
         </div>
-        <div className="bg-white rounded-xl border border-stone-200 p-4">
-          <p className="text-xs text-stone-400 mb-1">Retirement Monthly</p>
-          <p className="text-xl font-semibold font-mono text-[#16A34A]">
+        <div className="bg-card rounded-xl border border-border p-4">
+          <p className="text-xs text-text-muted mb-1">Retirement Monthly</p>
+          <p className="text-xl font-semibold font-mono text-accent">
             ${Math.round(budget.retirement_monthly_total).toLocaleString()}
           </p>
-          <p className="text-[10px] text-stone-400">${Math.round(budget.retirement_annual_total).toLocaleString()}/yr</p>
+          <p className="text-xs text-text-muted">${Math.round(budget.retirement_annual_total).toLocaleString()}/yr</p>
         </div>
-        <div className="bg-white rounded-xl border border-stone-200 p-4">
-          <p className="text-xs text-stone-400 mb-1">Monthly Savings</p>
+        <div className="bg-card rounded-xl border border-border p-4">
+          <p className="text-xs text-text-muted mb-1">Monthly Savings</p>
           <p className="text-xl font-semibold font-mono text-green-600">
             {savingsPct > 0 ? `-${savingsPct}%` : savingsPct < 0 ? `+${Math.abs(savingsPct)}%` : "Same"}
           </p>
-          <p className="text-[10px] text-stone-400">
+          <p className="text-xs text-text-muted">
             ${Math.round(budget.current_monthly_total - budget.retirement_monthly_total).toLocaleString()}/mo less
           </p>
         </div>
       </div>
 
       {/* Description */}
-      <p className="text-xs text-stone-400 px-1">
+      <p className="text-xs text-text-muted px-1">
         Your current personal spending translated to retirement. Mortgage drops off, kids become independent,
         healthcare increases. Click the pencil icon to adjust any line.
       </p>
 
       {/* Budget table */}
-      <div className="bg-white rounded-xl border border-stone-200 overflow-hidden">
+      <div className="bg-card rounded-xl border border-border overflow-hidden">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-stone-200 bg-stone-50">
-              <th className="py-2 pl-4 pr-2 text-left text-[10px] font-medium text-stone-400 uppercase tracking-wider">Category</th>
-              <th className="py-2 px-2 text-right text-[10px] font-medium text-stone-400 uppercase tracking-wider">Now/mo</th>
-              <th className="py-2 px-2 text-right text-[10px] font-medium text-stone-400 uppercase tracking-wider">Retire/mo</th>
-              <th className="py-2 px-2 text-right text-[10px] font-medium text-stone-400 uppercase tracking-wider">Change</th>
-              <th className="py-2 px-2 text-left text-[10px] font-medium text-stone-400 uppercase tracking-wider">Why</th>
+            <tr className="border-b border-border bg-surface">
+              <th className="py-2 pl-4 pr-2 text-left text-xs font-medium text-text-muted uppercase tracking-wider">Category</th>
+              <th className="py-2 px-2 text-right text-xs font-medium text-text-muted uppercase tracking-wider">Now/mo</th>
+              <th className="py-2 px-2 text-right text-xs font-medium text-text-muted uppercase tracking-wider">Retire/mo</th>
+              <th className="py-2 px-2 text-right text-xs font-medium text-text-muted uppercase tracking-wider">Change</th>
+              <th className="py-2 px-2 text-left text-xs font-medium text-text-muted uppercase tracking-wider">Why</th>
               <th className="py-2 pr-3 pl-1 w-6"></th>
             </tr>
           </thead>
@@ -238,12 +238,12 @@ export default function RetirementBudgetTable({ retirementAge, onTotalChange }: 
             ))}
           </tbody>
           <tfoot>
-            <tr className="border-t-2 border-stone-300 bg-stone-50 font-semibold">
-              <td className="py-2.5 pl-4 text-xs text-stone-700">Total</td>
-              <td className="py-2.5 px-2 text-xs text-stone-700 text-right font-mono">
+            <tr className="border-t-2 border-text-muted bg-surface font-semibold">
+              <td className="py-2.5 pl-4 text-xs text-text-secondary">Total</td>
+              <td className="py-2.5 px-2 text-xs text-text-secondary text-right font-mono">
                 ${Math.round(budget.current_monthly_total).toLocaleString()}
               </td>
-              <td className="py-2.5 px-2 text-xs text-[#16A34A] text-right font-mono">
+              <td className="py-2.5 px-2 text-xs text-accent text-right font-mono">
                 ${Math.round(budget.retirement_monthly_total).toLocaleString()}
               </td>
               <td className="py-2.5 px-2 text-right">
@@ -274,17 +274,17 @@ function GroupSection({
 
   return (
     <>
-      <tr className="bg-stone-50/50">
-        <td colSpan={2} className="py-1.5 pl-4 text-xs font-medium text-stone-600">
+      <tr className="bg-surface/50">
+        <td colSpan={2} className="py-1.5 pl-4 text-xs font-medium text-text-secondary">
           <span className="mr-1.5">{icon}</span>
           {group.group}
         </td>
-        <td className="py-1.5 px-2 text-right text-[10px] text-stone-400 font-mono">
+        <td className="py-1.5 px-2 text-right text-xs text-text-muted font-mono">
           ${Math.round(group.retirementTotal).toLocaleString()}
         </td>
         <td className="py-1.5 px-2 text-right">
           {changePct !== 0 && (
-            <span className={`text-[10px] ${changePct < 0 ? "text-green-600" : "text-amber-600"}`}>
+            <span className={`text-xs ${changePct < 0 ? "text-green-600" : "text-amber-600"}`}>
               {changePct > 0 ? `+${changePct}%` : `${changePct}%`}
             </span>
           )}

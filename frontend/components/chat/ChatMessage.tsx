@@ -50,8 +50,8 @@ export function renderStreamingMarkdown(text: string, dark = true): string {
 
     if (!isComplete) {
       const safeText = lines.slice(0, tableStart).join("\n");
-      const dotCls = dark ? "bg-zinc-500" : "bg-stone-400";
-      const lblCls = dark ? "text-zinc-500" : "text-stone-400";
+      const dotCls = dark ? "bg-zinc-500" : "bg-text-muted";
+      const lblCls = dark ? "text-zinc-500" : "text-text-muted";
       const dots = [0, 150, 300]
         .map((d) => `<span class="w-1 h-1 rounded-full ${dotCls} animate-bounce" style="animation-delay:${d}ms"></span>`)
         .join("");
@@ -66,8 +66,8 @@ export function renderStreamingMarkdown(text: string, dark = true): string {
     // Odd number of ``` fences — the last one is unclosed; render up to it
     const lastFence = text.lastIndexOf("\n```");
     const safeText = lastFence > 0 ? text.slice(0, lastFence) : text;
-    const dotCls = dark ? "bg-zinc-500" : "bg-stone-400";
-    const lblCls = dark ? "text-zinc-500" : "text-stone-400";
+    const dotCls = dark ? "bg-zinc-500" : "bg-text-muted";
+    const lblCls = dark ? "text-zinc-500" : "text-text-muted";
     const dots = [0, 150, 300]
       .map((d) => `<span class="w-1 h-1 rounded-full ${dotCls} animate-bounce" style="animation-delay:${d}ms"></span>`)
       .join("");
@@ -98,14 +98,14 @@ export function renderMarkdown(text: string, dark = true): string {
       const rows = bodyStr.trim().split("\n");
       let table = '<table class="w-full text-xs my-2 border-collapse"><thead><tr>';
       headerCells.forEach((c: string) => {
-        table += `<th class="text-left px-2 py-1.5 bg-stone-100 font-semibold text-stone-600 border-b border-stone-200">${c.trim()}</th>`;
+        table += `<th class="text-left px-2 py-1.5 bg-surface font-semibold text-text-secondary border-b border-border">${c.trim()}</th>`;
       });
       table += "</tr></thead><tbody>";
       rows.forEach((row: string) => {
         const cells = row.split("|").filter((c: string) => c.trim());
-        table += '<tr class="border-b border-stone-50">';
+        table += '<tr class="border-b border-border-light">';
         cells.forEach((c: string) => {
-          table += `<td class="px-2 py-1.5 text-stone-700">${c.trim()}</td>`;
+          table += `<td class="px-2 py-1.5 text-text-secondary">${c.trim()}</td>`;
         });
         table += "</tr>";
       });
@@ -115,11 +115,11 @@ export function renderMarkdown(text: string, dark = true): string {
   );
 
   // Headers
-  html = html.replace(/^### (.+)$/gm, '<h3 class="font-semibold text-stone-800 text-sm mt-3 mb-1">$1</h3>');
-  html = html.replace(/^## (.+)$/gm, '<h2 class="font-bold text-stone-900 text-sm mt-3 mb-1.5">$1</h2>');
+  html = html.replace(/^### (.+)$/gm, '<h3 class="font-semibold text-text-primary text-sm mt-3 mb-1">$1</h3>');
+  html = html.replace(/^## (.+)$/gm, '<h2 class="font-bold text-text-primary text-sm mt-3 mb-1.5">$1</h2>');
 
   // Bold
-  html = html.replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-stone-900">$1</strong>');
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-text-primary">$1</strong>');
 
   // Italic
   html = html.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "<em>$1</em>");
@@ -127,11 +127,11 @@ export function renderMarkdown(text: string, dark = true): string {
   // Inline code
   const codeClass = dark
     ? "bg-zinc-800 text-green-400 px-1 py-0.5 rounded text-xs font-mono"
-    : "bg-stone-100 text-green-700 px-1 py-0.5 rounded text-xs font-mono";
+    : "bg-surface text-green-700 px-1 py-0.5 rounded text-xs font-mono";
   html = html.replace(/`([^`]+)`/g, `<code class="${codeClass}">$1</code>`);
 
   // Bullet lists
-  const listText = dark ? "text-zinc-300" : "text-stone-700";
+  const listText = dark ? "text-zinc-300" : "text-text-secondary";
   const bulletColor = dark ? "text-green-400" : "text-green-600";
   html = html.replace(
     /^[•\-]\s+(.+)$/gm,
@@ -216,10 +216,10 @@ function ActionCard({ action }: { action: ChatAction }) {
     <div className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border text-xs ${
       isUpdate
         ? "bg-green-50 border-green-200 text-green-700"
-        : "bg-stone-50 border-stone-150 text-stone-500"
+        : "bg-surface border-card-border text-text-secondary"
     }`}>
       <div className={`w-6 h-6 rounded-md flex items-center justify-center ${
-        isUpdate ? "bg-green-100" : "bg-stone-100"
+        isUpdate ? "bg-green-100" : "bg-surface"
       }`}>
         {isUpdate ? <CheckCircle2 size={13} /> : <Icon size={13} />}
       </div>
@@ -244,11 +244,11 @@ export default function ChatMessage({ message, dark = true }: ChatMessageProps) 
   if (message.role === "user") {
     const bubbleClass = dark
       ? "bg-[#1C1C1F] border border-zinc-700 text-zinc-100"
-      : "bg-stone-100 border border-stone-200 text-stone-800";
-    const tsClass = dark ? "text-zinc-700" : "text-stone-400";
+      : "bg-surface border border-border text-text-primary";
+    const tsClass = dark ? "text-zinc-700" : "text-text-muted";
     const avatarClass = dark
       ? "bg-zinc-800 border-zinc-700 text-zinc-400"
-      : "bg-stone-200 border-stone-300 text-stone-500";
+      : "bg-border border-border text-text-secondary";
 
     return (
       <div className="flex gap-3 items-start justify-end">
@@ -256,7 +256,7 @@ export default function ChatMessage({ message, dark = true }: ChatMessageProps) 
           <div className={`${bubbleClass} px-4 py-2.5 rounded-2xl rounded-br-md text-[13.5px] leading-relaxed`}>
             {message.content}
           </div>
-          <p className={`text-[10px] ${tsClass} mt-1 text-right`}>
+          <p className={`text-xs ${tsClass} mt-1 text-right`}>
             {message.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
           </p>
         </div>
@@ -267,8 +267,8 @@ export default function ChatMessage({ message, dark = true }: ChatMessageProps) 
     );
   }
 
-  const proseClass = dark ? "text-zinc-300" : "text-stone-700";
-  const tsClass = dark ? "text-zinc-700" : "text-stone-400";
+  const proseClass = dark ? "text-zinc-300" : "text-text-secondary";
+  const tsClass = dark ? "text-zinc-700" : "text-text-muted";
 
   return (
     <div className="flex gap-3 items-start">
@@ -289,7 +289,7 @@ export default function ChatMessage({ message, dark = true }: ChatMessageProps) 
           dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content, dark) }}
         />
 
-        <p className={`text-[10px] ${tsClass} mt-1.5`}>
+        <p className={`text-xs ${tsClass} mt-1.5`}>
           {message.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
         </p>
       </div>

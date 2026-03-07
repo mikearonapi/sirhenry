@@ -85,47 +85,47 @@ export default function GoalCard({ goal, index, onUpdate, onError }: GoalCardPro
 
   if (editing) {
     return (
-      <div className="rounded-xl overflow-hidden border border-[#16A34A]/30 shadow-sm bg-white">
+      <div className="rounded-xl overflow-hidden border border-accent/30 shadow-sm bg-card">
         <div className={`bg-gradient-to-br ${gradient} px-5 py-3`}>
           <p className="text-white font-semibold text-sm">Edit Goal</p>
         </div>
         <div className="p-5 space-y-3">
           <div>
-            <label className="block text-xs text-stone-500 mb-1">Name</label>
+            <label className="block text-xs text-text-secondary mb-1">Name</label>
             <input value={editName} onChange={(e) => setEditName(e.target.value)}
-              className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A]" />
+              className="w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-stone-500 mb-1">Type</label>
+              <label className="block text-xs text-text-secondary mb-1">Type</label>
               <select value={editType} onChange={(e) => setEditType(e.target.value as Goal["goal_type"])}
-                className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A] bg-white">
+                className="w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent bg-card">
                 {GOAL_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-xs text-stone-500 mb-1">Target Amount</label>
+              <label className="block text-xs text-text-secondary mb-1">Target Amount</label>
               <input type="number" value={editTarget} onChange={(e) => setEditTarget(e.target.value)} min="0"
-                className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A]" />
+                className="w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent" />
             </div>
             <div>
-              <label className="block text-xs text-stone-500 mb-1">Current Amount</label>
+              <label className="block text-xs text-text-secondary mb-1">Current Amount</label>
               <input type="number" value={editCurrent} onChange={(e) => setEditCurrent(e.target.value)} min="0"
-                className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A]" />
+                className="w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent" />
             </div>
             <div>
-              <label className="block text-xs text-stone-500 mb-1">Monthly Contribution</label>
+              <label className="block text-xs text-text-secondary mb-1">Monthly Contribution</label>
               <input type="number" value={editContrib} onChange={(e) => setEditContrib(e.target.value)} placeholder="Optional"
-                className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A]" />
+                className="w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent" />
             </div>
           </div>
           <div>
-            <label className="block text-xs text-stone-500 mb-1">Target Date</label>
+            <label className="block text-xs text-text-secondary mb-1">Target Date</label>
             <input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)}
-              className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A]" />
+              className="w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent" />
           </div>
           <div>
-            <label className="block text-xs text-stone-500 mb-1.5">Color</label>
+            <label className="block text-xs text-text-secondary mb-1.5">Color</label>
             <div className="flex gap-2">
               {COLORS.map((c) => (
                 <button key={c} onClick={() => setEditColor(c)}
@@ -136,10 +136,10 @@ export default function GoalCard({ goal, index, onUpdate, onError }: GoalCardPro
           </div>
           <div className="flex gap-2 pt-2">
             <button onClick={handleEdit} disabled={saving || !editName || !editTarget}
-              className="flex items-center gap-1.5 bg-[#16A34A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#15803D] disabled:opacity-60">
+              className="flex items-center gap-1.5 bg-accent text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-60">
               {saving ? <Loader2 size={12} className="animate-spin" /> : null} Save
             </button>
-            <button onClick={() => setEditing(false)} className="text-sm text-stone-500 hover:text-stone-700 px-3">
+            <button onClick={() => setEditing(false)} className="text-sm text-text-secondary hover:text-text-secondary px-3">
               Cancel
             </button>
           </div>
@@ -149,7 +149,7 @@ export default function GoalCard({ goal, index, onUpdate, onError }: GoalCardPro
   }
 
   return (
-    <div className="rounded-xl overflow-hidden border border-stone-100 shadow-sm hover:shadow-md transition-shadow group relative">
+    <div className="rounded-xl overflow-hidden border border-card-border shadow-sm hover:shadow-md transition-shadow group relative">
       {/* Gradient header */}
       <div className={`bg-gradient-to-br ${gradient} px-5 pt-5 pb-8 relative`}>
         <div className="flex items-start justify-between">
@@ -159,7 +159,7 @@ export default function GoalCard({ goal, index, onUpdate, onError }: GoalCardPro
           </div>
           <div className="flex items-center gap-2">
             {goal.on_track === true && (
-              <span className="text-xs bg-white/20 text-white px-2 py-0.5 rounded backdrop-blur-sm">On track</span>
+              <span className="text-xs bg-card/20 text-white px-2 py-0.5 rounded backdrop-blur-sm">On track</span>
             )}
             {goal.on_track === false && (
               <span className="text-xs bg-red-500/30 text-white px-2 py-0.5 rounded backdrop-blur-sm">Behind</span>
@@ -175,10 +175,10 @@ export default function GoalCard({ goal, index, onUpdate, onError }: GoalCardPro
               {showMenu && (
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
-                  <div className="absolute right-0 top-8 bg-white rounded-lg shadow-lg border border-stone-200 py-1 z-20 w-36">
+                  <div className="absolute right-0 top-8 bg-card rounded-lg shadow-lg border border-border py-1 z-20 w-36">
                     <button
                       onClick={() => { setEditing(true); setShowMenu(false); }}
-                      className="flex items-center gap-2 w-full px-3 py-2 text-sm text-stone-700 hover:bg-stone-50"
+                      className="flex items-center gap-2 w-full px-3 py-2 text-sm text-text-secondary hover:bg-surface"
                     >
                       <Pencil size={13} /> Edit
                     </button>
@@ -200,19 +200,19 @@ export default function GoalCard({ goal, index, onUpdate, onError }: GoalCardPro
       </div>
 
       {/* Progress section */}
-      <div className="bg-white px-5 py-4 -mt-3 rounded-t-xl relative">
+      <div className="bg-card px-5 py-4 -mt-3 rounded-t-xl relative">
         <ProgressBar value={goal.progress_pct} color={goal.color} size="md" />
         <div className="flex justify-between items-center mt-2">
           <span className="text-xs font-semibold" style={{ color: goal.color }}>
             {goal.progress_pct}%
           </span>
-          <span className="text-xs text-stone-400 font-mono tabular-nums">
+          <span className="text-xs text-text-muted font-mono tabular-nums">
             of {formatCurrency(goal.target_amount, true)}
           </span>
         </div>
 
         {goal.monthly_contribution && (
-          <p className="text-xs text-stone-500 mt-2">
+          <p className="text-xs text-text-secondary mt-2">
             {formatCurrency(goal.monthly_contribution)}/mo
             {goal.months_remaining != null && ` · ${goal.months_remaining}mo remaining`}
           </p>
@@ -235,20 +235,20 @@ export default function GoalCard({ goal, index, onUpdate, onError }: GoalCardPro
                     if (amt > 0) { handleContribution(amt); setContribMode(false); setContribAmount(""); }
                   } else if (e.key === "Escape") { setContribMode(false); setContribAmount(""); }
                 }}
-                className="w-24 text-xs border border-stone-200 rounded-lg px-2 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A]"
+                className="w-24 text-xs border border-border rounded-lg px-2 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
               />
               <button
                 onClick={() => {
                   const amt = parseFloat(contribAmount);
                   if (amt > 0) { handleContribution(amt); setContribMode(false); setContribAmount(""); }
                 }}
-                className="text-xs bg-[#16A34A] text-white rounded-lg px-3 py-2 font-medium hover:bg-[#15803D]"
+                className="text-xs bg-accent text-white rounded-lg px-3 py-2 font-medium hover:bg-accent-hover"
               >
                 Add
               </button>
               <button
                 onClick={() => { setContribMode(false); setContribAmount(""); }}
-                className="text-xs text-stone-400 hover:text-stone-600 px-1"
+                className="text-xs text-text-muted hover:text-text-secondary px-1"
               >
                 <X size={14} />
               </button>
@@ -256,7 +256,7 @@ export default function GoalCard({ goal, index, onUpdate, onError }: GoalCardPro
           ) : (
             <button
               onClick={() => setContribMode(true)}
-              className="flex-1 text-xs border border-stone-200 rounded-lg py-2 hover:bg-stone-50 text-stone-600 font-medium"
+              className="flex-1 text-xs border border-border rounded-lg py-2 hover:bg-surface text-text-secondary font-medium"
             >
               + Add Funds
             </button>
@@ -264,7 +264,7 @@ export default function GoalCard({ goal, index, onUpdate, onError }: GoalCardPro
           {goal.progress_pct >= 100 && (
             <button
               onClick={handleComplete}
-              className="flex items-center gap-1 text-xs bg-green-50 text-green-700 border border-green-200 rounded-lg px-3 py-2 hover:bg-green-100 font-medium"
+              className="flex items-center gap-1 text-xs bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-400 border border-green-200 rounded-lg px-3 py-2 hover:bg-green-100 font-medium"
             >
               <Check size={11} /> Complete
             </button>

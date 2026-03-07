@@ -36,7 +36,7 @@ const COLOR_TO_TEXT: Record<string, string> = {
 };
 
 function suggestionToTemplate(s: GoalSuggestion): GoalTemplate {
-  const textColor = COLOR_TO_TEXT[s.color] ?? "text-stone-600";
+  const textColor = COLOR_TO_TEXT[s.color] ?? "text-text-secondary";
   const iconFn = ICON_MAP[s.goal_type] ?? ICON_MAP.other;
   return {
     name: s.name,
@@ -148,7 +148,7 @@ export default function GoalTemplates({ onSelect }: GoalTemplatesProps) {
       {personalized && (
         <div className="flex items-center gap-1.5 mb-2">
           <Sparkles size={12} className="text-[#EAB308]" />
-          <span className="text-[11px] text-stone-400">Personalized based on your income and situation</span>
+          <span className="text-xs text-text-muted">Personalized based on your income and situation</span>
         </div>
       )}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
@@ -156,17 +156,17 @@ export default function GoalTemplates({ onSelect }: GoalTemplatesProps) {
           <button
             key={i}
             onClick={() => onSelect(t)}
-            className="flex items-start gap-3 text-left p-4 rounded-xl border border-stone-100 bg-white hover:border-[#16A34A]/30 hover:bg-green-50/30 transition-all group"
+            className="flex items-start gap-3 text-left p-4 rounded-xl border border-card-border bg-card hover:border-accent/30 hover:bg-green-50/30 transition-all group"
           >
-            <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-stone-50 group-hover:bg-green-50 flex items-center justify-center transition-colors">
+            <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-surface group-hover:bg-green-50 flex items-center justify-center transition-colors">
               {t.icon}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-stone-700 group-hover:text-[#16A34A] transition-colors">
+              <p className="text-sm font-medium text-text-secondary group-hover:text-accent transition-colors">
                 {t.name}
               </p>
-              <p className="text-xs text-stone-400 mt-0.5 line-clamp-2">{t.description}</p>
-              <p className="text-xs text-stone-500 mt-1.5 font-mono tabular-nums">
+              <p className="text-xs text-text-muted mt-0.5 line-clamp-2">{t.description}</p>
+              <p className="text-xs text-text-secondary mt-1.5 font-mono tabular-nums">
                 {formatCurrency(t.target_amount, true)} target · {formatCurrency(t.monthly_contribution)}/mo
               </p>
             </div>

@@ -92,6 +92,17 @@ def update_known_names(names: Sequence[str]) -> None:
         logger.info(f"PII filter updated with {len(names)} known names")
 
 
+def scrub_pii(text: str) -> str:
+    """Scrub PII from arbitrary text using the active filter's patterns.
+
+    Use this for error messages, stack traces, and user notes before DB storage.
+    Falls back to a stateless scrub if the filter hasn't been installed yet.
+    """
+    if _filter_instance is not None:
+        return _filter_instance._redact(text)
+    return PIIRedactionFilter()._redact(text)
+
+
 async def load_known_names_from_db(session) -> list[str]:
     """Query the database for all known person names (household + family members)."""
     from sqlalchemy import select

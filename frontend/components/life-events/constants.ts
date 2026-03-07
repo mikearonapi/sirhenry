@@ -11,28 +11,28 @@ export interface EventTypeConfig {
 }
 
 export const EVENT_TYPES: EventTypeConfig[] = [
-  { value: "real_estate", label: "Real Estate", color: "bg-blue-100 text-blue-700", icon: "🏠",
+  { value: "real_estate", label: "Real Estate", color: "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400", icon: "🏠",
     subtypes: ["purchase", "sale", "rental", "refinance"] },
-  { value: "vehicle", label: "Vehicle", color: "bg-indigo-100 text-indigo-700", icon: "🚗",
+  { value: "vehicle", label: "Vehicle", color: "bg-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400", icon: "🚗",
     subtypes: ["purchase", "sale"] },
-  { value: "family", label: "Family", color: "bg-pink-100 text-pink-700", icon: "👨‍👩‍👧",
+  { value: "family", label: "Family", color: "bg-pink-100 text-pink-700 dark:bg-pink-950/40 dark:text-pink-400", icon: "👨‍👩‍👧",
     subtypes: ["birth", "adoption", "marriage", "divorce", "dependent_change"] },
-  { value: "employment", label: "Employment", color: "bg-amber-100 text-amber-700", icon: "💼",
+  { value: "employment", label: "Employment", color: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400", icon: "💼",
     subtypes: ["job_change", "layoff", "promotion", "start_business", "retirement"] },
-  { value: "medical", label: "Major Medical", color: "bg-red-100 text-red-700", icon: "🏥",
+  { value: "medical", label: "Major Medical", color: "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400", icon: "🏥",
     subtypes: ["major", "disability", "chronic_diagnosis"] },
-  { value: "education", label: "Education", color: "bg-green-100 text-green-700", icon: "🎓",
+  { value: "education", label: "Education", color: "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400", icon: "🎓",
     subtypes: ["college", "529_open", "tuition_payment", "student_loan"] },
-  { value: "estate", label: "Estate & Gift", color: "bg-purple-100 text-purple-700", icon: "📜",
+  { value: "estate", label: "Estate & Gift", color: "bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400", icon: "📜",
     subtypes: ["inheritance", "gift", "will_update", "trust_creation"] },
-  { value: "business", label: "Business", color: "bg-orange-100 text-orange-700", icon: "🏢",
+  { value: "business", label: "Business", color: "bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400", icon: "🏢",
     subtypes: ["asset_sale", "equity_sale", "entity_formation", "acquisition"] },
 ];
 
 export const STATUS_COLORS: Record<string, string> = {
-  completed: "bg-green-100 text-green-700",
-  upcoming: "bg-blue-100 text-blue-700",
-  needs_documentation: "bg-amber-100 text-amber-700",
+  completed: "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400",
+  upcoming: "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400",
+  needs_documentation: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
 };
 
 export const STATUS_LABELS: Record<string, string> = {

@@ -21,7 +21,7 @@ export default function GoalsShowcase() {
         <div className="w-px h-8 bg-[#E5E7EB]" />
         <div>
           <p className="text-[#9CA3AF] text-[10px] font-semibold uppercase tracking-wider">On Track</p>
-          <p className="text-[#16A34A] text-lg font-bold">{onTrackCount}/{goals.length}</p>
+          <p className="text-accent text-lg font-bold">{onTrackCount}/{goals.length}</p>
         </div>
         <div className="w-px h-8 bg-[#E5E7EB]" />
         <div>
@@ -47,11 +47,11 @@ export default function GoalsShowcase() {
               </p>
             </div>
             {/* Progress section */}
-            <div className="p-4 bg-white">
+            <div className="p-4 bg-card">
               <div className="flex items-center justify-between mb-2">
                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
                   g.onTrack
-                    ? "bg-[#F0FDF4] text-[#16A34A] border border-[#DCFCE7]"
+                    ? "bg-[#F0FDF4] text-accent border border-[#DCFCE7]"
                     : "bg-[#FEF2F2] text-[#EF4444] border border-[#FECACA]"
                 }`}>
                   {g.onTrack ? "On track" : "Behind"}
@@ -62,7 +62,7 @@ export default function GoalsShowcase() {
               </div>
               <div className="w-full h-2 bg-[#F3F4F6] rounded-full overflow-hidden mb-2">
                 <div
-                  className={`h-full rounded-full ${g.onTrack ? "bg-[#16A34A]" : "bg-[#EF4444]"}`}
+                  className={`h-full rounded-full ${g.onTrack ? "bg-accent" : "bg-[#EF4444]"}`}
                   style={{ width: `${g.pct}%` }}
                 />
               </div>

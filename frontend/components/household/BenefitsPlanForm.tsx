@@ -45,20 +45,20 @@ export default function BenefitsPlanForm({ spouseName, form, setForm, saving, on
     const val = (form as unknown as Record<string, unknown>)[key];
     if (type === "checkbox") {
       return (
-        <label key={key} className="flex items-center gap-2 text-sm text-stone-700 cursor-pointer">
+        <label key={key} className="flex items-center gap-2 text-sm text-text-secondary cursor-pointer">
           <input type="checkbox" checked={Boolean(val)}
             onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.checked }))}
-            className="rounded border-stone-300" />
+            className="rounded border-border" />
           {label}
         </label>
       );
     }
     return (
       <div key={key}>
-        <label className="text-xs text-stone-500">{label}</label>
+        <label className="text-xs text-text-secondary">{label}</label>
         <input type={type} value={type === "number" ? (Number(val) || "") : String(val || "")}
           onChange={(e) => setForm((f) => ({ ...f, [key]: type === "number" ? (Number(e.target.value) || 0) : e.target.value }))}
-          className="w-full mt-1 text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20" />
+          className="w-full mt-1 text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20" />
       </div>
     );
   };
@@ -73,7 +73,7 @@ export default function BenefitsPlanForm({ spouseName, form, setForm, saving, on
         </div>
 
         <div>
-          <p className="text-xs font-semibold text-stone-700 uppercase tracking-wide mb-3">Retirement</p>
+          <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-3">Retirement</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex flex-col gap-2">
               {field("Has 401k", "has_401k", "checkbox")}
@@ -89,7 +89,7 @@ export default function BenefitsPlanForm({ spouseName, form, setForm, saving, on
         </div>
 
         <div>
-          <p className="text-xs font-semibold text-stone-700 uppercase tracking-wide mb-3">Health & Savings</p>
+          <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-3">Health & Savings</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex flex-col gap-2">
               {field("Has HSA (High Deductible Plan)", "has_hsa", "checkbox")}
@@ -105,7 +105,7 @@ export default function BenefitsPlanForm({ spouseName, form, setForm, saving, on
         </div>
 
         <div>
-          <p className="text-xs font-semibold text-stone-700 uppercase tracking-wide mb-3">Insurance & Other</p>
+          <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-3">Insurance & Other</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {field("Life Insurance Coverage (employer)", "life_insurance_coverage", "number")}
             {field("Short-Term Disability Coverage %", "std_coverage_pct", "number")}
@@ -123,7 +123,7 @@ export default function BenefitsPlanForm({ spouseName, form, setForm, saving, on
       <button
         onClick={onSave}
         disabled={saving}
-        className="mt-6 flex items-center gap-2 bg-[#16A34A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#15803d] disabled:opacity-60"
+        className="mt-6 flex items-center gap-2 bg-accent text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-60"
       >
         {saving && <Loader2 size={14} className="animate-spin" />}
         Save {spouseName} Benefits

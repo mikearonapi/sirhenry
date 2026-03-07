@@ -120,7 +120,7 @@ export default function TargetAllocationEditor({ onSaved }: TargetAllocationEdit
   if (loading) {
     return (
       <Card padding="lg">
-        <div className="flex justify-center py-8"><Loader2 className="animate-spin text-stone-300" size={24} /></div>
+        <div className="flex justify-center py-8"><Loader2 className="animate-spin text-text-muted" size={24} /></div>
       </Card>
     );
   }
@@ -128,10 +128,10 @@ export default function TargetAllocationEditor({ onSaved }: TargetAllocationEdit
   return (
     <Card padding="lg">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-semibold text-stone-800">Target Allocation</h3>
+        <h3 className="text-sm font-semibold text-text-primary">Target Allocation</h3>
         <button
           onClick={() => window.dispatchEvent(new CustomEvent("ask-henry", { detail: { message: "What asset allocation is best for my risk tolerance and income level as a HENRY?" } }))}
-          className="flex items-center gap-1.5 text-xs text-[#16A34A] hover:text-[#15803D] transition-colors"
+          className="flex items-center gap-1.5 text-xs text-accent hover:text-accent-hover transition-colors"
         >
           <MessageCircle size={12} />
           Ask <SirHenryName />
@@ -147,8 +147,8 @@ export default function TargetAllocationEditor({ onSaved }: TargetAllocationEdit
               onClick={() => applyPreset(key)}
               className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
                 name === preset.name
-                  ? "border-[#16A34A] bg-green-50 text-[#16A34A]"
-                  : "border-stone-200 text-stone-500 hover:border-stone-300"
+                  ? "border-accent bg-green-50 text-accent"
+                  : "border-border text-text-secondary hover:border-border"
               }`}
             >
               {preset.name}
@@ -166,7 +166,7 @@ export default function TargetAllocationEditor({ onSaved }: TargetAllocationEdit
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: COLORS[key] ?? "#64748b" }} />
-                  <span className="text-sm text-stone-700">{LABELS[key] ?? key}</span>
+                  <span className="text-sm text-text-secondary">{LABELS[key] ?? key}</span>
                 </div>
                 <span className="text-sm font-semibold tabular-nums font-mono">{value}%</span>
               </div>
@@ -176,15 +176,15 @@ export default function TargetAllocationEditor({ onSaved }: TargetAllocationEdit
                 max={100}
                 value={value}
                 onChange={(e) => handleSliderChange(key, parseInt(e.target.value))}
-                className="w-full h-2 bg-stone-100 rounded-lg appearance-none cursor-pointer accent-[#16A34A]"
+                className="w-full h-2 bg-surface rounded-lg appearance-none cursor-pointer accent-[#16A34A]"
               />
             </div>
           ))}
       </div>
 
       {/* Total indicator */}
-      <div className="flex items-center justify-between mt-4 pt-3 border-t border-stone-100">
-        <span className="text-xs text-stone-400">Total</span>
+      <div className="flex items-center justify-between mt-4 pt-3 border-t border-card-border">
+        <span className="text-xs text-text-muted">Total</span>
         <span className={`text-sm font-semibold tabular-nums ${total === 100 ? "text-green-600" : "text-red-600"}`}>
           {total}%
         </span>
@@ -211,12 +211,12 @@ export default function TargetAllocationEditor({ onSaved }: TargetAllocationEdit
         <button
           onClick={handleSave}
           disabled={saving || total !== 100}
-          className="flex items-center gap-2 bg-[#16A34A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#15803D] disabled:opacity-60 shadow-sm"
+          className="flex items-center gap-2 bg-accent text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-60 shadow-sm"
         >
           {saving ? <Loader2 size={13} className="animate-spin" /> : saved ? <Check size={13} /> : null}
           {saved ? "Saved" : "Save Allocation"}
         </button>
-        <button onClick={load} className="text-xs text-stone-400 hover:text-stone-600">Reset</button>
+        <button onClick={load} className="text-xs text-text-muted hover:text-text-secondary">Reset</button>
       </div>
     </Card>
   );

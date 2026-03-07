@@ -16,7 +16,7 @@ interface SetupBannerProps {
 const STATUS_COLORS = {
   complete: { bg: "bg-green-50 border-green-100", dot: "bg-green-500", text: "text-green-700", sub: "text-green-600" },
   partial: { bg: "bg-amber-50 border-amber-100", dot: "bg-amber-400", text: "text-amber-700", sub: "text-amber-600" },
-  empty: { bg: "bg-stone-50 border-stone-200", dot: "bg-stone-300", text: "text-stone-600", sub: "text-stone-400" },
+  empty: { bg: "bg-surface border-border", dot: "bg-stone-300", text: "text-text-secondary", sub: "text-text-muted" },
 } as const;
 
 function ProgressRing({ percentage }: { percentage: number }) {
@@ -34,7 +34,7 @@ function ProgressRing({ percentage }: { percentage: number }) {
         className="transition-all duration-500"
       />
       <text x={14} y={15} textAnchor="middle" dominantBaseline="central"
-        className="fill-stone-600 text-[8px] font-mono font-bold">
+        className="fill-text-secondary text-[8px] font-mono font-bold">
         {percentage}
       </text>
     </svg>
@@ -50,7 +50,7 @@ function ItemBadge({ item }: { item: SetupItem }) {
       </div>
       <div>
         <p className={`font-semibold ${c.text}`}>{item.label}</p>
-        <p className={`text-[10px] ${c.sub}`}>
+        <p className={`text-xs ${c.sub}`}>
           {item.count > 0 ? `${item.count} item${item.count !== 1 ? "s" : ""}` : item.action}
         </p>
       </div>
@@ -92,55 +92,55 @@ export default function SetupBanner({
     : null;
 
   return (
-    <div className="bg-white border border-stone-100 rounded-xl shadow-sm overflow-hidden">
+    <div className="bg-card border border-card-border rounded-xl shadow-sm overflow-hidden">
       {/* Collapsed row — always visible */}
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-stone-50/50 transition-colors"
+        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-surface transition-colors"
         aria-expanded={expanded}
         aria-controls="setup-details"
       >
         <ProgressRing percentage={percentage} />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-stone-800">{statusText}</p>
+          <p className="text-sm font-semibold text-text-primary">{statusText}</p>
           {remainingText && !hasEmployerConnection ? (
-            <p className="text-xs text-stone-500 truncate">
+            <p className="text-xs text-text-secondary truncate">
               {incompleteItems.length + 1} remaining: {remainingText} · Employer
             </p>
           ) : remainingText ? (
-            <p className="text-xs text-stone-500 truncate">
+            <p className="text-xs text-text-secondary truncate">
               {incompleteItems.length} remaining: {remainingText}
             </p>
           ) : !hasEmployerConnection ? (
-            <p className="text-xs text-stone-500">Connect employer for auto-fill</p>
+            <p className="text-xs text-text-secondary">Connect employer for auto-fill</p>
           ) : null}
         </div>
         <div className="flex items-center gap-1">
           {isAllComplete && (
             <button
               onClick={(e) => { e.stopPropagation(); setDismissed(true); }}
-              className="p-1 text-stone-400 hover:text-stone-600 rounded"
+              className="p-1 text-text-muted hover:text-text-secondary rounded"
               aria-label="Dismiss"
             >
               <X size={14} />
             </button>
           )}
-          {expanded ? <ChevronUp size={16} className="text-stone-400" /> : <ChevronDown size={16} className="text-stone-400" />}
+          {expanded ? <ChevronUp size={16} className="text-text-muted" /> : <ChevronDown size={16} className="text-text-muted" />}
         </div>
       </button>
 
       {/* Expanded section */}
       {expanded && (
-        <div id="setup-details" className="border-t border-stone-100 px-4 py-4 space-y-4">
+        <div id="setup-details" className="border-t border-card-border px-4 py-4 space-y-4">
           {/* Progress bar */}
-          <div className="w-full bg-stone-100 rounded-full h-1.5">
-            <div className="bg-[#16A34A] h-1.5 rounded-full transition-all" style={{ width: `${percentage}%` }} />
+          <div className="w-full bg-surface rounded-full h-1.5">
+            <div className="bg-accent h-1.5 rounded-full transition-all" style={{ width: `${percentage}%` }} />
           </div>
 
           {/* Admin items */}
           {adminItems.length > 0 && (
             <div>
-              <p className="text-[10px] font-semibold text-stone-400 uppercase tracking-wider mb-2">Profile Setup</p>
+              <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">Profile Setup</p>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
                 {adminItems.map((item) => <ItemBadge key={item.label} item={item} />)}
               </div>
@@ -150,7 +150,7 @@ export default function SetupBanner({
           {/* Financial items */}
           {financialItems.length > 0 && (
             <div>
-              <p className="text-[10px] font-semibold text-stone-400 uppercase tracking-wider mb-2">Financial Picture</p>
+              <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">Financial Picture</p>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
                 {financialItems.map((item) => <ItemBadge key={item.label} item={item} />)}
               </div>
@@ -159,7 +159,7 @@ export default function SetupBanner({
 
           {/* Employer connection */}
           <div>
-            <p className="text-[10px] font-semibold text-stone-400 uppercase tracking-wider mb-2">Employer &amp; Payroll</p>
+            <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">Employer &amp; Payroll</p>
             <ConnectEmployer onConnectionComplete={onConnectionComplete} />
           </div>
         </div>

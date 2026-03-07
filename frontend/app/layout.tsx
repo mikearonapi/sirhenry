@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
+import ThemeProvider from "@/components/ThemeProvider";
+import ErrorProvider from "@/components/ui/ErrorProvider";
 import "./globals.css";
 
 const inter = Inter({
@@ -39,9 +41,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} ${plusJakartaSans.variable} ${jetbrainsMono.variable} antialiased`}>
-        {children}
+        <ThemeProvider>
+          <ErrorProvider>{children}</ErrorProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -4,6 +4,47 @@ export interface DebtPayoff {
   payoff_age: number;
 }
 
+/**
+ * Input for creating/updating a retirement profile and for stateless
+ * retirement calculations. Matches backend RetirementProfileIn.
+ */
+export interface RetirementProfileInput {
+  name?: string;
+  current_age: number;
+  retirement_age?: number;
+  life_expectancy?: number;
+  current_annual_income: number;
+  expected_income_growth_pct?: number;
+  expected_social_security_monthly?: number;
+  social_security_start_age?: number;
+  pension_monthly?: number;
+  other_retirement_income_monthly?: number;
+  current_retirement_savings?: number;
+  current_other_investments?: number;
+  monthly_retirement_contribution?: number;
+  employer_match_pct?: number;
+  employer_match_limit_pct?: number;
+  desired_annual_retirement_income?: number | null;
+  income_replacement_pct?: number;
+  healthcare_annual_estimate?: number;
+  additional_annual_expenses?: number;
+  inflation_rate_pct?: number;
+  pre_retirement_return_pct?: number;
+  post_retirement_return_pct?: number;
+  tax_rate_in_retirement_pct?: number;
+  current_annual_expenses?: number | null;
+  retirement_budget_annual?: number | null;
+  debt_payoffs?: DebtPayoff[];
+  second_income_annual?: number;
+  second_income_start_age?: number;
+  second_income_end_age?: number;
+  second_income_monthly_contribution?: number;
+  second_income_employer_match_pct?: number;
+  second_income_employer_match_limit_pct?: number;
+  is_primary?: boolean;
+  notes?: string | null;
+}
+
 export interface RetirementProfile {
   id: number;
   name: string;

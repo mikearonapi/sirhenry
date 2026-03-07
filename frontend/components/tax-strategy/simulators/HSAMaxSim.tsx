@@ -7,7 +7,7 @@ import LabeledInput from "../shared/LabeledInput";
 import CalcButton from "../shared/CalcButton";
 import ResultBox from "../shared/ResultBox";
 
-const INPUT_CLS = "w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A]";
+const INPUT_CLS = "w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent";
 
 // 2025 HSA limits
 const HSA_LIMIT = { individual: 4_300, family: 8_550 };
@@ -139,7 +139,7 @@ export default function HSAMaxSim() {
     >
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         <div>
-          <label className="block text-xs text-stone-500 mb-1">Coverage Type</label>
+          <label className="block text-xs text-text-secondary mb-1">Coverage Type</label>
           <select value={coverage} onChange={(e) => setCoverage(e.target.value as "individual" | "family")} className={INPUT_CLS}>
             <option value="individual">Individual</option>
             <option value="family">Family</option>
@@ -150,7 +150,7 @@ export default function HSAMaxSim() {
         <LabeledInput label="Current HSA Balance" value={currentBalance} onChange={setCurrentBalance} />
         <LabeledInput label="Household Income" value={income} onChange={setIncome} />
         <div>
-          <label className="block text-xs text-stone-500 mb-1">Filing Status</label>
+          <label className="block text-xs text-text-secondary mb-1">Filing Status</label>
           <select value={filingStatus} onChange={(e) => setFilingStatus(e.target.value)} className={INPUT_CLS}>
             <option value="single">Single</option>
             <option value="mfj">Married Filing Jointly</option>
@@ -194,22 +194,22 @@ export default function HSAMaxSim() {
           )}
 
           {/* Growth projections */}
-          <div className="bg-stone-50 rounded-lg p-4 space-y-3">
-            <h4 className="text-sm font-semibold text-stone-800 flex items-center gap-2">
-              <TrendingUp size={14} className="text-[#16A34A]" />
+          <div className="bg-surface rounded-lg p-4 space-y-3">
+            <h4 className="text-sm font-semibold text-text-primary flex items-center gap-2">
+              <TrendingUp size={14} className="text-accent" />
               Projected Account Balance (7% annual growth)
             </h4>
             <div className="grid grid-cols-3 gap-4">
               <div className="text-center">
-                <p className="text-xs text-stone-500 mb-1">In 10 Years</p>
-                <p className="text-lg font-semibold font-mono tabular-nums text-stone-800">{formatCurrency(result.projected_balance_10yr)}</p>
+                <p className="text-xs text-text-secondary mb-1">In 10 Years</p>
+                <p className="text-lg font-semibold font-mono tabular-nums text-text-primary">{formatCurrency(result.projected_balance_10yr)}</p>
               </div>
               <div className="text-center">
-                <p className="text-xs text-stone-500 mb-1">In 20 Years</p>
-                <p className="text-lg font-semibold font-mono tabular-nums text-stone-800">{formatCurrency(result.projected_balance_20yr)}</p>
+                <p className="text-xs text-text-secondary mb-1">In 20 Years</p>
+                <p className="text-lg font-semibold font-mono tabular-nums text-text-primary">{formatCurrency(result.projected_balance_20yr)}</p>
               </div>
               <div className="text-center">
-                <p className="text-xs text-stone-500 mb-1">In 30 Years</p>
+                <p className="text-xs text-text-secondary mb-1">In 30 Years</p>
                 <p className="text-lg font-semibold font-mono tabular-nums text-green-700">{formatCurrency(result.projected_balance_30yr)}</p>
               </div>
             </div>
@@ -217,15 +217,15 @@ export default function HSAMaxSim() {
 
           {/* 20-year triple-tax value */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="bg-white border border-stone-200 rounded-lg p-3">
-              <p className="text-xs text-stone-500 mb-1">20-Year Triple-Tax Advantage</p>
+            <div className="bg-card border border-border rounded-lg p-3">
+              <p className="text-xs text-text-secondary mb-1">20-Year Triple-Tax Advantage</p>
               <p className="text-lg font-semibold font-mono tabular-nums text-green-700">{formatCurrency(result.triple_tax_advantage)}</p>
-              <p className="text-xs text-stone-500 mt-1">vs same investments in a taxable brokerage account</p>
+              <p className="text-xs text-text-secondary mt-1">vs same investments in a taxable brokerage account</p>
             </div>
-            <div className="bg-white border border-stone-200 rounded-lg p-3">
-              <p className="text-xs text-stone-500 mb-1">Tax-Free Withdrawal Value (20yr)</p>
-              <p className="text-lg font-semibold font-mono tabular-nums text-stone-800">{formatCurrency(result.projected_balance_20yr)}</p>
-              <p className="text-xs text-stone-500 mt-1">100% tax-free for qualified medical expenses</p>
+            <div className="bg-card border border-border rounded-lg p-3">
+              <p className="text-xs text-text-secondary mb-1">Tax-Free Withdrawal Value (20yr)</p>
+              <p className="text-lg font-semibold font-mono tabular-nums text-text-primary">{formatCurrency(result.projected_balance_20yr)}</p>
+              <p className="text-xs text-text-secondary mt-1">100% tax-free for qualified medical expenses</p>
             </div>
           </div>
 

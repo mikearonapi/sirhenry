@@ -222,7 +222,7 @@ export default function TransactionsPage() {
   const uncategorizedCount = audit?.uncategorized ?? 0;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <PageHeader
         title="Transactions"
         subtitle={`${total.toLocaleString()} transactions`}
@@ -244,7 +244,7 @@ export default function TransactionsPage() {
             <button
               onClick={() => { setBatchMode(!batchMode); setSelectedIds(new Set()); }}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border shadow-sm transition-colors ${
-                batchMode ? "bg-stone-800 text-white border-stone-800" : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50"
+                batchMode ? "bg-text-primary text-white border-text-primary" : "bg-card text-text-secondary border-border hover:bg-surface"
               }`}
             >
               <CheckSquare size={12} />
@@ -255,7 +255,7 @@ export default function TransactionsPage() {
             <button
               onClick={handleExportCsv}
               disabled={exporting || total === 0}
-              className="flex items-center gap-1.5 bg-white text-stone-600 px-3 py-1.5 rounded-lg text-xs font-medium border border-stone-200 hover:bg-stone-50 disabled:opacity-40 shadow-sm"
+              className="flex items-center gap-1.5 bg-card text-text-secondary px-3 py-1.5 rounded-lg text-xs font-medium border border-border hover:bg-surface disabled:opacity-40 shadow-sm"
             >
               {exporting ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
               Export
@@ -300,16 +300,16 @@ export default function TransactionsPage() {
 
       {/* Batch action bar */}
       {batchMode && selectedIds.size > 0 && (
-        <div className="bg-stone-800 text-white rounded-xl p-3 flex items-center justify-between">
+        <div className="bg-text-primary text-white rounded-xl p-3 flex items-center justify-between">
           <span className="text-sm font-medium">{selectedIds.size} selected</span>
           <div className="flex items-center gap-2">
-            <button onClick={selectAll} className="text-xs text-stone-300 hover:text-white">Select all on page</button>
+            <button onClick={selectAll} className="text-xs text-text-muted hover:text-white">Select all on page</button>
             <select
               onChange={(e) => {
                 if (e.target.value) handleBatchUpdate({ category_override: e.target.value });
               }}
               defaultValue=""
-              className="text-xs bg-stone-700 text-white border border-stone-600 rounded-lg px-2 py-1"
+              className="text-xs bg-text-secondary text-white border border-border rounded-lg px-2 py-1"
             >
               <option value="" disabled>Set category...</option>
               {allCategories.slice(0, 30).map((c) => <option key={c} value={c}>{c}</option>)}
@@ -319,7 +319,7 @@ export default function TransactionsPage() {
                 if (e.target.value) handleBatchUpdate({ segment_override: e.target.value });
               }}
               defaultValue=""
-              className="text-xs bg-stone-700 text-white border border-stone-600 rounded-lg px-2 py-1"
+              className="text-xs bg-text-secondary text-white border border-border rounded-lg px-2 py-1"
             >
               <option value="" disabled>Set segment...</option>
               <option value="personal">Personal</option>
@@ -380,7 +380,7 @@ export default function TransactionsPage() {
       />
 
       {loading ? (
-        <div className="flex items-center justify-center h-48 gap-2 text-stone-400">
+        <div className="flex items-center justify-center h-48 gap-2 text-text-muted">
           <Loader2 className="animate-spin" size={18} />
           <span className="text-sm">Loading...</span>
         </div>
@@ -391,16 +391,16 @@ export default function TransactionsPage() {
         </div>
       ) : transactions.length === 0 ? (
         <Card className="text-center py-12">
-          <p className="text-stone-400 text-sm">No transactions found. Try adjusting your filters or import a statement.</p>
+          <p className="text-text-muted text-sm">No transactions found. Try adjusting your filters or import a statement.</p>
         </Card>
       ) : (
         <Card padding="none">
           {Array.from(dateGroups.entries()).map(([dateKey, txs]) => (
             <div key={dateKey}>
-              <div className="px-4 py-1.5 bg-stone-50/80 border-b border-stone-100 sticky top-0 z-10">
-                <span className="text-[11px] font-semibold text-stone-500 uppercase tracking-wide">{formatDateLabel(dateKey)}</span>
+              <div className="px-4 py-1.5 bg-surface/80 border-b border-card-border sticky top-0 z-10">
+                <span className="text-xs font-semibold text-text-secondary uppercase tracking-wide">{formatDateLabel(dateKey)}</span>
               </div>
-              <div className="divide-y divide-stone-50">
+              <div className="divide-y divide-border-light">
                 {txs.map((tx) => (
                   <TransactionRow
                     key={tx.id}
@@ -418,14 +418,14 @@ export default function TransactionsPage() {
       )}
 
       {totalPages > 1 && (
-        <div className="flex items-center justify-between text-sm text-stone-500">
+        <div className="flex items-center justify-between text-sm text-text-secondary">
           <span>Page {page + 1} of {totalPages}</span>
           <div className="flex gap-1">
             <button
               onClick={() => setPage((p) => Math.max(0, p - 1))}
               disabled={page === 0}
               aria-label="Previous page"
-              className="p-1.5 rounded-lg disabled:opacity-30 hover:bg-stone-100 border border-stone-200"
+              className="p-1.5 rounded-lg disabled:opacity-30 hover:bg-surface border border-border"
             >
               <ChevronLeft size={16} />
             </button>
@@ -433,7 +433,7 @@ export default function TransactionsPage() {
               onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
               disabled={page >= totalPages - 1}
               aria-label="Next page"
-              className="p-1.5 rounded-lg disabled:opacity-30 hover:bg-stone-100 border border-stone-200"
+              className="p-1.5 rounded-lg disabled:opacity-30 hover:bg-surface border border-border"
             >
               <ChevronRight size={16} />
             </button>

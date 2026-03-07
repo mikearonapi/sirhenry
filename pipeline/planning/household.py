@@ -71,13 +71,28 @@ class HouseholdEngine:
 
         savings = mfs - mfj
         rec = "mfj" if mfj <= mfs else "mfs"
-        return {
+
+        # MFS disqualification warnings — even if MFS is cheaper on paper,
+        # these hidden costs often make MFJ the better choice.
+        mfs_warnings: list[str] = []
+        combined = spouse_a_income + spouse_b_income
+        if rec == "mfs":
+            mfs_warnings.append("Roth IRA contributions phased out at $10K MAGI (effectively $0 for MFS)")
+            mfs_warnings.append("Student loan interest deduction ($2,500) is disallowed under MFS")
+            mfs_warnings.append("Education credits (American Opportunity, Lifetime Learning) are disallowed under MFS")
+            if combined > 150_000:
+                mfs_warnings.append("Child and Dependent Care Credit is severely limited under MFS")
+
+        result = {
             "mfj_tax": round(mfj, 2),
             "mfs_tax": round(mfs, 2),
             "filing_savings": round(abs(savings), 2),
             "recommendation": rec,
             "explanation": f"Filing {'jointly' if rec == 'mfj' else 'separately'} saves ${abs(savings):,.0f}/year.",
         }
+        if mfs_warnings:
+            result["mfs_warnings"] = mfs_warnings
+        return result
 
     @staticmethod
     def optimize_retirement_contributions(

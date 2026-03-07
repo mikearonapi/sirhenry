@@ -1,4 +1,4 @@
-import { request, BASE } from "./api-client";
+import { request, getBase, getAuthHeaders } from "./api-client";
 import type {
   SmartDefaults,
   HouseholdUpdateSuggestion,
@@ -109,8 +109,10 @@ export async function detectDocumentType(file: File): Promise<DocumentTypeDetect
   const formData = new FormData();
   formData.append("file", file);
 
-  const res = await fetch(`${BASE}/import/detect-type`, {
+  const authHeaders = await getAuthHeaders();
+  const res = await fetch(`${getBase()}/import/detect-type`, {
     method: "POST",
+    headers: authHeaders,
     body: formData,
   });
   if (!res.ok) {

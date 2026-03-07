@@ -3,6 +3,7 @@ import { ChevronRight } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import Card from "@/components/ui/Card";
 import Link from "next/link";
+import { useThemeColors } from "@/hooks/useThemeColors";
 
 interface Props {
   effectiveSavingsRate: number;
@@ -25,17 +26,19 @@ export default function StatusCard({
       ? `You're saving ${effectiveSavingsRate.toFixed(1)}%. Boost to ${targetSavingsRate}% to get on track.`
       : `Savings rate is ${effectiveSavingsRate.toFixed(1)}%. Target is ${targetSavingsRate}% for your retirement goal.`;
 
+  const colors = useThemeColors();
+
   const strokeColor = effectiveSavingsRate >= targetSavingsRate
-    ? "#16A34A"
+    ? colors.positive
     : effectiveSavingsRate >= targetSavingsRate * 0.5
-      ? "#D97706"
-      : "#DC2626";
+      ? colors.warning
+      : colors.negative;
 
   const rateColor = effectiveSavingsRate >= targetSavingsRate
-    ? "#16A34A"
+    ? colors.positive
     : effectiveSavingsRate >= targetSavingsRate * 0.5
-      ? "#D97706"
-      : "#DC2626";
+      ? colors.warning
+      : colors.negative;
 
   return (
     <Card padding="lg">
@@ -44,7 +47,7 @@ export default function StatusCard({
         <div className="flex-shrink-0 w-32">
           <div className="relative w-24 h-24 mx-auto">
             <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-              <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#E5E7EB" strokeWidth="2.5" />
+              <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke={colors.gridLine} strokeWidth="2.5" />
               <path
                 d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                 fill="none"
@@ -54,35 +57,35 @@ export default function StatusCard({
                 strokeLinecap="round"
               />
             </svg>
-            <span className="absolute inset-0 flex items-center justify-center text-lg font-bold text-stone-900 money">
+            <span className="absolute inset-0 flex items-center justify-center text-lg font-bold text-text-primary money">
               {effectiveSavingsRate.toFixed(0)}%
             </span>
           </div>
-          <p className="text-xs text-stone-500 text-center mt-1">Savings Rate</p>
+          <p className="text-xs text-text-secondary text-center mt-1">Savings Rate</p>
         </div>
 
         {/* Key metrics */}
         <div className="flex-1 grid grid-cols-2 sm:grid-cols-3 gap-4">
           <div>
-            <p className="text-[11px] text-stone-400 uppercase tracking-wide font-semibold">Net Worth</p>
-            <p className="text-xl font-bold text-stone-900 mt-0.5 money">{formatCurrency(effectiveNetWorth, true)}</p>
+            <p className="text-xs text-text-muted uppercase tracking-wide font-semibold">Net Worth</p>
+            <p className="text-xl font-bold text-text-primary mt-0.5 money">{formatCurrency(effectiveNetWorth, true)}</p>
           </div>
           <div>
-            <p className="text-[11px] text-stone-400 uppercase tracking-wide font-semibold">Savings Rate</p>
+            <p className="text-xs text-text-muted uppercase tracking-wide font-semibold">Savings Rate</p>
             <p className="text-xl font-bold mt-0.5 money" style={{ color: rateColor }}>
               {effectiveSavingsRate.toFixed(1)}%
             </p>
-            <p className="text-[11px] text-stone-400">Target: {targetSavingsRate}%</p>
+            <p className="text-xs text-text-muted">Target: {targetSavingsRate}%</p>
           </div>
           <div className="col-span-2 sm:col-span-1">
-            <p className="text-[11px] text-stone-400 uppercase tracking-wide font-semibold">Status</p>
-            <p className="text-sm font-medium text-stone-700 mt-1 leading-snug">{statusMsg}</p>
+            <p className="text-xs text-text-muted uppercase tracking-wide font-semibold">Status</p>
+            <p className="text-sm font-medium text-text-secondary mt-1 leading-snug">{statusMsg}</p>
           </div>
         </div>
 
         {/* Trajectory CTA */}
         <div className="flex-shrink-0">
-          <Link href="/retirement" className="flex items-center gap-1.5 text-xs font-medium text-[#16A34A] hover:text-[#15803D] whitespace-nowrap">
+          <Link href="/retirement" className="flex items-center gap-1.5 text-xs font-medium text-accent hover:text-accent-hover whitespace-nowrap">
             See projection <ChevronRight size={13} />
           </Link>
         </div>

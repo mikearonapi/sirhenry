@@ -23,6 +23,7 @@ from plaid.model.products import Products
 from plaid.model.transactions_sync_request import TransactionsSyncRequest
 from plaid.model.accounts_get_request import AccountsGetRequest
 from plaid.model.link_token_transactions import LinkTokenTransactions
+from plaid.model.investments_holdings_get_request import InvestmentsHoldingsGetRequest
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -108,7 +109,10 @@ def create_link_token(
         kwargs["access_token"] = access_token
     else:
         kwargs["products"] = [Products("transactions")]
-        kwargs["optional_products"] = [Products("investments"), Products("liabilities")]
+        kwargs["optional_products"] = [
+            Products("investments"),
+            Products("liabilities"),
+        ]
         kwargs["transactions"] = LinkTokenTransactions(days_requested=730)
 
     request = LinkTokenCreateRequest(**kwargs)
@@ -158,6 +162,69 @@ def get_accounts(access_token: str) -> list[dict[str, Any]]:
             "last_updated": datetime.now(timezone.utc),
         })
     return accounts
+
+
+def get_investment_holdings(access_token: str) -> dict[str, Any]:
+    """Fetch investment holdings and securities from Plaid /investments/holdings/get.
+
+    Returns {holdings: [...], securities: {...security_id: {...}}}.
+    Holdings include quantity, cost basis, and current value per security.
+    Securities dict maps security_id to security metadata (ticker, name, type).
+    """
+    client = get_plaid_client()
+    request = InvestmentsHoldingsGetRequest(access_token=access_token)
+    try:
+        response = _retry_on_transient(client.investments_holdings_get, request)
+    except plaid.ApiException as e:
+        error_code = ""
+        try:
+            body = json.loads(e.body) if e.body else {}
+            error_code = body.get("error_code", "")
+        except (json.JSONDecodeError, AttributeError):
+            pass
+        # NO_INVESTMENT_ACCOUNTS means the item has no investment accounts
+        # PRODUCT_NOT_ENABLED means investments product wasn't granted
+        if error_code in ("NO_INVESTMENT_ACCOUNTS", "PRODUCT_NOT_ENABLED"):
+            logger.info(f"Investment holdings not available: {error_code}")
+            return {"holdings": [], "securities": {}}
+        raise
+
+    # Build security lookup: security_id → metadata
+    securities = {}
+    for sec in response.get("securities", []):
+        sec_dict = sec if isinstance(sec, dict) else sec.to_dict()
+        securities[sec_dict["security_id"]] = {
+            "ticker": sec_dict.get("ticker_symbol"),
+            "name": sec_dict.get("name"),
+            "type": sec_dict.get("type"),  # equity, etf, mutual fund, etc.
+            "close_price": sec_dict.get("close_price"),
+            "iso_currency": sec_dict.get("iso_currency_code", "USD"),
+        }
+
+    holdings = []
+    for h in response.get("holdings", []):
+        h_dict = h if isinstance(h, dict) else h.to_dict()
+        sec_id = h_dict.get("security_id")
+        sec = securities.get(sec_id, {})
+        cost_basis = h_dict.get("cost_basis")
+        quantity = h_dict.get("quantity", 0)
+        current_value = h_dict.get("institution_value")
+
+        holdings.append({
+            "plaid_account_id": h_dict.get("account_id"),
+            "plaid_security_id": sec_id,
+            "ticker": sec.get("ticker") or "UNKNOWN",
+            "name": sec.get("name"),
+            "asset_type": sec.get("type", "equity"),
+            "shares": quantity,
+            "cost_basis_per_share": (cost_basis / quantity) if cost_basis and quantity else None,
+            "total_cost_basis": cost_basis,
+            "current_price": sec.get("close_price"),
+            "current_value": current_value,
+            "iso_currency": sec.get("iso_currency", "USD"),
+        })
+
+    return {"holdings": holdings, "securities": securities}
 
 
 class TransactionsSyncMutationError(Exception):
@@ -228,13 +295,17 @@ def sync_transactions(
 
 
 def _parse_date(val: Any) -> Optional[datetime]:
-    """Parse a date value from Plaid (date object, string, or None)."""
+    """Parse a date value from Plaid (date object, string, or None).
+
+    Always returns a timezone-aware (UTC) datetime to avoid mixing naive
+    and aware datetimes in the same database column.
+    """
     if val is None:
         return None
     if hasattr(val, "strftime"):
-        return datetime.combine(val, datetime.min.time())
+        return datetime.combine(val, datetime.min.time()).replace(tzinfo=timezone.utc)
     try:
-        return datetime.strptime(str(val), "%Y-%m-%d")
+        return datetime.strptime(str(val), "%Y-%m-%d").replace(tzinfo=timezone.utc)
     except (ValueError, TypeError):
         return None
 

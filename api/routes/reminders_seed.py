@@ -279,6 +279,9 @@ async def seed_all_reminders(session: AsyncSession) -> dict[str, int]:
     seeded_by_type: dict[str, int] = {}
     for reminder_def in all_reminders:
         due = datetime.fromisoformat(reminder_def["due_date"])
+        # Treat naive datetimes as UTC for comparison with tz-aware cutoff
+        if due.tzinfo is None:
+            due = due.replace(tzinfo=timezone.utc)
         if due < cutoff:
             continue
 

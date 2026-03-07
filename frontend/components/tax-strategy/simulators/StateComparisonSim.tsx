@@ -9,7 +9,7 @@ import LabeledInput from "../shared/LabeledInput";
 import CalcButton from "../shared/CalcButton";
 import ResultBox from "../shared/ResultBox";
 
-const INPUT_CLS = "w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A]";
+const INPUT_CLS = "w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent";
 
 const STATE_OPTIONS = [
   { code: "CA", name: "California" }, { code: "NY", name: "New York" },
@@ -76,7 +76,7 @@ export default function StateComparisonSim() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <LabeledInput label="Total Annual Income" value={income} onChange={setIncome} />
         <div>
-          <label className="block text-xs text-stone-500 mb-1">Filing Status</label>
+          <label className="block text-xs text-text-secondary mb-1">Filing Status</label>
           <select value={filingStatus} onChange={(e) => setFilingStatus(e.target.value)} className={INPUT_CLS}>
             <option value="mfj">Married Filing Jointly</option>
             <option value="single">Single</option>
@@ -85,7 +85,7 @@ export default function StateComparisonSim() {
           </select>
         </div>
         <div>
-          <label className="block text-xs text-stone-500 mb-1">Current State</label>
+          <label className="block text-xs text-text-secondary mb-1">Current State</label>
           <select value={currentState} onChange={(e) => setCurrentState(e.target.value)} className={INPUT_CLS}>
             {STATE_OPTIONS.map((s) => (
               <option key={s.code} value={s.code}>{s.name}</option>
@@ -96,7 +96,7 @@ export default function StateComparisonSim() {
 
       {/* Compare states multi-select */}
       <div>
-        <label className="block text-xs text-stone-500 mb-2">Compare With (select up to 8)</label>
+        <label className="block text-xs text-text-secondary mb-2">Compare With (select up to 8)</label>
         <div className="flex flex-wrap gap-1.5">
           {STATE_OPTIONS.filter((s) => s.code !== currentState).map((s) => {
             const selected = compareStates.includes(s.code);
@@ -107,10 +107,10 @@ export default function StateComparisonSim() {
                 onClick={() => toggleCompareState(s.code)}
                 className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
                   selected
-                    ? "bg-[#16A34A] text-white"
+                    ? "bg-accent text-white"
                     : isNoTax
                     ? "bg-green-50 text-green-700 hover:bg-green-100 border border-green-200"
-                    : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+                    : "bg-surface text-text-secondary hover:bg-surface"
                 }`}
               >
                 {s.code}
@@ -118,7 +118,7 @@ export default function StateComparisonSim() {
             );
           })}
         </div>
-        <p className="text-[10px] text-stone-400 mt-1">
+        <p className="text-xs text-text-muted mt-1">
           Green borders = no state income tax · {compareStates.length}/8 selected
         </p>
       </div>
@@ -151,49 +151,49 @@ export default function StateComparisonSim() {
           </div>
 
           {/* State comparison table */}
-          <div className="rounded-lg border border-stone-200 overflow-hidden">
+          <div className="rounded-lg border border-border overflow-hidden">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-stone-50 border-b border-stone-200">
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-stone-600">State</th>
-                  <th className="text-right px-3 py-2 text-xs font-semibold text-stone-600">State Rate</th>
-                  <th className="text-right px-3 py-2 text-xs font-semibold text-stone-600">State Tax</th>
-                  <th className="text-right px-3 py-2 text-xs font-semibold text-stone-600">Total Tax</th>
-                  <th className="text-right px-3 py-2 text-xs font-semibold text-stone-600">Effective Rate</th>
-                  <th className="text-right px-3 py-2 text-xs font-semibold text-stone-600">Savings vs Current</th>
+                <tr className="bg-surface border-b border-border">
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-text-secondary">State</th>
+                  <th className="text-right px-3 py-2 text-xs font-semibold text-text-secondary">State Rate</th>
+                  <th className="text-right px-3 py-2 text-xs font-semibold text-text-secondary">State Tax</th>
+                  <th className="text-right px-3 py-2 text-xs font-semibold text-text-secondary">Total Tax</th>
+                  <th className="text-right px-3 py-2 text-xs font-semibold text-text-secondary">Effective Rate</th>
+                  <th className="text-right px-3 py-2 text-xs font-semibold text-text-secondary">Savings vs Current</th>
                 </tr>
               </thead>
               <tbody>
                 {result.states.map((s, i) => (
                   <tr
                     key={s.state}
-                    className={`border-b border-stone-100 last:border-0 ${
+                    className={`border-b border-card-border last:border-0 ${
                       s.is_current ? "bg-amber-50" : i === 0 && !s.is_current ? "bg-green-50" : ""
                     }`}
                   >
                     <td className="px-3 py-2">
                       <div className="flex items-center gap-1.5">
-                        {s.is_current && <span className="text-[10px] bg-amber-200 text-amber-800 px-1.5 py-0.5 rounded font-medium">Current</span>}
+                        {s.is_current && <span className="text-xs bg-amber-200 text-amber-800 px-1.5 py-0.5 rounded font-medium">Current</span>}
                         {!s.is_current && i === 0 && <CheckCircle size={12} className="text-green-600" />}
-                        <span className="font-medium text-stone-800">{s.state}</span>
-                        <span className="text-stone-400 text-xs">{s.state_name}</span>
-                        {s.is_no_tax && <span className="text-[10px] bg-green-100 text-green-700 px-1 py-0.5 rounded">0% tax</span>}
+                        <span className="font-medium text-text-primary">{s.state}</span>
+                        <span className="text-text-muted text-xs">{s.state_name}</span>
+                        {s.is_no_tax && <span className="text-xs bg-green-100 text-green-700 px-1 py-0.5 rounded">0% tax</span>}
                       </div>
                     </td>
-                    <td className="px-3 py-2 text-right font-mono tabular-nums text-stone-700">
+                    <td className="px-3 py-2 text-right font-mono tabular-nums text-text-secondary">
                       {(s.state_rate * 100).toFixed(1)}%
                     </td>
-                    <td className="px-3 py-2 text-right font-mono tabular-nums text-stone-700">
+                    <td className="px-3 py-2 text-right font-mono tabular-nums text-text-secondary">
                       {formatCurrency(s.state_tax)}
                     </td>
-                    <td className="px-3 py-2 text-right font-mono tabular-nums font-medium text-stone-800">
+                    <td className="px-3 py-2 text-right font-mono tabular-nums font-medium text-text-primary">
                       {formatCurrency(s.total_tax)}
                     </td>
-                    <td className="px-3 py-2 text-right font-mono tabular-nums text-stone-700">
+                    <td className="px-3 py-2 text-right font-mono tabular-nums text-text-secondary">
                       {(s.effective_total_rate * 100).toFixed(1)}%
                     </td>
                     <td className={`px-3 py-2 text-right font-mono tabular-nums font-medium ${
-                      s.savings_vs_current > 0 ? "text-green-700" : s.savings_vs_current < 0 ? "text-red-600" : "text-stone-400"
+                      s.savings_vs_current > 0 ? "text-green-700" : s.savings_vs_current < 0 ? "text-red-600" : "text-text-muted"
                     }`}>
                       {s.savings_vs_current > 0 && (
                         <span className="inline-flex items-center gap-0.5">

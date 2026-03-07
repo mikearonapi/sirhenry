@@ -213,7 +213,7 @@ export const SUGGESTION_CATEGORIES: SuggestionCategory[] = [
 export const SETUP_SUGGESTION_CATEGORY: SuggestionCategory = {
   label: "Setup",
   icon: Sparkles,
-  color: "text-[#16A34A]",
+  color: "text-accent",
   bgColor: "bg-green-50 hover:bg-green-100 border-green-100",
   suggestions: [
     "What filing status would save me the most in taxes?",

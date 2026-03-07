@@ -7,7 +7,7 @@ import SimulatorCard from "../shared/SimulatorCard";
 import LabeledInput from "../shared/LabeledInput";
 import CalcButton from "../shared/CalcButton";
 
-const INPUT_CLS = "w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A]";
+const INPUT_CLS = "w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent";
 
 export default function MultiYearProjectionSim({ defaultIncome, defaultFilingStatus }: {
   defaultIncome?: string;
@@ -45,7 +45,7 @@ export default function MultiYearProjectionSim({ defaultIncome, defaultFilingSta
         <LabeledInput label="Current Income" value={income} onChange={setIncome} />
         <LabeledInput label="Growth Rate (%)" value={growth} onChange={setGrowth} />
         <div>
-          <label className="block text-xs text-stone-500 mb-1">Filing Status</label>
+          <label className="block text-xs text-text-secondary mb-1">Filing Status</label>
           <select value={filingStatus} onChange={(e) => setFilingStatus(e.target.value)} className={INPUT_CLS}>
             <option value="single">Single</option>
             <option value="mfj">Married Filing Jointly</option>
@@ -61,14 +61,14 @@ export default function MultiYearProjectionSim({ defaultIncome, defaultFilingSta
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-sm">
             <caption className="sr-only">Multi-year projection</caption>
-            <thead className="bg-stone-50">
+            <thead className="bg-surface">
               <tr>
                 {["Year", "Income", "Federal", "State", "Payroll", "Total Tax", "Effective %"].map((h) => (
-                  <th key={h} className={`${h === "Year" ? "text-left" : "text-right"} px-3 py-2 text-xs font-semibold text-stone-500`}>{h}</th>
+                  <th key={h} className={`${h === "Year" ? "text-left" : "text-right"} px-3 py-2 text-xs font-semibold text-text-secondary`}>{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-stone-100">
+            <tbody className="divide-y divide-card-border">
               {result.years.map((r) => (
                 <tr key={r.year}>
                   <td className="px-3 py-2 font-medium">{r.year}</td>

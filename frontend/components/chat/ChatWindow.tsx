@@ -270,12 +270,12 @@ export default function ChatWindow() {
           className="fixed bottom-6 right-6 group z-50"
         >
           <div className="relative">
-            <div className="absolute inset-0 bg-[#16A34A] rounded-full blur-lg opacity-20 group-hover:opacity-40 transition-opacity" />
+            <div className="absolute inset-0 bg-accent rounded-full blur-lg opacity-20 group-hover:opacity-40 transition-opacity" />
             <div className="relative w-14 h-14 bg-[#0a0a0b] border border-zinc-700 text-white rounded-full shadow-xl hover:shadow-2xl transition-all hover:scale-105 flex items-center justify-center">
               <span className="text-white text-xl font-extrabold leading-none" style={{ fontFamily: "var(--font-display, sans-serif)" }}>H</span>
             </div>
             {messages.length > 0 && (
-              <span className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-sm ring-2 ring-white">
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-sm ring-2 ring-white">
                 {messages.filter((m) => m.role === "assistant").length}
               </span>
             )}
@@ -302,7 +302,7 @@ export default function ChatWindow() {
                 <SirHenryAvatar size={9} />
                 <div>
                   <p className="font-semibold text-[14px] leading-tight" style={{ fontFamily: "var(--font-display, sans-serif)" }}><SirHenryName /></p>
-                  <p className="text-[11px] text-zinc-500">Your AI financial advisor</p>
+                  <p className="text-xs text-zinc-500">Your AI financial advisor</p>
                 </div>
               </div>
               <div className="flex items-center gap-0.5">
@@ -406,7 +406,7 @@ export default function ChatWindow() {
             {hasMessages && !loading && (
               <div className="px-4 pt-2 pb-0 flex gap-1.5 overflow-x-auto scrollbar-hide bg-[#0a0a0b] border-t border-zinc-800">
                 {["Tell me more", "Can you fix that?", "Show the details", "What else should I know?"].map((q) => (
-                  <button key={q} onClick={() => handleSend(q)} className="flex-shrink-0 text-[11px] px-3 py-1.5 rounded-full bg-zinc-900 text-zinc-500 border border-zinc-800 hover:bg-green-900/20 hover:text-green-400 hover:border-green-800/50 transition-all">
+                  <button key={q} onClick={() => handleSend(q)} className="flex-shrink-0 text-xs px-3 py-1.5 rounded-full bg-zinc-900 text-zinc-500 border border-zinc-800 hover:bg-green-900/20 hover:text-green-400 hover:border-green-800/50 transition-all">
                     {q}
                   </button>
                 ))}
@@ -430,14 +430,14 @@ export default function ChatWindow() {
                 <button
                   onClick={() => handleSend()}
                   disabled={!input.trim() || loading}
-                  className="w-8 h-8 bg-[#16A34A] text-white rounded-lg flex items-center justify-center hover:bg-[#15803D] disabled:opacity-30 disabled:hover:bg-[#16A34A] transition-all flex-shrink-0"
+                  className="w-8 h-8 bg-accent text-white rounded-lg flex items-center justify-center hover:bg-accent-hover disabled:opacity-30 disabled:hover:bg-accent transition-all flex-shrink-0"
                 >
                   {loading ? <Loader2 size={14} className="animate-spin" /> : <ArrowRight size={14} />}
                 </button>
               </div>
               <div className="flex items-center justify-between mt-1.5 px-1">
-                <p className="text-[10px] text-zinc-700">Shift + Enter for new line</p>
-                <p className="text-[10px] text-zinc-700 flex items-center gap-1"><Sparkles size={9} /> <SirHenryName /> · Powered by Claude</p>
+                <p className="text-xs text-zinc-700">Shift + Enter for new line</p>
+                <p className="text-xs text-zinc-700 flex items-center gap-1"><Sparkles size={9} /> <SirHenryName /> · Powered by Claude</p>
               </div>
             </div>
           </div>

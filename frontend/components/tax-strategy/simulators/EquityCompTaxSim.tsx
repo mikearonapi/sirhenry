@@ -9,7 +9,7 @@ import LabeledInput from "../shared/LabeledInput";
 import CalcButton from "../shared/CalcButton";
 import ResultBox from "../shared/ResultBox";
 
-const INPUT_CLS = "w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A]";
+const INPUT_CLS = "w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent";
 
 type Mode = "rsu" | "iso";
 
@@ -67,11 +67,11 @@ export default function EquityCompTaxSim() {
       bestFor="Tech workers, executives, and anyone with stock grants (RSUs, ISOs, NSOs, or ESPP)"
     >
       {/* Mode toggle */}
-      <div className="flex bg-stone-100 rounded-lg p-0.5 mb-4 w-fit">
+      <div className="flex bg-surface rounded-lg p-0.5 mb-4 w-fit">
         <button
           onClick={() => setMode("rsu")}
           className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-            mode === "rsu" ? "bg-white shadow-sm text-stone-900" : "text-stone-500 hover:text-stone-700"
+            mode === "rsu" ? "bg-card shadow-sm text-text-primary" : "text-text-secondary hover:text-text-secondary"
           }`}
         >
           Withholding Gap
@@ -79,7 +79,7 @@ export default function EquityCompTaxSim() {
         <button
           onClick={() => setMode("iso")}
           className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-            mode === "iso" ? "bg-white shadow-sm text-stone-900" : "text-stone-500 hover:text-stone-700"
+            mode === "iso" ? "bg-card shadow-sm text-text-primary" : "text-text-secondary hover:text-text-secondary"
           }`}
         >
           Stock Option AMT Finder
@@ -92,14 +92,14 @@ export default function EquityCompTaxSim() {
             <LabeledInput label="Stock Vest Income" value={vestIncome} onChange={setVestIncome} />
             <LabeledInput label="Other W-2 Income" value={otherIncome} onChange={setOtherIncome} />
             <div>
-              <label className="block text-xs text-stone-500 mb-1">Filing Status</label>
+              <label className="block text-xs text-text-secondary mb-1">Filing Status</label>
               <select value={filingStatus} onChange={(e) => setFilingStatus(e.target.value)} className={INPUT_CLS}>
                 <option value="single">Single</option>
                 <option value="mfj">Married Filing Jointly</option>
               </select>
             </div>
             <div>
-              <label className="block text-xs text-stone-500 mb-1">State</label>
+              <label className="block text-xs text-text-secondary mb-1">State</label>
               <select value={state} onChange={(e) => setState(e.target.value)} className={INPUT_CLS}>
                 <option value="CA">California</option>
                 <option value="NY">New York</option>
@@ -140,9 +140,9 @@ export default function EquityCompTaxSim() {
               </div>
 
               {rsuResult.state_tax > 0 && (
-                <div className="bg-stone-50 rounded-lg p-3">
-                  <p className="text-xs text-stone-500 mb-1">State Tax Impact</p>
-                  <p className="text-sm font-mono tabular-nums text-stone-800">
+                <div className="bg-surface rounded-lg p-3">
+                  <p className="text-xs text-text-secondary mb-1">State Tax Impact</p>
+                  <p className="text-sm font-mono tabular-nums text-text-primary">
                     {formatCurrency(rsuResult.state_tax)} at {(rsuResult.state_rate * 100).toFixed(1)}% state rate
                   </p>
                 </div>
@@ -150,15 +150,15 @@ export default function EquityCompTaxSim() {
 
               {rsuResult.quarterly_payments.length > 0 && (
                 <div>
-                  <h4 className="text-sm font-semibold text-stone-800 flex items-center gap-2 mb-2">
-                    <DollarSign size={14} className="text-[#16A34A]" />
+                  <h4 className="text-sm font-semibold text-text-primary flex items-center gap-2 mb-2">
+                    <DollarSign size={14} className="text-accent" />
                     Estimated Quarterly Payments
                   </h4>
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                     {rsuResult.quarterly_payments.map((q) => (
-                      <div key={q.quarter} className="bg-white border border-stone-200 rounded-lg p-3 text-center">
-                        <p className="text-xs text-stone-500">Q{q.quarter} — {q.due_date}</p>
-                        <p className="text-lg font-semibold font-mono tabular-nums text-stone-800">{formatCurrency(q.amount)}</p>
+                      <div key={q.quarter} className="bg-card border border-border rounded-lg p-3 text-center">
+                        <p className="text-xs text-text-secondary">Q{q.quarter} — {q.due_date}</p>
+                        <p className="text-lg font-semibold font-mono tabular-nums text-text-primary">{formatCurrency(q.amount)}</p>
                       </div>
                     ))}
                   </div>
@@ -177,7 +177,7 @@ export default function EquityCompTaxSim() {
             <LabeledInput label="Current Market Value / Share" value={currentFmv} onChange={setCurrentFmv} />
             <LabeledInput label="Other Income (W-2)" value={isoOtherIncome} onChange={setIsoOtherIncome} />
             <div>
-              <label className="block text-xs text-stone-500 mb-1">Filing Status</label>
+              <label className="block text-xs text-text-secondary mb-1">Filing Status</label>
               <select value={isoFiling} onChange={(e) => setIsoFiling(e.target.value)} className={INPUT_CLS}>
                 <option value="single">Single</option>
                 <option value="mfj">Married Filing Jointly</option>
@@ -206,15 +206,15 @@ export default function EquityCompTaxSim() {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-stone-50 rounded-lg p-3">
-                  <p className="text-xs text-stone-500 mb-1">Regular Tax (without exercise)</p>
-                  <p className="text-sm font-semibold font-mono tabular-nums text-stone-800">
+                <div className="bg-surface rounded-lg p-3">
+                  <p className="text-xs text-text-secondary mb-1">Regular Tax (without exercise)</p>
+                  <p className="text-sm font-semibold font-mono tabular-nums text-text-primary">
                     {formatCurrency(isoResult.regular_tax)}
                   </p>
                 </div>
-                <div className="bg-stone-50 rounded-lg p-3">
-                  <p className="text-xs text-stone-500 mb-1">Alternative Minimum Tax (if all exercised)</p>
-                  <p className={`text-sm font-semibold font-mono tabular-nums ${isoResult.amt_tax_with_exercise > isoResult.regular_tax ? "text-red-700" : "text-stone-800"}`}>
+                <div className="bg-surface rounded-lg p-3">
+                  <p className="text-xs text-text-secondary mb-1">Alternative Minimum Tax (if all exercised)</p>
+                  <p className={`text-sm font-semibold font-mono tabular-nums ${isoResult.amt_tax_with_exercise > isoResult.regular_tax ? "text-red-700" : "text-text-primary"}`}>
                     {formatCurrency(isoResult.amt_tax_with_exercise)}
                     {isoResult.amt_tax_with_exercise > isoResult.regular_tax && (
                       <span className="text-xs font-normal ml-1">

@@ -7,7 +7,7 @@ import os
 import platform
 
 block_cipher = None
-project_root = os.path.dirname(os.path.dirname(os.path.abspath(SPECPATH)))
+project_root = os.path.dirname(os.path.abspath(SPECPATH))
 
 # Platform-specific sidecar name (Tauri expects architecture suffix)
 arch = platform.machine()
@@ -48,6 +48,26 @@ a = Analysis(
         "sqlalchemy.dialects.sqlite",
         "sqlalchemy.dialects.sqlite.aiosqlite",
         "aiosqlite",
+        # --- FastAPI / Starlette ---
+        "fastapi",
+        "fastapi.middleware",
+        "fastapi.middleware.cors",
+        "fastapi.routing",
+        "fastapi.responses",
+        "fastapi.encoders",
+        "fastapi.exceptions",
+        "fastapi.params",
+        "fastapi.dependencies",
+        "starlette.middleware",
+        "starlette.middleware.cors",
+        "starlette.responses",
+        "starlette.routing",
+        "starlette.requests",
+        "starlette.websockets",
+        "starlette.staticfiles",
+        "starlette.concurrency",
+        "multipart",
+        "python_multipart",
         # --- Core deps ---
         "cryptography",
         "cryptography.fernet",
@@ -60,6 +80,10 @@ a = Analysis(
         "pandas",
         "openpyxl",
         "httpx",
+        "jwt",
+        "jwt.algorithms",
+        "jwt.exceptions",
+        "PyJWT",
         "python_dotenv",
         "dotenv",
         "h11",
@@ -67,7 +91,11 @@ a = Analysis(
         "sniffio",
         "starlette",
         "pydantic",
-        # --- API routes ---
+        # --- API auth + routes ---
+        "api.auth",
+        "api.database",
+        "api.routes.auth_routes",
+        "api.routes.demo",
         "api.routes.account_links",
         "api.routes.accounts",
         "api.routes.assets",
@@ -133,6 +161,8 @@ a = Analysis(
         "pipeline.ai.tax_analyzer",
         "pipeline.ai.report_gen",
         "pipeline.ai.privacy",
+        "pipeline.demo",
+        "pipeline.demo.seeder",
         "pipeline.security",
         "pipeline.security.logging",
         "pipeline.security.file_cleanup",
@@ -149,12 +179,15 @@ a = Analysis(
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
-# One-dir mode: fast startup, code-signing friendly
+# One-file mode: single executable for Tauri externalBin bundling.
+# Startup is ~5s slower (extracts to temp dir) but simplifies packaging.
 exe = EXE(
     pyz,
     a.scripts,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
     [],
-    exclude_binaries=True,
     name=f"sirhenry-api-{target_triple}",
     debug=False,
     bootloader_ignore_signals=False,
@@ -162,14 +195,4 @@ exe = EXE(
     upx=False,
     console=True,
     target_arch=None,
-)
-
-coll = COLLECT(
-    exe,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
-    strip=False,
-    upx=False,
-    name="sirhenry-api",
 )

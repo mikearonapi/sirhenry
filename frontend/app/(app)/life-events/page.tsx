@@ -94,7 +94,7 @@ export default function LifeEventsPage() {
         actions={
           <button
             onClick={() => { if (showForm) resetForm(); else setShowForm(true); }}
-            className="flex items-center gap-2 bg-[#16A34A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#15803D] shadow-sm"
+            className="flex items-center gap-2 bg-accent text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-hover shadow-sm"
           >
             {showForm ? <X size={14} /> : <Plus size={14} />}
             {showForm ? "Cancel" : "Add Event"}
@@ -123,7 +123,7 @@ export default function LifeEventsPage() {
         <select
           value={filterType}
           onChange={(e) => setFilterType(e.target.value)}
-          className="text-sm border border-stone-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20"
+          className="text-sm border border-border rounded-lg px-3 py-2 bg-card focus:outline-none focus:ring-2 focus:ring-accent/20"
         >
           <option value="">All Categories</option>
           {EVENT_TYPES.map((t) => (
@@ -135,27 +135,27 @@ export default function LifeEventsPage() {
           value={filterYear}
           onChange={(e) => setFilterYear(e.target.value)}
           placeholder="Filter by year"
-          className="w-36 text-sm border border-stone-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20"
+          className="w-36 text-sm border border-border rounded-lg px-3 py-2 bg-card focus:outline-none focus:ring-2 focus:ring-accent/20"
         />
         {(filterType || filterYear) && (
-          <button onClick={() => { setFilterType(""); setFilterYear(""); }} className="text-xs text-stone-500 hover:text-stone-700 underline">
+          <button onClick={() => { setFilterType(""); setFilterYear(""); }} className="text-xs text-text-secondary hover:text-text-primary underline">
             Clear filters
           </button>
         )}
-        <span className="ml-auto text-xs text-stone-400">{events.length} events</span>
+        <span className="ml-auto text-xs text-text-muted">{events.length} events</span>
       </div>
 
       {loading ? (
-        <div className="flex items-center gap-2 text-stone-500 text-sm py-8">
+        <div className="flex items-center gap-2 text-text-secondary text-sm py-8">
           <Loader2 size={16} className="animate-spin" />
           Loading events...
         </div>
       ) : events.length === 0 ? (
         <Card padding="lg">
           <div className="text-center py-8">
-            <Calendar size={32} className="mx-auto text-stone-300 mb-3" />
-            <p className="text-sm text-stone-500">No life events recorded yet.</p>
-            <p className="text-xs text-stone-400 mt-1">
+            <Calendar size={32} className="mx-auto text-text-muted mb-3" />
+            <p className="text-sm text-text-secondary">No life events recorded yet.</p>
+            <p className="text-xs text-text-muted mt-1">
               Track major events like home purchases, job changes, or new dependents to get personalized tax and planning guidance.
             </p>
           </div>

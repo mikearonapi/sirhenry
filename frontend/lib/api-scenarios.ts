@@ -4,8 +4,10 @@ import type {
   MonteCarloResult,
   MultiYearProjection,
   RetirementImpact,
+  ScenarioCalcInput,
   ScenarioCalcResult,
   ScenarioComparison,
+  ScenarioCreateInput,
   ScenarioTemplate,
 } from "@/types/api";
 import { request } from "./api-client";
@@ -18,19 +20,11 @@ export function getScenarios(): Promise<LifeScenarioType[]> {
   return request("/scenarios");
 }
 
-export function createScenario(body: {
-  name: string; scenario_type: string; parameters: Record<string, unknown>;
-  annual_income: number; monthly_take_home: number; current_monthly_expenses: number;
-  current_monthly_debt_payments?: number; current_savings?: number; current_investments?: number;
-}): Promise<LifeScenarioType> {
+export function createScenario(body: ScenarioCreateInput): Promise<LifeScenarioType> {
   return request("/scenarios", { method: "POST", body: JSON.stringify(body) });
 }
 
-export function calculateScenario(body: {
-  scenario_type: string; parameters: Record<string, unknown>;
-  annual_income: number; monthly_take_home: number; current_monthly_expenses: number;
-  current_monthly_debt_payments?: number; current_savings?: number; current_investments?: number;
-}): Promise<ScenarioCalcResult> {
+export function calculateScenario(body: ScenarioCalcInput): Promise<ScenarioCalcResult> {
   return request("/scenarios/calculate", { method: "POST", body: JSON.stringify(body) });
 }
 

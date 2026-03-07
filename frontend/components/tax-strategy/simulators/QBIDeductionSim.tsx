@@ -9,7 +9,7 @@ import LabeledInput from "../shared/LabeledInput";
 import CalcButton from "../shared/CalcButton";
 import ResultBox from "../shared/ResultBox";
 
-const INPUT_CLS = "w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A]";
+const INPUT_CLS = "w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent";
 
 export default function QBIDeductionSim() {
   const [qbiIncome, setQbiIncome] = useState("");
@@ -48,7 +48,7 @@ export default function QBIDeductionSim() {
         <LabeledInput label="W-2 Wages Paid by Business" value={w2WagesPaid} onChange={setW2WagesPaid} />
         <LabeledInput label="Qualified Property (depreciable assets)" value={qualifiedProperty} onChange={setQualifiedProperty} />
         <div>
-          <label className="block text-xs text-stone-500 mb-1">Filing Status</label>
+          <label className="block text-xs text-text-secondary mb-1">Filing Status</label>
           <select value={filingStatus} onChange={(e) => setFilingStatus(e.target.value)} className={INPUT_CLS}>
             <option value="mfj">Married Filing Jointly</option>
             <option value="single">Single</option>
@@ -57,7 +57,7 @@ export default function QBIDeductionSim() {
           </select>
         </div>
         <div>
-          <label className="block text-xs text-stone-500 mb-1">Business Type</label>
+          <label className="block text-xs text-text-secondary mb-1">Business Type</label>
           <select value={isSSTB ? "sstb" : "non_sstb"} onChange={(e) => setIsSSTB(e.target.value === "sstb")} className={INPUT_CLS}>
             <option value="non_sstb">Non-service (manufacturing, retail, etc.)</option>
             <option value="sstb">Specified Service (law, medicine, consulting, etc.)</option>
@@ -98,8 +98,8 @@ export default function QBIDeductionSim() {
           </div>
 
           {/* Limitation analysis */}
-          <div className="bg-stone-50 rounded-lg p-4 space-y-3">
-            <h4 className="text-xs font-semibold text-stone-600 uppercase tracking-wide">Limitation Analysis</h4>
+          <div className="bg-surface rounded-lg p-4 space-y-3">
+            <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Limitation Analysis</h4>
             <div className="grid grid-cols-3 gap-4">
               <LimitRow
                 label="20% of Business Income"
@@ -171,11 +171,11 @@ export default function QBIDeductionSim() {
 
 function LimitRow({ label, value, binding }: { label: string; value: number; binding: boolean }) {
   return (
-    <div className={`rounded-lg p-3 ${binding ? "bg-green-50 border border-green-200" : "bg-white border border-stone-200"}`}>
-      <p className={`text-xs ${binding ? "text-green-600" : "text-stone-500"} mb-1`}>
+    <div className={`rounded-lg p-3 ${binding ? "bg-green-50 border border-green-200" : "bg-card border border-border"}`}>
+      <p className={`text-xs ${binding ? "text-green-600" : "text-text-secondary"} mb-1`}>
         {label} {binding && "(binding)"}
       </p>
-      <p className={`text-sm font-semibold font-mono tabular-nums ${binding ? "text-green-700" : "text-stone-800"}`}>
+      <p className={`text-sm font-semibold font-mono tabular-nums ${binding ? "text-green-700" : "text-text-primary"}`}>
         {formatCurrency(value)}
       </p>
     </div>

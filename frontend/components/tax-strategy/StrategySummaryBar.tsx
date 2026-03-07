@@ -20,36 +20,36 @@ export default function StrategySummaryBar({ strategies }: { strategies: TaxStra
   }, {});
 
   return (
-    <div className="bg-gradient-to-r from-[#DCFCE7] to-emerald-50 rounded-xl border border-[#16A34A]/20 p-5">
+    <div className="bg-gradient-to-r from-accent-light to-emerald-50 rounded-xl border border-accent/20 p-5">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="flex items-start gap-3">
-          <div className="w-9 h-9 rounded-lg bg-[#16A34A]/10 flex items-center justify-center flex-shrink-0">
-            <TrendingDown size={18} className="text-[#16A34A]" />
+          <div className="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
+            <TrendingDown size={18} className="text-accent" />
           </div>
           <div>
-            <p className="text-xs text-stone-500">Potential Savings</p>
-            <p className="font-semibold text-[#16A34A] font-mono tabular-nums">
+            <p className="text-xs text-text-secondary">Potential Savings</p>
+            <p className="font-semibold text-accent font-mono tabular-nums">
               {formatCurrency(totalSavingsLow, true)}–{formatCurrency(totalSavingsHigh, true)}
             </p>
           </div>
         </div>
         <div className="flex items-start gap-3">
-          <div className="w-9 h-9 rounded-lg bg-[#16A34A]/10 flex items-center justify-center flex-shrink-0">
-            <Target size={18} className="text-[#16A34A]" />
+          <div className="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
+            <Target size={18} className="text-accent" />
           </div>
           <div>
-            <p className="text-xs text-stone-500">Strategies Found</p>
-            <p className="font-semibold text-stone-800">{strategies.length}</p>
+            <p className="text-xs text-text-secondary">Strategies Found</p>
+            <p className="font-semibold text-text-primary">{strategies.length}</p>
           </div>
         </div>
         {avgConfidence != null && (
           <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-lg bg-[#16A34A]/10 flex items-center justify-center flex-shrink-0">
-              <BarChart3 size={18} className="text-[#16A34A]" />
+            <div className="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
+              <BarChart3 size={18} className="text-accent" />
             </div>
             <div>
-              <p className="text-xs text-stone-500">Avg Confidence</p>
-              <p className="font-semibold text-stone-800 font-mono tabular-nums">{(avgConfidence * 100).toFixed(0)}%</p>
+              <p className="text-xs text-text-secondary">Avg Confidence</p>
+              <p className="font-semibold text-text-primary font-mono tabular-nums">{(avgConfidence * 100).toFixed(0)}%</p>
             </div>
           </div>
         )}

@@ -165,7 +165,7 @@ function CalloutCard({ callout, dark }: { callout: Callout; dark: boolean }) {
       <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
         dark ? "bg-[#22C55E]/10" : "bg-[#F0FDF4]"
       }`}>
-        <Icon size={18} className={dark ? "text-[#22C55E]" : "text-[#16A34A]"} />
+        <Icon size={18} className={dark ? "text-[#22C55E]" : "text-accent"} />
       </div>
       <div>
         <p className={`text-sm font-semibold ${dark ? "text-[#F9FAFB]" : "text-[#111827]"}`}>
@@ -214,8 +214,8 @@ export default function FeatureShowcaseSection() {
   return (
     <div id="features">
       {FEATURES.map((feature) => {
-        const bg = feature.dark ? "bg-[#0A0A0B]" : "bg-white";
-        const tagColor = feature.dark ? "text-[#22C55E]" : "text-[#16A34A]";
+        const bg = feature.dark ? "bg-[#0A0A0B]" : "bg-card";
+        const tagColor = feature.dark ? "text-[#22C55E]" : "text-accent";
         const headingColor = feature.dark ? "text-[#F9FAFB]" : "text-[#111827]";
         const descColor = feature.dark ? "text-[#9CA3AF]" : "text-[#6B7280]";
 

@@ -39,29 +39,29 @@ export default function StatCard({
 
   return (
     <div
-      className={`bg-white rounded-xl border border-stone-100 shadow-sm ${sizeClasses[size]} ${
-        accent ? "ring-1 ring-[#16A34A]/10" : ""
+      className={`bg-card rounded-xl border border-card-border shadow-sm ${sizeClasses[size]} ${
+        accent ? "ring-1 ring-accent/10" : ""
       } ${className}`}
     >
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-medium text-stone-500 uppercase tracking-wider">{label}</span>
-        {icon && <span className="text-stone-300">{icon}</span>}
+        <span className="text-xs font-medium text-text-secondary uppercase tracking-wider">{label}</span>
+        {icon && <span className="text-text-muted">{icon}</span>}
       </div>
-      <div className={`${valueClasses[size]} font-bold text-stone-900 tracking-tight font-mono tabular-nums`}>{value}</div>
+      <div className={`${valueClasses[size]} font-bold text-text-primary tracking-tight font-mono tabular-nums`}>{value}</div>
       {(sub || trendValue) && (
         <div className="flex items-center gap-1.5 mt-1.5">
-          {trend === "up" && <TrendingUp size={13} className="text-green-600" />}
-          {trend === "down" && <TrendingDown size={13} className="text-red-600" />}
+          {trend === "up" && <TrendingUp size={13} className="text-green-600 dark:text-green-400" />}
+          {trend === "down" && <TrendingDown size={13} className="text-red-600 dark:text-red-400" />}
           {trendValue && (
             <span
               className={`text-xs font-medium ${
-                trend === "up" ? "text-green-600" : trend === "down" ? "text-red-600" : "text-stone-500"
+                trend === "up" ? "text-green-600 dark:text-green-400" : trend === "down" ? "text-red-600 dark:text-red-400" : "text-text-secondary"
               }`}
             >
               {trendValue}
             </span>
           )}
-          {sub && <span className="text-xs text-stone-400">{sub}</span>}
+          {sub && <span className="text-xs text-text-muted">{sub}</span>}
         </div>
       )}
     </div>

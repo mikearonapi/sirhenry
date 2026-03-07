@@ -10,6 +10,7 @@ import type {
   PortfolioSummary,
   RebalanceRecommendation,
   TaxLossHarvestResult,
+  TickerStats,
 } from "@/types/api";
 import { request } from "./api-client";
 
@@ -60,7 +61,7 @@ export function getTickerHistory(ticker: string, period = "1y"): Promise<{ ticke
   return request(`/portfolio/history/${ticker}?period=${period}`);
 }
 
-export function getTickerStats(ticker: string): Promise<Record<string, unknown>> {
+export function getTickerStats(ticker: string): Promise<TickerStats> {
   return request(`/portfolio/stats/${ticker}`);
 }
 

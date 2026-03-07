@@ -11,6 +11,7 @@ get spending summaries, tax info, and more. It runs an agentic loop:
 import json
 import logging
 import os
+import time
 from typing import Any
 
 import anthropic
@@ -160,6 +161,17 @@ You are the household's dedicated AI financial advisor. You know their financial
 - **Transfers**: Inter-account transfers are also not expenses. Exclude them from spending analysis."""
 
 
+# Simple TTL cache for the system prompt — avoids 5 DB queries per chat message.
+# Keyed on a constant (single-user app), stores (prompt, sanitizer, timestamp).
+_prompt_cache: dict[str, tuple[str, Any, float]] = {}
+_PROMPT_CACHE_TTL = 60  # seconds
+
+
+def invalidate_prompt_cache() -> None:
+    """Call after household/entity/context data changes to force prompt rebuild."""
+    _prompt_cache.clear()
+
+
 async def _build_system_prompt(session: AsyncSession) -> tuple[str, "PIISanitizer"]:
     """Build the Sir Henry system prompt with dynamic household context from DB.
 
@@ -167,7 +179,12 @@ async def _build_system_prompt(session: AsyncSession) -> tuple[str, "PIISanitize
     via PIISanitizer before the prompt is sent to Claude.
 
     Returns (prompt_text, sanitizer) so the caller can desanitize Claude's response.
+
+    Results are cached for 60s since the underlying data rarely changes between turns.
     """
+    cached = _prompt_cache.get("system")
+    if cached and (time.monotonic() - cached[2]) < _PROMPT_CACHE_TTL:
+        return cached[0], cached[1]
     from sqlalchemy import select as sa_select
     from pipeline.db.schema import (
         HouseholdProfile, BusinessEntity, Account, BenefitPackage, InsurancePolicy,
@@ -250,6 +267,14 @@ async def _build_system_prompt(session: AsyncSession) -> tuple[str, "PIISanitize
         lines.append("")
         lines.append("Use this context to personalize your responses. Update or add context entries when the user shares new information.")
 
+    # ---------- User Name for Chat ----------
+    if household:
+        preferred = getattr(household, "spouse_a_preferred_name", None) or household.spouse_a_name
+        if preferred:
+            sanitized_name = sanitizer.sanitize_text(preferred)
+            lines.append("")
+            lines.append(f"## User\nThe primary user's name is \"{sanitized_name}\". Address them by name naturally in conversation.")
+
     log_ai_privacy_audit("chat_system_prompt", ["household", "entities", "accounts", "user_context"], sanitized=True)
 
     # ---------- Setup Status ----------
@@ -297,6 +322,7 @@ async def _build_system_prompt(session: AsyncSession) -> tuple[str, "PIISanitize
         prompt += "\n\n## Missing Data Affecting Features\n" + "\n".join(gaps)
         prompt += "\n\nWhen relevant to the user's question, proactively mention missing data that would improve your analysis. Guide them to complete setup if it would help answer their question."
 
+    _prompt_cache["system"] = (prompt, sanitizer, time.monotonic())
     return prompt, sanitizer
 
 TOOLS = [
@@ -1152,19 +1178,27 @@ async def _tool_get_budget_status(session: AsyncSession, params: dict) -> str:
     if not budgets:
         return json.dumps({"message": f"No budgets set for {year}-{month:02d}"})
 
-    # Get actuals for budgeted categories
+    # Single grouped query for all category actuals (replaces N per-category queries)
+    actuals_result = await session.execute(
+        select(
+            Transaction.effective_category,
+            func.sum(func.abs(Transaction.amount)).label("total"),
+        ).where(
+            Transaction.period_year == year,
+            Transaction.period_month == month,
+            Transaction.is_excluded == False,
+            Transaction.amount < 0,
+        ).group_by(Transaction.effective_category)
+    )
+    actuals_by_cat: dict[str, float] = {
+        row.effective_category: float(row.total or 0)
+        for row in actuals_result.all()
+        if row.effective_category
+    }
+
     items = []
     for b in budgets:
-        actual_result = await session.execute(
-            select(func.sum(func.abs(Transaction.amount))).where(
-                Transaction.period_year == year,
-                Transaction.period_month == month,
-                Transaction.effective_category == b.category,
-                Transaction.is_excluded == False,
-                Transaction.amount < 0,
-            )
-        )
-        actual = float(actual_result.scalar() or 0)
+        actual = actuals_by_cat.get(b.category, 0.0)
         items.append({
             "category": b.category,
             "segment": b.segment,

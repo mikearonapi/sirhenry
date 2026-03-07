@@ -36,7 +36,7 @@ export default function RetirementShowcase() {
         </div>
         <div className="bg-[#F0FDF4] rounded-lg p-3 border border-[#DCFCE7]">
           <p className="text-[#6B7280] text-[10px] font-semibold uppercase tracking-wider mb-1">Readiness</p>
-          <p className="text-[#16A34A] text-lg font-bold" style={{ fontFamily: "var(--font-mono)" }}>
+          <p className="text-accent text-lg font-bold" style={{ fontFamily: "var(--font-mono)" }}>
             {r.retirementReadinessPct}%
           </p>
         </div>
@@ -48,7 +48,7 @@ export default function RetirementShowcase() {
           <p className="text-[#374151] text-xs font-semibold uppercase tracking-wider">
             Monte Carlo Simulation
           </p>
-          <span className="text-[10px] px-2 py-0.5 rounded bg-[#F0FDF4] text-[#16A34A] font-medium border border-[#DCFCE7]">
+          <span className="text-[10px] px-2 py-0.5 rounded bg-[#F0FDF4] text-accent font-medium border border-[#DCFCE7]">
             {r.monteCarlo.runs.toLocaleString()} runs
           </span>
         </div>
@@ -92,8 +92,8 @@ export default function RetirementShowcase() {
           <p className="text-[#9CA3AF] text-[10px] font-semibold uppercase tracking-wider mb-1">Pessimistic (P10)</p>
           <p className="text-[#111827] text-sm font-bold" style={{ fontFamily: "var(--font-mono)" }}>{fmtM(r.monteCarlo.p10)}</p>
         </div>
-        <div className="rounded-lg p-3 border border-[#16A34A]/30 bg-[#F0FDF4] text-center">
-          <p className="text-[#16A34A] text-[10px] font-semibold uppercase tracking-wider mb-1">Base Case (P50)</p>
+        <div className="rounded-lg p-3 border border-accent/30 bg-[#F0FDF4] text-center">
+          <p className="text-accent text-[10px] font-semibold uppercase tracking-wider mb-1">Base Case (P50)</p>
           <p className="text-[#111827] text-sm font-bold" style={{ fontFamily: "var(--font-mono)" }}>{fmtM(r.monteCarlo.p50)}</p>
         </div>
         <div className="rounded-lg p-3 border border-[#E5E7EB] text-center">

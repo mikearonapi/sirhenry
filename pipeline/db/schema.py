@@ -3,7 +3,7 @@ SQLite schema definitions via SQLAlchemy ORM.
 Run `python -m pipeline.db.schema` to initialize or migrate the database.
 """
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy import (
@@ -56,8 +56,8 @@ class Account(Base):
     notes = Column(Text, nullable=True)
     # plaid | csv | manual | api
     data_source = Column(String(20), nullable=False, default="manual")
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     transactions = relationship("Transaction", back_populates="account")
     documents = relationship("Document", back_populates="account")
@@ -86,7 +86,7 @@ class Document(Base):
     account_id = Column(Integer, ForeignKey("accounts.id"), nullable=True)
     error_message = Column(Text, nullable=True)
     raw_text = Column(Text, nullable=True)
-    imported_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    imported_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     processed_at = Column(DateTime, nullable=True)
 
     __table_args__ = (UniqueConstraint("file_hash", name="uq_document_hash"),)
@@ -175,8 +175,8 @@ class Transaction(Base):
     # plaid | csv | manual | monarch | amazon
     data_source = Column(String(20), nullable=False, default="csv")
 
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         Index("ix_transaction_hash", "transaction_hash"),
@@ -218,8 +218,8 @@ class BusinessEntity(Base):
     notes = Column(Text, nullable=True)
     description = Column(Text, nullable=True)           # What the business does
     expected_expenses = Column(Text, nullable=True)     # Common expense types
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
 class VendorEntityRule(Base):
@@ -238,7 +238,7 @@ class VendorEntityRule(Base):
     effective_to = Column(Date, nullable=True)
     priority = Column(Integer, nullable=False, default=0)
     is_active = Column(Boolean, nullable=False, default=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
     business_entity = relationship("BusinessEntity")
 
@@ -338,7 +338,7 @@ class TaxItem(Base):
     # Raw JSON of all extracted fields (for future expansion)
     raw_fields = Column(Text, nullable=True)
 
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
     source_document = relationship("Document", back_populates="tax_items")
 
@@ -363,7 +363,7 @@ class TaxStrategy(Base):
     action_required = Column(Text, nullable=True)
     deadline = Column(String(100), nullable=True)
     is_dismissed = Column(Boolean, nullable=False, default=False)
-    generated_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    generated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     # Phase 2 — enhanced AI analysis fields
     confidence = Column(Float, nullable=True)  # 0.0–1.0
     confidence_reasoning = Column(Text, nullable=True)
@@ -395,8 +395,8 @@ class OutlierFeedback(Base):
     # If true, this feedback suppresses/classifies future matching outliers
     apply_to_future = Column(Boolean, nullable=False, default=True)
     year = Column(Integer, nullable=False)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         UniqueConstraint("transaction_id", name="uq_outlier_feedback_txn"),
@@ -426,7 +426,7 @@ class CategoryRule(Base):
     is_active = Column(Boolean, nullable=False, default=True)
     effective_from = Column(Date, nullable=True)
     effective_to = Column(Date, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         UniqueConstraint("merchant_pattern", name="uq_category_rule_merchant"),
@@ -461,7 +461,7 @@ class FinancialPeriod(Base):
     expense_breakdown = Column(Text, nullable=True)
     income_breakdown = Column(Text, nullable=True)
 
-    computed_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    computed_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         UniqueConstraint("year", "month", "segment", name="uq_period_segment"),
@@ -495,7 +495,7 @@ class AccountLink(Base):
     secondary_account_id = Column(Integer, ForeignKey("accounts.id"), nullable=False)
     # same_account | transferred_to
     link_type = Column(String(20), nullable=False, default="same_account")
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
 
 class PlaidItem(Base):
@@ -509,10 +509,11 @@ class PlaidItem(Base):
     account_types = Column(Text, nullable=True)
     status = Column(String(20), nullable=False, default="active")
     error_code = Column(String(100), nullable=True)
+    sync_phase = Column(String(30), nullable=True)  # syncing | categorizing | complete | error
     plaid_cursor = Column(String(500), nullable=True)
     last_synced_at = Column(DateTime, nullable=True)
     consent_expiration = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
     plaid_accounts = relationship("PlaidAccount", back_populates="plaid_item")
 
@@ -551,8 +552,8 @@ class PayrollConnection(Base):
     income_source_type = Column(String(20), nullable=False, default="payroll")
     last_synced_at = Column(DateTime, nullable=True)
     raw_data_json = Column(Text, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     pay_stubs = relationship("PayStubRecord", back_populates="connection", cascade="all, delete-orphan")
 
@@ -576,7 +577,7 @@ class PayStubRecord(Base):
     employer_ein = Column(String(20), nullable=True)
     employer_address_json = Column(Text, nullable=True)
     work_state = Column(String(2), nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
     connection = relationship("PayrollConnection", back_populates="pay_stubs")
 
@@ -595,8 +596,8 @@ class Budget(Base):
     segment = Column(String(20), nullable=False, default="personal")
     budget_amount = Column(Float, nullable=False)
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         UniqueConstraint("year", "month", "category", "segment", name="uq_budget_period_category"),
@@ -622,8 +623,8 @@ class RecurringTransaction(Base):
     first_seen_date = Column(DateTime, nullable=True)
     is_auto_detected = Column(Boolean, nullable=False, default=True)
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
 class Goal(Base):
@@ -642,8 +643,8 @@ class Goal(Base):
     icon = Column(String(50), nullable=True)
     monthly_contribution = Column(Float, nullable=True)
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     completed_at = Column(DateTime, nullable=True)
 
 
@@ -663,8 +664,8 @@ class Reminder(Base):
     last_notified_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
     related_account_id = Column(Integer, ForeignKey("accounts.id"), nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
 class AmazonOrder(Base):
@@ -688,7 +689,7 @@ class AmazonOrder(Base):
     matched_transaction_id = Column(Integer, ForeignKey("transactions.id"), nullable=True)
     raw_items = Column(Text, nullable=True)
     source_document_id = Column(Integer, ForeignKey("documents.id"), nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
 
 class ManualAsset(Base):
@@ -706,8 +707,8 @@ class ManualAsset(Base):
     description = Column(Text, nullable=True)
     is_active = Column(Boolean, nullable=False, default=True)
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     owner = Column(String(100), nullable=True)
     account_subtype = Column(String(50), nullable=True)
     custodian = Column(String(255), nullable=True)
@@ -753,7 +754,7 @@ class NetWorthSnapshot(Base):
     loan_balance = Column(Float, nullable=False, default=0.0)
     mortgage_balance = Column(Float, nullable=False, default=0.0)
     account_balances = Column(Text, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         UniqueConstraint("year", "month", name="uq_net_worth_period"),
@@ -818,9 +819,11 @@ class InvestmentHolding(Base):
     dividend_yield = Column(Float, nullable=True)
     last_price_update = Column(DateTime, nullable=True)
     is_active = Column(Boolean, nullable=False, default=True)
+    data_source = Column(String(20), nullable=False, default="manual")  # manual | plaid | csv
+    plaid_security_id = Column(String(100), nullable=True)
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         Index("ix_holding_ticker", "ticker"),
@@ -854,7 +857,7 @@ class MarketQuoteCache(Base):
     book_value = Column(Float, nullable=True)
     profit_margin = Column(Float, nullable=True)
     revenue_growth = Column(Float, nullable=True)
-    fetched_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    fetched_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
 
 class EconomicIndicatorCache(Base):
@@ -867,7 +870,7 @@ class EconomicIndicatorCache(Base):
     date = Column(Date, nullable=False)
     value = Column(Float, nullable=False)
     unit = Column(String(50), nullable=True)
-    fetched_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    fetched_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         UniqueConstraint("series_id", "date", name="uq_indicator_series_date"),
@@ -917,8 +920,8 @@ class RetirementProfile(Base):
     is_primary = Column(Boolean, nullable=False, default=False)
     last_computed_at = Column(DateTime, nullable=True)
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
 class LifeScenario(Base):
@@ -949,8 +952,8 @@ class LifeScenario(Base):
     status = Column(String(20), nullable=False, default="draft")
     is_favorite = Column(Boolean, nullable=False, default=False)
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
 class CryptoHolding(Base):
@@ -972,8 +975,8 @@ class CryptoHolding(Base):
     wallet_or_exchange = Column(String(100), nullable=True)
     is_active = Column(Boolean, nullable=False, default=True)
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         Index("ix_crypto_coin", "coin_id"),
@@ -998,7 +1001,7 @@ class PortfolioSnapshot(Base):
     allocation_by_sector = Column(Text, nullable=True)
     allocation_by_asset_class = Column(Text, nullable=True)
     top_holdings = Column(Text, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         UniqueConstraint("snapshot_date", name="uq_portfolio_snapshot_date"),
@@ -1023,8 +1026,8 @@ class EquityGrant(Base):
     ticker = Column(String(20), nullable=True)
     is_active = Column(Boolean, nullable=False, default=True)
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         Index("ix_equity_grant_employer", "employer_name"),
@@ -1072,7 +1075,7 @@ class EquityTaxProjection(Base):
     marginal_rate_used = Column(Float, nullable=True)
     amt_exposure = Column(Float, nullable=True, default=0.0)
     recommendations_json = Column(Text, nullable=True)
-    computed_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    computed_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         UniqueConstraint("grant_id", "tax_year", name="uq_equity_tax_grant_year"),
@@ -1086,7 +1089,7 @@ class TargetAllocation(Base):
     name = Column(String(255), nullable=False, default="My Target Allocation")
     allocation_json = Column(Text, nullable=False, default="{}")
     is_active = Column(Boolean, nullable=False, default=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -1104,6 +1107,7 @@ class HouseholdProfile(Base):
     state = Column(String(2), nullable=True)
     dependents_json = Column(Text, nullable=True)
     spouse_a_name = Column(String(255), nullable=True)
+    spouse_a_preferred_name = Column(String(100), nullable=True)
     spouse_a_income = Column(Float, nullable=False, default=0.0)
     spouse_a_employer = Column(String(255), nullable=True)
     spouse_a_work_state = Column(String(2), nullable=True)
@@ -1126,8 +1130,8 @@ class HouseholdProfile(Base):
     notes = Column(Text, nullable=True)
     tax_strategy_profile_json = Column(Text, nullable=True)  # Interview answers for tax strategy
     setup_completed_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
 class BenefitPackage(Base):
@@ -1187,7 +1191,7 @@ class HouseholdOptimization(Base):
     childcare_strategy_json = Column(Text, nullable=True)
     total_annual_savings = Column(Float, nullable=True)
     recommendations_json = Column(Text, nullable=True)
-    computed_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    computed_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         Index("ix_household_opt_year", "household_id", "tax_year"),
@@ -1213,7 +1217,7 @@ class TaxProjection(Base):
     deductions_json = Column(Text, nullable=True)
     comparison_baseline_id = Column(Integer, ForeignKey("tax_projections.id"), nullable=True)
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         Index("ix_tax_projection_year", "tax_year"),
@@ -1235,8 +1239,8 @@ class LifeEvent(Base):
     action_items_json = Column(Text, nullable=True)
     document_ids_json = Column(Text, nullable=True)
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         Index("ix_life_event_type", "event_type"),
@@ -1263,8 +1267,8 @@ class InsurancePolicy(Base):
     employer_provided = Column(Boolean, nullable=False, default=False)
     is_active = Column(Boolean, nullable=False, default=True)
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         Index("ix_insurance_type", "policy_type"),
@@ -1290,8 +1294,8 @@ class FamilyMember(Base):
     care_cost_annual = Column(Float, nullable=True)
     college_start_year = Column(Integer, nullable=True)
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         Index("ix_family_member_household", "household_id"),
@@ -1309,7 +1313,7 @@ class BenchmarkSnapshot(Base):
     savings_rate = Column(Float, nullable=True)
     retirement_savings = Column(Float, nullable=True)
     debt_total = Column(Float, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         Index("ix_benchmark_date", "snapshot_date"),
@@ -1325,8 +1329,8 @@ class UserPrivacyConsent(Base):
     consented = Column(Boolean, nullable=False, default=False)
     consent_version = Column(String(20), nullable=False, default="1.0")
     consented_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         UniqueConstraint("consent_type", name="uq_consent_type"),
@@ -1338,7 +1342,7 @@ class AuditLog(Base):
     __tablename__ = "audit_log"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    timestamp = Column(DateTime, nullable=False, default=datetime.utcnow)
+    timestamp = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     action_type = Column(String(50), nullable=False)
     # ai_chat | ai_categorize | ai_tax_analysis | data_import | plaid_sync | consent_change
     data_category = Column(String(50), nullable=True)
@@ -1359,8 +1363,8 @@ class ChatConversation(Base):
     id           = Column(Integer, primary_key=True, autoincrement=True)
     title        = Column(String(255), nullable=False, default="New Conversation")
     page_context = Column(String(50), nullable=True)   # None = global; "goals", "budget", etc.
-    created_at   = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at   = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at   = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at   = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     messages = relationship(
         "ChatMessage",
@@ -1384,7 +1388,7 @@ class ChatMessage(Base):
     role            = Column(String(20), nullable=False)   # "user" | "assistant"
     content         = Column(Text, nullable=False)
     actions_json    = Column(Text, nullable=True)          # JSON list of ChatAction dicts (assistant only)
-    created_at      = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at      = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
     conversation = relationship("ChatConversation", back_populates="messages")
 
@@ -1411,8 +1415,8 @@ class UserContext(Base):
     source = Column(String(20), nullable=False, default="chat")  # chat | manual | inferred
     confidence = Column(Float, nullable=False, default=1.0)      # 0-1 for inferred facts
     is_active = Column(Boolean, nullable=False, default=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         UniqueConstraint("category", "key", name="uq_user_context_cat_key"),
@@ -1429,12 +1433,37 @@ class RetirementBudgetOverride(Base):
     multiplier = Column(Float, nullable=True, default=1.0)
     fixed_amount = Column(Float, nullable=True)
     reason = Column(String(255), nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         UniqueConstraint("profile_id", "category", name="uq_retirement_override_profile_cat"),
     )
+
+
+class AppSettings(Base):
+    """Generic key-value settings store for application-level configuration."""
+    __tablename__ = "app_settings"
+
+    key = Column(String(100), primary_key=True)
+    value = Column(Text)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+
+class ErrorLog(Base):
+    """User-submitted error reports. All fields PII-scrubbed before storage."""
+    __tablename__ = "error_logs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    timestamp = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    error_type = Column(String(50), nullable=False)
+    message = Column(String(1000), nullable=True)
+    stack_trace = Column(Text, nullable=True)
+    source_url = Column(String(500), nullable=True)
+    user_agent = Column(String(200), nullable=True)
+    user_note = Column(String(500), nullable=True)
+    status = Column(String(20), nullable=False, default="new")
+    context_json = Column(Text, nullable=True)
 
 
 if __name__ == "__main__":

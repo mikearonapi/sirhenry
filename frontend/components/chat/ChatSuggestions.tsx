@@ -49,8 +49,8 @@ export default function ChatSuggestions({ onSend, dark = true, onPrivacy }: Chat
         <div className="w-16 h-16 rounded-2xl bg-[#0a0a0b] border border-zinc-200 flex items-center justify-center mb-4 shadow-sm">
           <span className="text-white text-3xl font-extrabold leading-none" style={{ fontFamily: "var(--font-display, sans-serif)" }}>H</span>
         </div>
-        <h2 className="text-lg font-bold text-stone-900 mb-1" style={{ fontFamily: "var(--font-display, sans-serif)" }}><SirHenryName /></h2>
-        <p className="text-sm text-stone-500 text-center max-w-sm mb-6">
+        <h2 className="text-lg font-bold text-text-primary mb-1" style={{ fontFamily: "var(--font-display, sans-serif)" }}><SirHenryName /></h2>
+        <p className="text-sm text-text-secondary text-center max-w-sm mb-6">
           {isSetup
             ? "Need help setting up? I can guide you through filing status, entity formation, insurance, and more."
             : "Your AI financial advisor. Ask anything about your finances — I know your full picture."
@@ -68,7 +68,7 @@ export default function ChatSuggestions({ onSend, dark = true, onPrivacy }: Chat
                 className={`flex flex-col items-center justify-center gap-1.5 px-3 py-3 rounded-xl text-[11.5px] font-medium transition-all border h-14 ${
                   activeCategory === i
                     ? `${cat.bgColor} ${cat.color} border-transparent shadow-sm`
-                    : "bg-white text-stone-500 border-stone-200 hover:bg-stone-50 hover:border-stone-300"
+                    : "bg-card text-text-secondary border-border hover:bg-surface hover:border-border"
                 }`}
               >
                 <Icon size={16} className="flex-shrink-0" />
@@ -84,17 +84,17 @@ export default function ChatSuggestions({ onSend, dark = true, onPrivacy }: Chat
             <button
               key={s}
               onClick={() => onSend(s)}
-              className="w-full flex items-center gap-3 text-left text-[13px] px-4 py-2.5 rounded-xl bg-white border border-stone-200 text-stone-600 hover:border-stone-300 hover:bg-stone-50 hover:text-stone-800 transition-all group"
+              className="w-full flex items-center gap-3 text-left text-[13px] px-4 py-2.5 rounded-xl bg-card border border-border text-text-secondary hover:border-border hover:bg-surface hover:text-text-primary transition-all group"
             >
-              <Lightbulb size={14} className="text-stone-300 group-hover:text-stone-500 flex-shrink-0 transition-colors" />
+              <Lightbulb size={14} className="text-text-muted group-hover:text-text-secondary flex-shrink-0 transition-colors" />
               <span className="flex-1">{s}</span>
-              <ChevronRight size={14} className="text-stone-300 group-hover:text-stone-500 transition-colors" />
+              <ChevronRight size={14} className="text-text-muted group-hover:text-text-secondary transition-colors" />
             </button>
           ))}
         </div>
 
         {/* Capabilities footer */}
-        <div className="mt-6 flex items-center gap-4 text-[10px] text-stone-400">
+        <div className="mt-6 flex items-center gap-4 text-xs text-text-muted">
           <span className="flex items-center gap-1"><Search size={10} /> Search</span>
           <span className="flex items-center gap-1"><FileEdit size={10} /> Recategorize</span>
           <span className="flex items-center gap-1"><BarChart3 size={10} /> Analyze</span>
@@ -102,7 +102,7 @@ export default function ChatSuggestions({ onSend, dark = true, onPrivacy }: Chat
           {onPrivacy && (
             <button
               onClick={onPrivacy}
-              className="flex items-center gap-1 text-stone-300 hover:text-[#16A34A] transition-colors ml-auto"
+              className="flex items-center gap-1 text-text-muted hover:text-accent transition-colors ml-auto"
             >
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
               Your privacy
@@ -135,7 +135,7 @@ export default function ChatSuggestions({ onSend, dark = true, onPrivacy }: Chat
             <button
               key={cat.label}
               onClick={() => setActiveCategory(i)}
-              className={`flex flex-col items-center gap-1.5 px-2 py-2.5 rounded-xl text-[11px] font-medium transition-all border ${
+              className={`flex flex-col items-center gap-1.5 px-2 py-2.5 rounded-xl text-xs font-medium transition-all border ${
                 activeCategory === i
                   ? `${cat.bgColor} ${cat.color} shadow-sm`
                   : "bg-[#141416] text-zinc-500 border-zinc-800 hover:bg-zinc-800"
@@ -164,7 +164,7 @@ export default function ChatSuggestions({ onSend, dark = true, onPrivacy }: Chat
       </div>
 
       {/* Capabilities footer */}
-      <div className="mt-6 flex items-center gap-4 text-[10px] text-zinc-700">
+      <div className="mt-6 flex items-center gap-4 text-xs text-zinc-700">
         <span className="flex items-center gap-1"><Search size={10} /> Search</span>
         <span className="flex items-center gap-1"><FileEdit size={10} /> Recategorize</span>
         <span className="flex items-center gap-1"><BarChart3 size={10} /> Analyze</span>

@@ -13,6 +13,7 @@ import { getRetirementProfiles, getTrajectoryProjection } from "@/lib/api";
 import type { TrajectoryProjection } from "@/lib/api";
 import Link from "next/link";
 import { TrendingUp, ArrowRight } from "lucide-react";
+import { useThemeColors } from "@/hooks/useThemeColors";
 
 function fmt(n: number): string {
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
@@ -75,16 +76,16 @@ export default function TrajectoryChart() {
   if (!proj) {
     return (
       <div className="flex flex-col items-center justify-center py-8 text-center">
-        <div className="w-12 h-12 rounded-xl bg-stone-100 flex items-center justify-center mb-3">
-          <TrendingUp size={22} className="text-stone-300" />
+        <div className="w-12 h-12 rounded-xl bg-surface flex items-center justify-center mb-3">
+          <TrendingUp size={22} className="text-text-muted" />
         </div>
-        <p className="text-sm font-medium text-stone-700 mb-1">No retirement profile yet</p>
-        <p className="text-xs text-stone-400 mb-4 max-w-xs">
+        <p className="text-sm font-medium text-text-secondary mb-1">No retirement profile yet</p>
+        <p className="text-xs text-text-muted mb-4 max-w-xs">
           Set up a retirement profile to see your trajectory fan chart and probability of success.
         </p>
         <Link
           href="/retirement"
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#16A34A] bg-[#DCFCE7] px-4 py-2 rounded-full hover:bg-[#BBF7D0] transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-accent bg-accent-light px-4 py-2 rounded-full hover:bg-accent-muted transition-colors"
         >
           Set up projection <ArrowRight size={12} />
         </Link>
@@ -92,9 +93,10 @@ export default function TrajectoryChart() {
     );
   }
 
+  const colors = useThemeColors();
   const chartData = buildChartData(proj);
   const readinessPct = proj.readiness_pct;
-  const statusColor = readinessPct >= 90 ? "#16A34A" : readinessPct >= 70 ? "#D97706" : "#DC2626";
+  const statusColor = readinessPct >= 90 ? colors.positive : readinessPct >= 70 ? colors.warning : colors.negative;
   const statusLabel = readinessPct >= 90 ? "On Track" : readinessPct >= 70 ? "Needs Work" : "Behind";
 
   return (
@@ -102,20 +104,20 @@ export default function TrajectoryChart() {
       {/* Summary row */}
       <div className="grid grid-cols-3 gap-4">
         <div>
-          <p className="text-[11px] text-stone-400 uppercase tracking-wide">Target Nest Egg</p>
-          <p className="text-lg font-bold text-stone-900 money">{fmt(proj.target_nest_egg)}</p>
+          <p className="text-xs text-text-muted uppercase tracking-wide">Target Nest Egg</p>
+          <p className="text-lg font-bold text-text-primary money">{fmt(proj.target_nest_egg)}</p>
         </div>
         <div>
-          <p className="text-[11px] text-stone-400 uppercase tracking-wide">Projected</p>
+          <p className="text-xs text-text-muted uppercase tracking-wide">Projected</p>
           <p className="text-lg font-bold money" style={{ color: statusColor }}>{fmt(proj.projected_nest_egg)}</p>
         </div>
         <div>
-          <p className="text-[11px] text-stone-400 uppercase tracking-wide">Readiness</p>
+          <p className="text-xs text-text-muted uppercase tracking-wide">Readiness</p>
           <div className="flex items-center gap-2 mt-0.5">
             <p className="text-lg font-bold money" style={{ color: statusColor }}>{readinessPct.toFixed(0)}%</p>
             <span
-              className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-              style={{ color: statusColor, background: readinessPct >= 90 ? "#DCFCE7" : readinessPct >= 70 ? "#FEF3C7" : "#FEE2E2" }}
+              className="text-xs font-semibold px-2 py-0.5 rounded-full"
+              style={{ color: statusColor, background: `color-mix(in srgb, ${statusColor} 15%, transparent)` }}
             >
               {statusLabel}
             </span>
@@ -138,35 +140,35 @@ export default function TrajectoryChart() {
           </defs>
           <XAxis
             dataKey="age"
-            tick={{ fontSize: 11, fill: "#9CA3AF" }}
+            tick={{ fontSize: 11, fill: colors.axisText }}
             axisLine={false}
             tickLine={false}
             tickFormatter={(v) => `${v}`}
           />
           <YAxis
             tickFormatter={fmt}
-            tick={{ fontSize: 11, fill: "#9CA3AF" }}
+            tick={{ fontSize: 11, fill: colors.axisText }}
             axisLine={false}
             tickLine={false}
             width={55}
           />
           <Tooltip
-            contentStyle={{ borderRadius: 8, border: "1px solid #E5E7EB", fontSize: 12, fontFamily: "var(--font-mono)" }}
+            contentStyle={{ borderRadius: 8, border: `1px solid ${colors.tooltipBorder}`, background: colors.tooltipBg, color: colors.tooltipText, fontSize: 12, fontFamily: "var(--font-mono)" }}
             formatter={(v) => [fmt(Number(v ?? 0)), undefined]}
             labelFormatter={(l) => `Age ${l}`}
           />
           <ReferenceLine
             y={proj.target_nest_egg}
-            stroke="#CA8A04"
+            stroke={colors.gold}
             strokeDasharray="4 3"
             strokeWidth={1.5}
-            label={{ value: "Target", position: "right", fontSize: 10, fill: "#CA8A04" }}
+            label={{ value: "Target", position: "right", fontSize: 10, fill: colors.gold }}
           />
           {/* Outer band — optimistic to pessimistic spread */}
           <Area
             type="monotone"
             dataKey="optimistic"
-            stroke="#16A34A"
+            stroke={colors.accent}
             strokeWidth={1}
             strokeDasharray="4 2"
             fill="url(#traj-opt)"
@@ -177,7 +179,7 @@ export default function TrajectoryChart() {
           <Area
             type="monotone"
             dataKey="base"
-            stroke="#16A34A"
+            stroke={colors.accent}
             strokeWidth={2}
             fill="url(#traj-base)"
             dot={false}
@@ -187,10 +189,10 @@ export default function TrajectoryChart() {
           <Area
             type="monotone"
             dataKey="pessimistic"
-            stroke="#6B7280"
+            stroke={colors.neutral}
             strokeWidth={1}
             strokeDasharray="4 2"
-            fill="white"
+            fill={colors.tooltipBg}
             dot={false}
             name="Pessimistic"
           />
@@ -198,10 +200,10 @@ export default function TrajectoryChart() {
       </ResponsiveContainer>
 
       <div className="flex items-center justify-between">
-        <p className="text-[11px] text-stone-400">
+        <p className="text-xs text-text-muted">
           Fan shows ±2% return scenarios · Target at retirement age {proj.retirement_age}
         </p>
-        <Link href={`/retirement${profileId ? `?id=${profileId}` : ""}`} className="text-xs text-[#16A34A] hover:underline font-medium flex items-center gap-1">
+        <Link href={`/retirement${profileId ? `?id=${profileId}` : ""}`} className="text-xs text-accent hover:underline font-medium flex items-center gap-1">
           Full analysis <ArrowRight size={11} />
         </Link>
       </div>

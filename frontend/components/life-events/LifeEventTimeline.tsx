@@ -33,7 +33,7 @@ export default function LifeEventTimeline({
     <div className="space-y-6">
       {sortedYears.map((year) => (
         <div key={year}>
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-stone-400 mb-3">{year}</h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-3">{year}</h3>
           <div className="space-y-3">
             {eventsByYear[year].map((event) => {
               const cfg = getEventConfig(event.event_type);
@@ -48,16 +48,16 @@ export default function LifeEventTimeline({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
                         <div>
-                          <h4 className="text-sm font-semibold text-stone-900">{event.title}</h4>
+                          <h4 className="text-sm font-semibold text-text-primary">{event.title}</h4>
                           <div className="flex flex-wrap items-center gap-2 mt-1">
                             <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cfg.color}`}>
                               {cfg.label}{event.event_subtype ? ` · ${event.event_subtype.replace(/_/g, " ")}` : ""}
                             </span>
-                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[event.status] || "bg-stone-100 text-stone-600"}`}>
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[event.status] || "bg-surface text-text-secondary"}`}>
                               {STATUS_LABELS[event.status] || event.status}
                             </span>
                             {event.event_date && (
-                              <span className="text-xs text-stone-400">
+                              <span className="text-xs text-text-muted">
                                 {new Date(event.event_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                               </span>
                             )}
@@ -67,19 +67,19 @@ export default function LifeEventTimeline({
                           {actionItems.length > 0 && (
                             <button
                               onClick={() => onToggleExpand(isExpanded ? null : event.id)}
-                              className="flex items-center gap-1.5 text-xs text-stone-500 hover:text-stone-700 px-2 py-1 rounded-lg hover:bg-stone-50"
+                              className="flex items-center gap-1.5 text-xs text-text-secondary hover:text-text-secondary px-2 py-1 rounded-lg hover:bg-surface"
                             >
                               <Tag size={12} />
                               {completedItems}/{actionItems.length} done
                               {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                             </button>
                           )}
-                          <button onClick={() => onEdit(event)} className="p-1.5 text-stone-400 hover:text-[#16A34A] rounded" title="Edit event"><Pencil size={13} /></button>
-                          <button onClick={() => onDelete(event.id)} className="p-1.5 text-stone-400 hover:text-red-500 rounded"><Trash2 size={13} /></button>
+                          <button onClick={() => onEdit(event)} className="p-1.5 text-text-muted hover:text-accent rounded" title="Edit event"><Pencil size={13} /></button>
+                          <button onClick={() => onDelete(event.id)} className="p-1.5 text-text-muted hover:text-red-500 rounded"><Trash2 size={13} /></button>
                         </div>
                       </div>
 
-                      {event.notes && <p className="text-xs text-stone-500 mt-2">{event.notes}</p>}
+                      {event.notes && <p className="text-xs text-text-secondary mt-2">{event.notes}</p>}
 
                       {/* Financial amounts summary */}
                       {event.amounts_json && (() => {
@@ -88,9 +88,9 @@ export default function LifeEventTimeline({
                         return entries.length > 0 ? (
                           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-0.5">
                             {entries.map(([k, v]) => (
-                              <span key={k} className="text-xs text-stone-500">
+                              <span key={k} className="text-xs text-text-secondary">
                                 <span className="capitalize">{k.replace(/_/g, " ")}: </span>
-                                <span className="font-medium text-stone-700">
+                                <span className="font-medium text-text-secondary">
                                   {k.includes("rate") ? `${v}%` : `$${Number(v).toLocaleString()}`}
                                 </span>
                               </span>
@@ -101,22 +101,22 @@ export default function LifeEventTimeline({
 
                       {/* Action items (expanded) */}
                       {isExpanded && actionItems.length > 0 && (
-                        <div className="mt-3 pt-3 border-t border-stone-100">
-                          <p className="text-xs font-semibold text-stone-600 mb-2">Action Items</p>
+                        <div className="mt-3 pt-3 border-t border-card-border">
+                          <p className="text-xs font-semibold text-text-secondary mb-2">Action Items</p>
                           <ul className="space-y-1.5">
                             {actionItems.map((item, idx) => (
                               <li key={idx} className="flex items-start gap-2">
                                 <button
                                   onClick={() => onToggleAction(event, idx, !item.completed)}
-                                  className={`mt-0.5 shrink-0 ${item.completed ? "text-green-500" : "text-stone-300 hover:text-stone-400"}`}
+                                  className={`mt-0.5 shrink-0 ${item.completed ? "text-green-500" : "text-text-muted hover:text-text-muted"}`}
                                 >
                                   {item.completed ? <CheckCircle2 size={15} /> : <Circle size={15} />}
                                 </button>
-                                <span className={`text-xs ${item.completed ? "line-through text-stone-400" : "text-stone-600"}`}>
+                                <span className={`text-xs ${item.completed ? "line-through text-text-muted" : "text-text-secondary"}`}>
                                   {item.text}
                                 </span>
                                 {item.link && !item.completed && (
-                                  <a href={item.link} className="ml-auto shrink-0 text-[#16A34A] hover:text-[#15803D]" title={`Go to ${item.link}`}>
+                                  <a href={item.link} className="ml-auto shrink-0 text-accent hover:text-accent-hover" title={`Go to ${item.link}`}>
                                     <ExternalLink size={12} />
                                   </a>
                                 )}

@@ -9,7 +9,7 @@ export default function CalcButton({ loading, onClick, label = "Calculate" }: {
     <button
       onClick={onClick}
       disabled={loading}
-      className="bg-[#16A34A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#15803D] disabled:opacity-60"
+      className="bg-accent text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-60"
     >
       {loading ? (
         <span className="flex items-center gap-2">

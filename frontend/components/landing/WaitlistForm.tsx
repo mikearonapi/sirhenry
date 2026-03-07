@@ -40,7 +40,7 @@ export default function WaitlistForm({ dark = false }: Props) {
             : "border-[#BBF7D0] bg-[#F0FDF4]"
         }`}
       >
-        <CheckCircle size={18} className="text-[#16A34A] shrink-0" />
+        <CheckCircle size={18} className="text-accent shrink-0" />
         <p
           className={`text-sm font-medium ${
             dark ? "text-[#22C55E]" : "text-[#15803D]"
@@ -69,17 +69,17 @@ export default function WaitlistForm({ dark = false }: Props) {
           onChange={(e) => setEmail(e.target.value)}
           placeholder="your@email.com"
           disabled={loading}
-          className={`w-full pl-10 pr-4 py-3 rounded-lg text-sm border focus:outline-none focus:ring-2 focus:ring-[#16A34A]/30 focus:border-[#16A34A] transition-colors disabled:opacity-60 ${
+          className={`w-full pl-10 pr-4 py-3 rounded-lg text-sm border focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-colors disabled:opacity-60 ${
             dark
               ? "bg-[#1C1C1F] border-[#3F3F46] text-[#F9FAFB] placeholder:text-[#6B7280]"
-              : "bg-white border-[#D1D5DB] text-[#111827] placeholder:text-[#9CA3AF]"
+              : "bg-card border-[#D1D5DB] text-[#111827] placeholder:text-[#9CA3AF]"
           }`}
         />
       </div>
       <button
         type="submit"
         disabled={loading}
-        className="flex items-center justify-center gap-2 bg-[#16A34A] hover:bg-[#15803D] text-white font-semibold text-sm px-6 py-3 rounded-lg transition-colors whitespace-nowrap disabled:opacity-60"
+        className="flex items-center justify-center gap-2 bg-accent hover:bg-accent-hover text-white font-semibold text-sm px-6 py-3 rounded-lg transition-colors whitespace-nowrap disabled:opacity-60"
       >
         {loading ? (
           <>

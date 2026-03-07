@@ -560,16 +560,17 @@ async def _024_user_context_table(session: AsyncSession) -> None:
 
 async def _025_retirement_budget_overrides_table(session: AsyncSession) -> None:
     """Create retirement_budget_overrides table for per-category retirement adjustments."""
-    await session.execute(text("""
+    d = _ddl(session)
+    await session.execute(text(f"""
         CREATE TABLE IF NOT EXISTS retirement_budget_overrides (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id {d['pk']},
             profile_id INTEGER REFERENCES retirement_profiles(id),
             category VARCHAR(100) NOT NULL,
             multiplier FLOAT DEFAULT 1.0,
             fixed_amount FLOAT,
             reason VARCHAR(255),
-            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            created_at {d['ts_now']},
+            updated_at {d['ts_now']},
             UNIQUE(profile_id, category)
         )
     """))
@@ -632,6 +633,120 @@ async def _028_flow_type_column_and_backfill(session: AsyncSession) -> None:
         )
 
 
+async def _029_app_settings_table(session: AsyncSession) -> None:
+    """Create app_settings table for application-level configuration."""
+    d = _ddl(session)
+    await session.execute(text(f"""
+        CREATE TABLE IF NOT EXISTS app_settings (
+            key VARCHAR(100) PRIMARY KEY,
+            value TEXT,
+            updated_at {d['ts_now']}
+        )
+    """))
+
+
+async def _030_life_scenario_composite_ids(session: AsyncSession) -> None:
+    """Add composite_scenario_ids column to life_scenarios table."""
+    try:
+        await session.execute(text(
+            "ALTER TABLE life_scenarios ADD COLUMN composite_scenario_ids TEXT"
+        ))
+    except Exception:
+        pass  # Column already exists
+
+
+async def _031_performance_indexes(session: AsyncSession) -> None:
+    """Add performance indexes for common query patterns."""
+    indexes = [
+        "CREATE INDEX IF NOT EXISTS ix_transactions_account_id ON transactions(account_id)",
+        "CREATE INDEX IF NOT EXISTS ix_transactions_date ON transactions(date)",
+        "CREATE INDEX IF NOT EXISTS ix_transactions_period ON transactions(year, month)",
+        "CREATE INDEX IF NOT EXISTS ix_tax_items_tax_year ON tax_items(tax_year)",
+        "CREATE INDEX IF NOT EXISTS ix_plaid_accounts_item_id ON plaid_accounts(item_id)",
+        "CREATE INDEX IF NOT EXISTS ix_category_rules_category ON category_rules(category)",
+    ]
+    for ddl in indexes:
+        try:
+            await session.execute(text(ddl))
+        except Exception:
+            pass  # Index already exists or table not yet created
+
+
+async def _032_plaid_sync_phase_column(session: AsyncSession) -> None:
+    """Add sync_phase column to plaid_items for granular sync progress tracking."""
+    try:
+        await session.execute(
+            text("ALTER TABLE plaid_items ADD COLUMN sync_phase VARCHAR(30)")
+        )
+    except Exception:
+        pass  # Column already exists
+
+
+async def _033_additional_indexes(session: AsyncSession) -> None:
+    """Add missing indexes for frequent query filters."""
+    indexes = [
+        "CREATE INDEX IF NOT EXISTS ix_transactions_excluded ON transactions(is_excluded)",
+        "CREATE INDEX IF NOT EXISTS ix_transactions_effective_category ON transactions(effective_category)",
+        "CREATE INDEX IF NOT EXISTS ix_transactions_period_ym ON transactions(period_year, period_month)",
+        "CREATE INDEX IF NOT EXISTS ix_recurring_status ON recurring_transactions(status)",
+        "CREATE INDEX IF NOT EXISTS ix_accounts_is_active ON accounts(is_active)",
+        "CREATE INDEX IF NOT EXISTS ix_insurance_is_active ON insurance_policies(is_active)",
+    ]
+    for ddl in indexes:
+        try:
+            await session.execute(text(ddl))
+        except Exception:
+            pass
+
+
+async def _034_preferred_name_column(session: AsyncSession) -> None:
+    """Add spouse_a_preferred_name to household_profiles for chat personalization."""
+    try:
+        await session.execute(text(
+            "ALTER TABLE household_profiles ADD COLUMN spouse_a_preferred_name VARCHAR(100)"
+        ))
+    except Exception:
+        pass
+
+
+async def _035_error_logs_table(session: AsyncSession) -> None:
+    """Create error_logs table for user-submitted error reports."""
+    d = _ddl(session)
+    await session.execute(text(f"""
+        CREATE TABLE IF NOT EXISTS error_logs (
+            id {d['pk']},
+            timestamp {d['ts_now']},
+            error_type VARCHAR(50) NOT NULL,
+            message VARCHAR(1000),
+            stack_trace TEXT,
+            source_url VARCHAR(500),
+            user_agent VARCHAR(200),
+            user_note VARCHAR(500),
+            status VARCHAR(20) NOT NULL DEFAULT 'new',
+            context_json TEXT
+        )
+    """))
+    await session.execute(text(
+        "CREATE INDEX IF NOT EXISTS ix_error_log_timestamp ON error_logs(timestamp)"
+    ))
+    await session.execute(text(
+        "CREATE INDEX IF NOT EXISTS ix_error_log_status ON error_logs(status)"
+    ))
+
+
+async def _036_investment_holding_plaid_columns(session: AsyncSession) -> None:
+    """Add data_source and plaid_security_id columns to investment_holdings for Plaid sync."""
+    cols = [
+        ("investment_holdings", "data_source", "VARCHAR(20) NOT NULL DEFAULT 'manual'"),
+        ("investment_holdings", "plaid_security_id", "VARCHAR(100)"),
+    ]
+    for table, col, col_type in cols:
+        try:
+            await session.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {col_type}"))
+        except Exception:
+            pass  # Column already exists
+
+
 MIGRATIONS: list[tuple[str, callable]] = [
     ("001_family_members_table", _001_family_members_table),
     ("002_household_columns", _002_household_columns),
@@ -661,6 +776,14 @@ MIGRATIONS: list[tuple[str, callable]] = [
     ("026_category_rule_date_fields", _026_category_rule_date_fields),
     ("027_transaction_parent_id", _027_transaction_parent_id),
     ("028_flow_type_column_and_backfill", _028_flow_type_column_and_backfill),
+    ("029_app_settings_table", _029_app_settings_table),
+    ("030_life_scenario_composite_ids", _030_life_scenario_composite_ids),
+    ("031_performance_indexes", _031_performance_indexes),
+    ("032_plaid_sync_phase_column", _032_plaid_sync_phase_column),
+    ("033_additional_indexes", _033_additional_indexes),
+    ("034_preferred_name_column", _034_preferred_name_column),
+    ("035_error_logs_table", _035_error_logs_table),
+    ("036_investment_holding_plaid_columns", _036_investment_holding_plaid_columns),
 ]
 
 

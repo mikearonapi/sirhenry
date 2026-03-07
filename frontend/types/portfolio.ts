@@ -230,3 +230,37 @@ export interface PortfolioConcentration {
   single_stock_risk_level?: string;
   sector_concentration?: Record<string, number>;
 }
+
+/** Key fundamental statistics for a ticker (from Yahoo Finance). */
+export interface TickerStats {
+  ticker: string;
+  name: string | null;
+  sector: string | null;
+  industry: string | null;
+  market_cap: number | null;
+  enterprise_value: number | null;
+  pe_ratio: number | null;
+  forward_pe: number | null;
+  peg_ratio: number | null;
+  price_to_book: number | null;
+  price_to_sales: number | null;
+  ev_to_ebitda: number | null;
+  profit_margin: number | null;
+  operating_margin: number | null;
+  roe: number | null;
+  roa: number | null;
+  revenue: number | null;
+  revenue_growth: number | null;
+  earnings_growth: number | null;
+  free_cash_flow: number | null;
+  debt_to_equity: number | null;
+  current_ratio: number | null;
+  dividend_yield: number | null;
+  dividend_rate: number | null;
+  payout_ratio: number | null;
+  beta: number | null;
+  fifty_two_week_high: number | null;
+  fifty_two_week_low: number | null;
+  analyst_target: number | null;
+  recommendation: string | null;
+}

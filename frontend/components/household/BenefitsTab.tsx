@@ -106,8 +106,8 @@ export default function BenefitsTab({ profile }: BenefitsTabProps) {
   if (!profile) {
     return (
       <div className="text-center py-12">
-        <Briefcase size={32} className="mx-auto text-stone-300 mb-3" />
-        <p className="text-sm text-stone-500">Create a household profile on the Profile tab first.</p>
+        <Briefcase size={32} className="mx-auto text-text-muted mb-3" />
+        <p className="text-sm text-text-secondary">Create a household profile on the Profile tab first.</p>
       </div>
     );
   }
@@ -142,18 +142,18 @@ export default function BenefitsTab({ profile }: BenefitsTabProps) {
 
   return (
     <div className="space-y-6">
-      {loading && <div className="flex items-center gap-2 text-stone-500 text-sm"><Loader2 size={14} className="animate-spin" />Loading benefits...</div>}
-      {error && <div className="text-sm text-red-600 bg-red-50 p-3 rounded-lg">{error}</div>}
+      {loading && <div className="flex items-center gap-2 text-text-secondary text-sm"><Loader2 size={14} className="animate-spin" />Loading benefits...</div>}
+      {error && <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 p-3 rounded-lg">{error}</div>}
 
       {/* Alerts: HSA/FSA conflict + hidden salary */}
       {(hsaFsaConflict || hiddenA > 0 || hiddenB > 0) && (
         <div className="space-y-3">
           {hsaFsaConflict && (
-            <div className="p-4 bg-red-50 border border-red-100 rounded-xl flex items-start gap-3">
+            <div className="p-4 bg-red-50 dark:bg-red-950/40 border border-red-100 dark:border-red-900 rounded-xl flex items-start gap-3">
               <AlertTriangle size={16} className="text-red-500 mt-0.5 shrink-0" />
               <div>
-                <p className="text-sm font-semibold text-red-800">HSA + FSA Conflict Detected</p>
-                <p className="text-xs text-red-600 mt-1">
+                <p className="text-sm font-semibold text-red-800 dark:text-red-400">HSA + FSA Conflict Detected</p>
+                <p className="text-xs text-red-600 dark:text-red-400 mt-1">
                   One spouse has an HSA while the other has an FSA. Being on a spouse&apos;s FSA disqualifies HSA contributions
                   unless the FSA is a Limited-Purpose FSA (dental/vision only). Verify your FSA type.
                 </p>
@@ -163,17 +163,17 @@ export default function BenefitsTab({ profile }: BenefitsTabProps) {
           {(hiddenA > 0 || hiddenB > 0) && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {hiddenA > 0 && (
-                <div className="p-4 bg-green-50 border border-green-100 rounded-xl">
-                  <p className="text-xs text-green-600 font-semibold uppercase tracking-wide mb-1">{spouseName("a")} Hidden Salary</p>
-                  <p className="text-xl font-bold text-green-700">{formatCurrency(hiddenA)}/yr</p>
-                  <p className="text-xs text-green-600 mt-1">Estimated value of employer benefits</p>
+                <div className="p-4 bg-green-50 dark:bg-green-950/40 border border-green-100 dark:border-green-900 rounded-xl">
+                  <p className="text-xs text-green-600 dark:text-green-400 font-semibold uppercase tracking-wide mb-1">{spouseName("a")} Hidden Salary</p>
+                  <p className="text-xl font-bold text-green-700 dark:text-green-400">{formatCurrency(hiddenA)}/yr</p>
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-1">Estimated value of employer benefits</p>
                 </div>
               )}
               {hiddenB > 0 && (
-                <div className="p-4 bg-green-50 border border-green-100 rounded-xl">
-                  <p className="text-xs text-green-600 font-semibold uppercase tracking-wide mb-1">{spouseName("b")} Hidden Salary</p>
-                  <p className="text-xl font-bold text-green-700">{formatCurrency(hiddenB)}/yr</p>
-                  <p className="text-xs text-green-600 mt-1">Estimated value of employer benefits</p>
+                <div className="p-4 bg-green-50 dark:bg-green-950/40 border border-green-100 dark:border-green-900 rounded-xl">
+                  <p className="text-xs text-green-600 dark:text-green-400 font-semibold uppercase tracking-wide mb-1">{spouseName("b")} Hidden Salary</p>
+                  <p className="text-xl font-bold text-green-700 dark:text-green-400">{formatCurrency(hiddenB)}/yr</p>
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-1">Estimated value of employer benefits</p>
                 </div>
               )}
             </div>
@@ -185,13 +185,13 @@ export default function BenefitsTab({ profile }: BenefitsTabProps) {
       <ContributionHeadroomCard benA={benA} benB={benB} assets={assets} hasDependents={hasDependents} />
 
       {/* Spouse tabs */}
-      <div className="flex gap-2 border-b border-stone-200 pb-0">
+      <div className="flex gap-2 border-b border-border pb-0">
         {(["a", "b"] as const).map((s) => (
           <button key={s} onClick={() => setActiveSpouse(s)}
             className={`px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
               activeSpouse === s
-                ? "border-[#16A34A] text-[#16A34A]"
-                : "border-transparent text-stone-500 hover:text-stone-700"
+                ? "border-accent text-accent"
+                : "border-transparent text-text-secondary hover:text-text-secondary"
             }`}>
             {spouseName(s)}
           </button>

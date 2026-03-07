@@ -43,14 +43,14 @@ export default function TaxLossHarvestSim() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <caption className="sr-only">Harvest candidates</caption>
-                <thead className="bg-stone-50">
+                <thead className="bg-surface">
                   <tr>
                     {["Ticker", "Loss", "Loss %", "Term", "Tax Savings", "Wash Sale Risk"].map((h) => (
-                      <th key={h} className={`${h === "Ticker" ? "text-left" : "text-right"} px-3 py-2 text-xs font-semibold text-stone-500`}>{h}</th>
+                      <th key={h} className={`${h === "Ticker" ? "text-left" : "text-right"} px-3 py-2 text-xs font-semibold text-text-muted`}>{h}</th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-stone-100">
+                <tbody className="divide-y divide-border">
                   {result.candidates.slice(0, 10).map((c) => (
                     <tr key={c.holding_id}>
                       <td className="px-3 py-2 font-medium">{c.ticker}</td>
@@ -68,7 +68,7 @@ export default function TaxLossHarvestSim() {
             </div>
           )}
           {result.candidates.length === 0 && (
-            <p className="text-sm text-stone-500 text-center py-4">No holdings with harvestable losses found. Import your portfolio to see candidates.</p>
+            <p className="text-sm text-text-muted text-center py-4">No holdings with harvestable losses found. Import your portfolio to see candidates.</p>
           )}
         </div>
       )}

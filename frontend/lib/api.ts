@@ -29,3 +29,5 @@ export * from "./api-smart-defaults";
 export * from "./api-income";
 export * from "./api-valuations";
 export * from "./api-rules";
+export * from "./api-demo";
+export * from "./api-errors";

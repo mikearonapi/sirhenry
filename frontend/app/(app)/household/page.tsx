@@ -19,6 +19,8 @@ import {
   OptimizationResults,
 } from "@/components/household";
 import { TABS } from "@/components/household/constants";
+import TabBar from "@/components/ui/TabBar";
+import { useTabState } from "@/hooks/useTabState";
 
 // ---------------------------------------------------------------------------
 // Main Page
@@ -28,7 +30,7 @@ export default function HouseholdPage() {
   const [profiles, setProfiles] = useState<HouseholdProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState("profile");
+  const [activeTab, setActiveTab] = useTabState(TABS, "profile");
   const [optimizingId, setOptimizingId] = useState<number | null>(null);
   const [optimizationResult, setOptimizationResult] = useState<HouseholdOptimizationResult | null>(null);
   const [suggestions, setSuggestions] = useState<HouseholdUpdateSuggestion[]>([]);
@@ -84,7 +86,7 @@ export default function HouseholdPage() {
             <button
               onClick={() => handleOptimize(primaryProfile)}
               disabled={optimizingId === primaryProfile.id}
-              className="flex items-center gap-2 bg-[#16A34A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#15803d] shadow-sm disabled:opacity-60"
+              className="flex items-center gap-2 bg-accent text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-hover shadow-sm disabled:opacity-60"
             >
               {optimizingId === primaryProfile.id ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
               Full Optimization
@@ -126,22 +128,7 @@ export default function HouseholdPage() {
       )}
 
       {/* Tab navigation */}
-      <div className="flex gap-1 border-b border-stone-200 overflow-x-auto">
-        {TABS.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            onClick={() => setActiveTab(id)}
-            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
-              activeTab === id
-                ? "border-[#16A34A] text-[#16A34A]"
-                : "border-transparent text-stone-500 hover:text-stone-700 hover:border-stone-300"
-            }`}
-          >
-            <Icon size={15} />
-            {label}
-          </button>
-        ))}
-      </div>
+      <TabBar tabs={TABS} activeTab={activeTab} onChange={setActiveTab} />
 
       {/* Active tab context banner */}
       {(() => {
@@ -149,11 +136,11 @@ export default function HouseholdPage() {
         if (!tab) return null;
         const isInsurance = tab.id === "insurance";
         return (
-          <div className="bg-stone-50 border border-stone-100 rounded-xl px-4 py-3">
-            <p className="text-xs font-semibold text-stone-700">{tab.subtitle}</p>
-            <p className="text-xs text-stone-500 mt-0.5">{tab.connects}</p>
+          <div className="bg-surface border border-card-border rounded-xl px-4 py-3">
+            <p className="text-xs font-semibold text-text-secondary">{tab.subtitle}</p>
+            <p className="text-xs text-text-secondary mt-0.5">{tab.connects}</p>
             {isInsurance && (
-              <a href="/insurance" className="inline-flex items-center gap-1 mt-1.5 text-xs font-medium text-[#16A34A] hover:text-[#15803d]">
+              <a href="/insurance" className="inline-flex items-center gap-1 mt-1.5 text-xs font-medium text-accent hover:text-accent-hover">
                 <Shield size={11} /> View personal policies (life, auto, home, umbrella) →
               </a>
             )}

@@ -116,25 +116,25 @@ export default function ProfileTab({
   }
 
   if (loading) {
-    return <div className="flex items-center gap-2 text-stone-500 text-sm py-8"><Loader2 size={16} className="animate-spin" />Loading...</div>;
+    return <div className="flex items-center gap-2 text-text-secondary text-sm py-8"><Loader2 size={16} className="animate-spin" />Loading...</div>;
   }
 
   return (
     <div className="space-y-6">
-      {error && <div className="text-sm text-red-600 bg-red-50 p-3 rounded-lg flex items-center gap-2"><AlertCircle size={14} />{error}</div>}
+      {error && <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 p-3 rounded-lg flex items-center gap-2"><AlertCircle size={14} />{error}</div>}
 
       {!primaryProfile ? (
         <Card padding="lg">
           <div className="text-center py-6 space-y-3">
-            <Users size={36} className="mx-auto text-stone-300" />
-            <p className="text-sm text-stone-500">Create your household to get started.</p>
+            <Users size={36} className="mx-auto text-text-muted" />
+            <p className="text-sm text-text-secondary">Create your household to get started.</p>
             <button onClick={() => { setFormName("My Household"); setFormFilingStatus("mfj"); setFormState(""); setShowHHForm(true); }}
-              className="flex items-center gap-2 bg-[#16A34A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#15803d] mx-auto">
+              className="flex items-center gap-2 bg-accent text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-hover mx-auto">
               <Plus size={14} /> Create Household
             </button>
           </div>
           {showHHForm && (
-            <div className="mt-4 pt-4 border-t border-stone-100">
+            <div className="mt-4 pt-4 border-t border-card-border">
               <HouseholdProfileForm
                 formName={formName}
                 formFilingStatus={formFilingStatus}
@@ -157,11 +157,11 @@ export default function ProfileTab({
           <Card padding="md">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-semibold text-stone-900">{primaryProfile.name}</h3>
-                <p className="text-xs text-stone-500 mt-0.5">
+                <h3 className="font-semibold text-text-primary">{primaryProfile.name}</h3>
+                <p className="text-xs text-text-secondary mt-0.5">
                   {FILING_OPTIONS.find((o) => o.value === primaryProfile.filing_status)?.label}
                   {primaryProfile.state ? ` · ${primaryProfile.state}` : ""}
-                  {" · "}W-2 wages: <span className="font-semibold text-stone-700">{formatCurrency(primaryProfile.combined_income, true)}</span>
+                  {" · "}W-2 wages: <span className="font-semibold text-text-secondary">{formatCurrency(primaryProfile.combined_income, true)}</span>
                   {primaryProfile.other_income_annual ? (
                     <span className="ml-1">· Other: <span className="font-semibold text-purple-700">{formatCurrency(primaryProfile.other_income_annual, true)}</span></span>
                   ) : null}
@@ -169,18 +169,18 @@ export default function ProfileTab({
               </div>
               <div className="flex items-center gap-2">
                 <button onClick={() => startEditHH(primaryProfile)}
-                  className="text-xs text-stone-500 hover:text-stone-900 px-3 py-1.5 border border-stone-200 rounded-lg hover:border-stone-300">
+                  className="text-xs text-text-secondary hover:text-text-primary px-3 py-1.5 border border-border rounded-lg hover:border-border">
                   Edit Settings
                 </button>
                 <button onClick={() => onDelete(primaryProfile.id)}
-                  className="text-xs text-stone-400 hover:text-red-500 p-1.5 rounded-lg border border-stone-200 hover:border-red-200">
+                  className="text-xs text-text-muted hover:text-red-500 p-1.5 rounded-lg border border-border hover:border-red-200">
                   <Trash2 size={13} />
                 </button>
               </div>
             </div>
 
             {showHHForm && editHHId === primaryProfile.id && (
-              <div className="mt-4 pt-4 border-t border-stone-100">
+              <div className="mt-4 pt-4 border-t border-card-border">
                 <HouseholdProfileForm
                   formName={formName}
                   formFilingStatus={formFilingStatus}

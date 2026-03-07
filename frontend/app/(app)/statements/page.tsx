@@ -78,14 +78,14 @@ export default function StatementsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-stone-900 tracking-tight">Financial Statements</h1>
-          <p className="text-stone-500 text-sm mt-0.5">Income statement and cash flow</p>
+          <h1 className="text-2xl font-bold text-text-primary tracking-tight">Financial Statements</h1>
+          <p className="text-text-secondary text-sm mt-0.5">Income statement and cash flow</p>
         </div>
         <div className="flex items-center gap-3">
           <select
             value={segment}
             onChange={(e) => setSegment(e.target.value)}
-            className="text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A]"
+            className="text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
           >
             <option value="all">All</option>
             <option value="personal">Personal</option>
@@ -95,7 +95,7 @@ export default function StatementsPage() {
           <select
             value={year}
             onChange={(e) => setYear(Number(e.target.value))}
-            className="text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A]"
+            className="text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
           >
             {[currentYear, currentYear - 1, currentYear - 2].map((y) => (
               <option key={y} value={y}>{y}</option>
@@ -104,7 +104,7 @@ export default function StatementsPage() {
           <select
             value={month ?? ""}
             onChange={(e) => setMonth(e.target.value ? Number(e.target.value) : null)}
-            className="text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A]"
+            className="text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
           >
             <option value="">Full Year</option>
             {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
@@ -115,13 +115,13 @@ export default function StatementsPage() {
       </div>
 
       {/* View tabs */}
-      <div className="flex gap-1 bg-stone-100 rounded-lg p-1 w-fit">
+      <div className="flex gap-1 bg-surface rounded-lg p-1 w-fit">
         {(["income_statement", "cash_flow"] as View[]).map((v) => (
           <button
             key={v}
             onClick={() => setView(v)}
             className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-              view === v ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700"
+              view === v ? "bg-card text-text-primary shadow-sm" : "text-text-secondary hover:text-text-secondary"
             }`}
           >
             {v === "income_statement" ? "Income Statement" : "Cash Flow"}
@@ -130,7 +130,7 @@ export default function StatementsPage() {
       </div>
 
       {loading ? (
-        <div className="flex items-center gap-3 text-stone-400 justify-center h-48">
+        <div className="flex items-center gap-3 text-text-muted justify-center h-48">
           <Loader2 className="animate-spin" size={20} />
           Loading…
         </div>
@@ -171,8 +171,8 @@ export default function StatementsPage() {
 
           {/* Chart */}
           {chartData.length > 0 && (
-            <div className="bg-white rounded-xl border border-stone-100 shadow-sm p-6">
-              <h2 className="text-sm font-semibold text-stone-700 mb-4">
+            <div className="bg-card rounded-xl border border-card-border shadow-sm p-6">
+              <h2 className="text-sm font-semibold text-text-secondary mb-4">
                 {view === "income_statement" ? "Monthly Income vs. Expenses" : "Monthly Cash Flow"} — {year}
               </h2>
               <ResponsiveContainer width="100%" height={280}>
@@ -204,8 +204,8 @@ export default function StatementsPage() {
 
           {/* Expense breakdown */}
           {displayPeriod?.expense_breakdown && (
-            <div className="bg-white rounded-xl border border-stone-100 shadow-sm p-6">
-              <h2 className="text-sm font-semibold text-stone-700 mb-4">Expense Breakdown</h2>
+            <div className="bg-card rounded-xl border border-card-border shadow-sm p-6">
+              <h2 className="text-sm font-semibold text-text-secondary mb-4">Expense Breakdown</h2>
               <div className="space-y-2">
                 {Object.entries(safeJsonParse<Record<string, number>>(displayPeriod.expense_breakdown, {}))
                   .slice(0, 12)
@@ -214,15 +214,15 @@ export default function StatementsPage() {
                     const pct = Math.round((amount / total) * 100);
                     return (
                       <div key={cat} className="flex items-center gap-3 text-sm">
-                        <span className="w-48 truncate text-stone-700">{cat}</span>
-                        <div className="flex-1 bg-stone-100 rounded-full h-2">
+                        <span className="w-48 truncate text-text-secondary">{cat}</span>
+                        <div className="flex-1 bg-surface rounded-full h-2">
                           <div
                             className="bg-indigo-400 h-2 rounded-full"
                             style={{ width: `${pct}%` }}
                           />
                         </div>
-                        <span className="w-24 text-right tabular-nums text-stone-600">{formatCurrency(amount)}</span>
-                        <span className="w-10 text-right text-stone-400 text-xs">{pct}%</span>
+                        <span className="w-24 text-right tabular-nums text-text-secondary">{formatCurrency(amount)}</span>
+                        <span className="w-10 text-right text-text-muted text-xs">{pct}%</span>
                       </div>
                     );
                   })}
@@ -232,24 +232,24 @@ export default function StatementsPage() {
 
           {/* AI Monthly Insights */}
           {month && (
-            <div className="bg-white rounded-xl border border-stone-100 shadow-sm p-6">
+            <div className="bg-card rounded-xl border border-card-border shadow-sm p-6">
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-semibold text-stone-700">
+                <h2 className="text-sm font-semibold text-text-secondary">
                   AI Insights — {monthName(month)} {year}
                 </h2>
                 <button
                   onClick={loadAiInsights}
                   disabled={loadingInsights}
-                  className="flex items-center gap-2 text-sm text-[#16A34A] hover:underline disabled:opacity-60"
+                  className="flex items-center gap-2 text-sm text-accent hover:underline disabled:opacity-60"
                 >
                   {loadingInsights ? <Loader2 size={14} className="animate-spin" /> : null}
                   {aiInsights ? "Regenerate" : "Generate AI Insights"}
                 </button>
               </div>
               {aiInsights ? (
-                <pre className="whitespace-pre-wrap font-sans text-sm text-stone-700 leading-relaxed">{aiInsights}</pre>
+                <pre className="whitespace-pre-wrap font-sans text-sm text-text-secondary leading-relaxed">{aiInsights}</pre>
               ) : (
-                <p className="text-stone-400 text-sm">Click "Generate AI Insights" to get a Claude-written monthly financial review.</p>
+                <p className="text-text-muted text-sm">Click "Generate AI Insights" to get a Claude-written monthly financial review.</p>
               )}
             </div>
           )}

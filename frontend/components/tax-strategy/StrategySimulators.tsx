@@ -159,24 +159,24 @@ export default function StrategySimulators({ activeTab }: { activeTab?: string }
 
   return (
     <div id="strategy-simulators">
-      <h2 className="text-xs font-semibold uppercase tracking-wide text-stone-400 mb-3">
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-text-muted mb-3">
         Strategy Simulators
         {recommended.size > 0 && (
-          <span className="ml-2 text-[10px] font-normal normal-case tracking-normal text-stone-400">
-            · <span className="text-[#16A34A]">●</span> recommended for you
+          <span className="ml-2 text-xs font-normal normal-case tracking-normal text-text-muted">
+            · <span className="text-accent">●</span> recommended for you
           </span>
         )}
       </h2>
-      <div className="flex bg-stone-100 rounded-lg p-0.5 overflow-x-auto mb-4">
+      <div className="flex bg-surface rounded-lg p-0.5 overflow-x-auto mb-4">
         {sortedTabs.map((t) => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
             className={`px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors ${
-              tab === t.key ? "bg-white shadow-sm text-stone-900" : "text-stone-500 hover:text-stone-700"
+              tab === t.key ? "bg-card shadow-sm text-text-primary" : "text-text-secondary hover:text-text-secondary"
             }`}
           >
-            {recommended.has(t.key) && <span className="text-[#16A34A] mr-1">●</span>}
+            {recommended.has(t.key) && <span className="text-accent mr-1">●</span>}
             {t.label}
           </button>
         ))}

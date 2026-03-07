@@ -37,9 +37,9 @@ export default function ContributionHeadroomCard({
     <Card padding="lg">
       <div className="flex items-center justify-between mb-3">
         <div>
-          <h3 className="text-sm font-semibold text-stone-900">Tax-Advantaged Contribution Headroom</h3>
-          <p className="text-xs text-stone-500 mt-0.5">
-            2025 limits — pulled from your linked accounts. <a href="/accounts" className="text-[#16A34A] underline underline-offset-2">Update accounts</a> to keep this current.
+          <h3 className="text-sm font-semibold text-text-primary">Tax-Advantaged Contribution Headroom</h3>
+          <p className="text-xs text-text-secondary mt-0.5">
+            2025 limits — pulled from your linked accounts. <a href="/accounts" className="text-accent underline underline-offset-2">Update accounts</a> to keep this current.
           </p>
         </div>
       </div>
@@ -48,23 +48,23 @@ export default function ContributionHeadroomCard({
         {/* 401(k) */}
         <div>
           <div className="flex items-center justify-between mb-1">
-            <span className="text-xs font-medium text-stone-700">401(k) / 403(b) — Employee Contributions</span>
-            <span className="text-xs text-stone-500">
+            <span className="text-xs font-medium text-text-secondary">401(k) / 403(b) — Employee Contributions</span>
+            <span className="text-xs text-text-secondary">
               {formatCurrency(ytd401k)} of {formatCurrency(k401Limit)}
             </span>
           </div>
-          <div className="h-2 bg-stone-100 rounded-full overflow-hidden">
+          <div className="h-2 bg-surface rounded-full overflow-hidden">
             <div
-              className={`h-full rounded-full transition-all ${k401Pct >= 100 ? "bg-green-500" : k401Pct >= 75 ? "bg-amber-400" : "bg-[#16A34A]"}`}
+              className={`h-full rounded-full transition-all ${k401Pct >= 100 ? "bg-green-500" : k401Pct >= 75 ? "bg-amber-400" : "bg-accent"}`}
               style={{ width: `${k401Pct}%` }}
             />
           </div>
           <div className="flex items-center justify-between mt-1">
-            <span className={`text-[11px] ${k401Pct >= 100 ? "text-green-600 font-medium" : "text-stone-400"}`}>
+            <span className={`text-xs ${k401Pct >= 100 ? "text-green-600 font-medium" : "text-text-muted"}`}>
               {k401Pct >= 100 ? "Max reached" : `${formatCurrency(k401Limit - ytd401k)} remaining`}
             </span>
             {ytd401k === 0 && (
-              <span className="text-[11px] text-amber-600 italic">No YTD data — update accounts to track this</span>
+              <span className="text-xs text-amber-600 italic">No YTD data — update accounts to track this</span>
             )}
           </div>
         </div>
@@ -73,25 +73,25 @@ export default function ContributionHeadroomCard({
         {(benA?.has_hsa || benB?.has_hsa) && (
           <div>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-medium text-stone-700">
+              <span className="text-xs font-medium text-text-secondary">
                 HSA — {hasDependents ? "Family" : "Individual"} Coverage
               </span>
-              <span className="text-xs text-stone-500">
+              <span className="text-xs text-text-secondary">
                 {formatCurrency(ytdHsa)} of {formatCurrency(hsaLimit)}
               </span>
             </div>
-            <div className="h-2 bg-stone-100 rounded-full overflow-hidden">
+            <div className="h-2 bg-surface rounded-full overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all ${hsaPct >= 100 ? "bg-green-500" : hsaPct >= 75 ? "bg-amber-400" : "bg-blue-500"}`}
                 style={{ width: `${hsaPct}%` }}
               />
             </div>
             <div className="flex items-center justify-between mt-1">
-              <span className={`text-[11px] ${hsaPct >= 100 ? "text-green-600 font-medium" : "text-stone-400"}`}>
+              <span className={`text-xs ${hsaPct >= 100 ? "text-green-600 font-medium" : "text-text-muted"}`}>
                 {hsaPct >= 100 ? "Max reached" : `${formatCurrency(hsaLimit - ytdHsa)} remaining`}
               </span>
               {ytdHsa === 0 && (
-                <span className="text-[11px] text-amber-600 italic">No YTD data — link HSA account</span>
+                <span className="text-xs text-amber-600 italic">No YTD data — link HSA account</span>
               )}
             </div>
           </div>
@@ -99,29 +99,29 @@ export default function ContributionHeadroomCard({
 
         {/* FSA */}
         {hasFsa && (
-          <div className="flex items-center justify-between py-2 border-t border-stone-100">
+          <div className="flex items-center justify-between py-2 border-t border-card-border">
             <div>
-              <span className="text-xs font-medium text-stone-700">FSA (Healthcare)</span>
-              <p className="text-[11px] text-stone-400">Use-it-or-lose-it annual limit</p>
+              <span className="text-xs font-medium text-text-secondary">FSA (Healthcare)</span>
+              <p className="text-xs text-text-muted">Use-it-or-lose-it annual limit</p>
             </div>
-            <span className="text-xs font-semibold text-stone-700">{formatCurrency(LIMITS_2025.fsa)} / year</span>
+            <span className="text-xs font-semibold text-text-secondary">{formatCurrency(LIMITS_2025.fsa)} / year</span>
           </div>
         )}
         {hasDepFsa && (
-          <div className="flex items-center justify-between py-2 border-t border-stone-100">
+          <div className="flex items-center justify-between py-2 border-t border-card-border">
             <div>
-              <span className="text-xs font-medium text-stone-700">Dependent Care FSA</span>
-              <p className="text-[11px] text-stone-400">Reduces taxable income for childcare costs</p>
+              <span className="text-xs font-medium text-text-secondary">Dependent Care FSA</span>
+              <p className="text-xs text-text-muted">Reduces taxable income for childcare costs</p>
             </div>
-            <span className="text-xs font-semibold text-stone-700">{formatCurrency(LIMITS_2025.dep_care_fsa)} / year</span>
+            <span className="text-xs font-semibold text-text-secondary">{formatCurrency(LIMITS_2025.dep_care_fsa)} / year</span>
           </div>
         )}
 
         {/* Footer */}
-        <div className="pt-2 border-t border-stone-100">
-          <p className="text-[11px] text-stone-400">
+        <div className="pt-2 border-t border-card-border">
+          <p className="text-xs text-text-muted">
             YTD contribution data comes from manual assets with a 401(k) or HSA account subtype.
-            {" "}<a href="/tax-strategy" className="text-[#16A34A] underline underline-offset-2">View Tax Strategy</a> to see how maxing these accounts reduces your tax liability.
+            {" "}<a href="/tax-strategy" className="text-accent underline underline-offset-2">View Tax Strategy</a> to see how maxing these accounts reduces your tax liability.
           </p>
         </div>
       </div>

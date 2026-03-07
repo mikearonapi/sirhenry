@@ -1,11 +1,10 @@
 """Recurring transactions — detection and management."""
 import logging
-import re
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,9 +12,28 @@ from api.database import get_session
 from api.models.schemas import RecurringOut, RecurringSummaryOut, RecurringUpdateIn
 from pipeline.db.schema import Transaction
 from pipeline.db import RecurringTransaction
+from pipeline.db.recurring_detection import detect_recurring_transactions
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/recurring", tags=["recurring"])
+
+# Single source of truth for frequency → annual multiplier
+FREQ_TO_ANNUAL: dict[str, float] = {
+    "monthly": 12, "annual": 1, "quarterly": 4, "weekly": 52, "bi-weekly": 26,
+}
+
+
+def _to_recurring_out(r: RecurringTransaction) -> RecurringOut:
+    """Convert a RecurringTransaction ORM row to the API response model."""
+    freq_mult = FREQ_TO_ANNUAL.get(r.frequency, 12)
+    return RecurringOut(
+        id=r.id, name=r.name, amount=r.amount, frequency=r.frequency,
+        category=r.category, segment=r.segment, status=r.status,
+        last_seen_date=str(r.last_seen_date) if r.last_seen_date else None,
+        next_expected_date=str(r.next_expected_date) if r.next_expected_date else None,
+        is_auto_detected=r.is_auto_detected, notes=r.notes,
+        annual_cost=round(abs(r.amount) * freq_mult, 2),
+    )
 
 
 @router.get("", response_model=list[RecurringOut])
@@ -28,20 +46,7 @@ async def list_recurring(
         q = q.where(RecurringTransaction.status == status)
     q = q.order_by(RecurringTransaction.amount.desc())
     result = await session.execute(q)
-    items = list(result.scalars().all())
-
-    out = []
-    for r in items:
-        freq_mult = {"monthly": 12, "annual": 1, "quarterly": 4, "weekly": 52, "bi-weekly": 26}.get(r.frequency, 12)
-        out.append(RecurringOut(
-            id=r.id, name=r.name, amount=r.amount, frequency=r.frequency,
-            category=r.category, segment=r.segment, status=r.status,
-            last_seen_date=str(r.last_seen_date) if r.last_seen_date else None,
-            next_expected_date=str(r.next_expected_date) if r.next_expected_date else None,
-            is_auto_detected=r.is_auto_detected, notes=r.notes,
-            annual_cost=round(abs(r.amount) * freq_mult, 2),
-        ))
-    return out
+    return [_to_recurring_out(r) for r in result.scalars().all()]
 
 
 @router.patch("/{recurring_id}", response_model=RecurringOut)
@@ -50,7 +55,7 @@ async def update_recurring(
     body: RecurringUpdateIn,
     session: AsyncSession = Depends(get_session),
 ):
-    values = {k: v for k, v in body.model_dump().items() if v is not None}
+    values = body.model_dump(exclude_unset=True)
     if values:
         values["updated_at"] = datetime.now(timezone.utc)
         await session.execute(
@@ -61,16 +66,10 @@ async def update_recurring(
     result = await session.execute(
         select(RecurringTransaction).where(RecurringTransaction.id == recurring_id)
     )
-    r = result.scalar_one()
-    freq_mult = {"monthly": 12, "annual": 1, "quarterly": 4, "weekly": 52, "bi-weekly": 26}.get(r.frequency, 12)
-    return RecurringOut(
-        id=r.id, name=r.name, amount=r.amount, frequency=r.frequency,
-        category=r.category, segment=r.segment, status=r.status,
-        last_seen_date=str(r.last_seen_date) if r.last_seen_date else None,
-        next_expected_date=str(r.next_expected_date) if r.next_expected_date else None,
-        is_auto_detected=r.is_auto_detected, notes=r.notes,
-        annual_cost=round(abs(r.amount) * freq_mult, 2),
-    )
+    r = result.scalar_one_or_none()
+    if not r:
+        raise HTTPException(status_code=404, detail="Recurring item not found")
+    return _to_recurring_out(r)
 
 
 @router.post("/detect", response_model=dict)
@@ -93,66 +92,7 @@ async def detect_recurring(
         .order_by(Transaction.description, Transaction.date)
     )
     transactions = list(result.scalars().all())
-
-    # Group by normalized description
-    groups: dict[str, list[Transaction]] = defaultdict(list)
-    for tx in transactions:
-        key = re.sub(r"\d+", "#", tx.description.lower().strip())[:40]
-        groups[key].append(tx)
-
-    detected = 0
-    for key, txs in groups.items():
-        if len(txs) < 2:
-            continue
-        amounts = [abs(t.amount) for t in txs]
-        avg_amount = sum(amounts) / len(amounts)
-        # Check variance is small (< 10%)
-        if max(amounts) - min(amounts) > avg_amount * 0.10 + 2:
-            continue
-
-        # Check frequency
-        dates = sorted(t.date for t in txs)
-        gaps = [(dates[i + 1] - dates[i]).days for i in range(len(dates) - 1)]
-        avg_gap = sum(gaps) / len(gaps) if gaps else 0
-
-        if 25 <= avg_gap <= 35:
-            frequency = "monthly"
-        elif 85 <= avg_gap <= 95:
-            frequency = "quarterly"
-        elif 350 <= avg_gap <= 380:
-            frequency = "annual"
-        elif 6 <= avg_gap <= 9:
-            frequency = "weekly"
-        else:
-            continue
-
-        # Upsert recurring record
-        existing = await session.execute(
-            select(RecurringTransaction).where(
-                RecurringTransaction.description_pattern == key
-            )
-        )
-        rec = existing.scalar_one_or_none()
-        if not rec:
-            last_tx = max(txs, key=lambda t: t.date)
-            next_date = last_tx.date + timedelta(days={"monthly": 30, "quarterly": 90, "annual": 365, "weekly": 7}.get(frequency, 30))
-            rec = RecurringTransaction(
-                name=txs[0].description[:100],
-                description_pattern=key,
-                amount=-avg_amount,
-                frequency=frequency,
-                category=txs[-1].effective_category,
-                segment=txs[-1].effective_segment or "personal",
-                last_seen_date=max(t.date for t in txs),
-                next_expected_date=next_date,
-                first_seen_date=min(t.date for t in txs),
-                is_auto_detected=True,
-            )
-            session.add(rec)
-            detected += 1
-
-    await session.flush()
-    return {"detected": detected, "total_checked": len(groups)}
+    return await detect_recurring_transactions(session, transactions)
 
 
 @router.get("/summary", response_model=RecurringSummaryOut)

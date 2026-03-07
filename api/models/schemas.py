@@ -1280,3 +1280,268 @@ class PrivacyDisclosure(BaseModel):
     ai_privacy: list[str]
     encryption: list[str]
     data_retention: list[str]
+
+
+# ---------------------------------------------------------------------------
+# Misc request models (replacing body: dict endpoints)
+# ---------------------------------------------------------------------------
+
+
+class ResolveDuplicateIn(BaseModel):
+    keep_id: int
+    exclude_id: int
+
+
+class InjectApiKeyIn(BaseModel):
+    key: str = Field(..., min_length=10)
+
+
+class TargetAllocationIn(BaseModel):
+    name: str = "My Target Allocation"
+    allocation: dict[str, float]
+
+
+class TaxStrategyProfileIn(BaseModel):
+    """Flexible key-value answers from the tax strategy interview."""
+    model_config = ConfigDict(extra="allow")
+
+
+# ---------------------------------------------------------------------------
+# Household (moved from api/routes/household.py)
+# ---------------------------------------------------------------------------
+
+class HouseholdProfileIn(BaseModel):
+    name: str = "Our Household"
+    filing_status: str = "mfj"
+    state: Optional[str] = None
+    dependents_json: Optional[str] = None
+    spouse_a_name: Optional[str] = None
+    spouse_a_preferred_name: Optional[str] = None
+    spouse_a_income: float = 0
+    spouse_a_employer: Optional[str] = None
+    spouse_a_work_state: Optional[str] = None
+    spouse_a_start_date: Optional[str] = None
+    spouse_b_name: Optional[str] = None
+    spouse_b_income: float = 0
+    spouse_b_employer: Optional[str] = None
+    spouse_b_work_state: Optional[str] = None
+    spouse_b_start_date: Optional[str] = None
+    estate_will_status: Optional[str] = None
+    estate_poa_status: Optional[str] = None
+    estate_hcd_status: Optional[str] = None
+    estate_trust_status: Optional[str] = None
+    beneficiaries_reviewed: Optional[bool] = None
+    beneficiaries_reviewed_date: Optional[str] = None
+    other_income_annual: Optional[float] = None
+    other_income_sources_json: Optional[str] = None
+    is_primary: Optional[bool] = None
+    notes: Optional[str] = None
+
+
+class HouseholdProfileOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    name: str
+    filing_status: str
+    state: Optional[str]
+    dependents_json: Optional[str]
+    spouse_a_name: Optional[str]
+    spouse_a_preferred_name: Optional[str] = None
+    spouse_a_income: float
+    spouse_a_employer: Optional[str]
+    spouse_a_work_state: Optional[str] = None
+    spouse_a_start_date: Optional[date] = None
+    spouse_b_name: Optional[str]
+    spouse_b_income: float
+    spouse_b_employer: Optional[str]
+    spouse_b_work_state: Optional[str] = None
+    spouse_b_start_date: Optional[date] = None
+    combined_income: float
+    estate_will_status: Optional[str] = None
+    estate_poa_status: Optional[str] = None
+    estate_hcd_status: Optional[str] = None
+    estate_trust_status: Optional[str] = None
+    beneficiaries_reviewed: Optional[bool] = None
+    beneficiaries_reviewed_date: Optional[date] = None
+    other_income_annual: Optional[float] = None
+    other_income_sources_json: Optional[str] = None
+    is_primary: bool
+    notes: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+
+class BenefitPackageIn(BaseModel):
+    spouse: str
+    employer_name: Optional[str] = None
+    has_401k: bool = False
+    employer_match_pct: float = 0
+    employer_match_limit_pct: float = 6
+    has_roth_401k: bool = False
+    has_mega_backdoor: bool = False
+    annual_401k_contribution: float = 0
+    has_hsa: bool = False
+    hsa_employer_contribution: float = 0
+    has_fsa: bool = False
+    has_dep_care_fsa: bool = False
+    health_premium_monthly: float = 0
+    dental_vision_monthly: float = 0
+    health_plan_options_json: Optional[str] = None
+    life_insurance_coverage: float = 0
+    life_insurance_cost_monthly: float = 0
+    std_coverage_pct: Optional[float] = None
+    std_waiting_days: Optional[int] = None
+    ltd_coverage_pct: Optional[float] = None
+    ltd_waiting_days: Optional[int] = None
+    commuter_monthly_limit: float = 0
+    tuition_reimbursement_annual: float = 0
+    has_espp: bool = False
+    espp_discount_pct: float = 15
+    open_enrollment_start: Optional[str] = None
+    open_enrollment_end: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class BenefitPackageOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    household_id: int
+    spouse: str
+    employer_name: Optional[str]
+    has_401k: bool
+    employer_match_pct: Optional[float]
+    employer_match_limit_pct: Optional[float]
+    has_roth_401k: bool
+    has_mega_backdoor: bool
+    annual_401k_limit: Optional[float]
+    mega_backdoor_limit: Optional[float]
+    annual_401k_contribution: Optional[float]
+    has_hsa: bool
+    hsa_employer_contribution: Optional[float]
+    has_fsa: bool
+    has_dep_care_fsa: bool
+    health_premium_monthly: Optional[float]
+    dental_vision_monthly: Optional[float]
+    health_plan_options_json: Optional[str]
+    life_insurance_coverage: Optional[float]
+    life_insurance_cost_monthly: Optional[float]
+    std_coverage_pct: Optional[float]
+    std_waiting_days: Optional[int]
+    ltd_coverage_pct: Optional[float]
+    ltd_waiting_days: Optional[int]
+    commuter_monthly_limit: Optional[float]
+    tuition_reimbursement_annual: Optional[float]
+    has_espp: bool
+    espp_discount_pct: Optional[float]
+    open_enrollment_start: Optional[date] = None
+    open_enrollment_end: Optional[date] = None
+    other_benefits_json: Optional[str]
+    notes: Optional[str]
+
+
+# ---------------------------------------------------------------------------
+# Household Optimization (moved from api/routes/household_optimization.py)
+# ---------------------------------------------------------------------------
+
+class FilingComparisonIn(BaseModel):
+    spouse_a_income: float
+    spouse_b_income: float
+    state: Optional[str] = "CA"
+    dependents: int = 0
+
+
+class OptimizeIn(BaseModel):
+    household_id: int
+    tax_year: Optional[int] = None
+
+
+class W4OptimizeIn(BaseModel):
+    spouse_a_income: float
+    spouse_b_income: float
+    spouse_a_pay_periods: int = 26   # bi-weekly
+    spouse_b_pay_periods: int = 26
+    other_income: float = 0          # 1099 / investment income not captured in W-2
+    pre_tax_deductions_a: float = 0  # 401k, HSA, health premiums
+    pre_tax_deductions_b: float = 0
+    filing_status: str = "mfj"
+
+
+class TaxThresholdIn(BaseModel):
+    spouse_a_income: float
+    spouse_b_income: float
+    capital_gains: float = 0
+    qualified_dividends: float = 0
+    pre_tax_deductions: float = 0
+    filing_status: str = "mfj"
+    dependents: int = 0
+
+
+# ---------------------------------------------------------------------------
+# Tax Item inline edit (moved from api/routes/tax_analysis.py)
+# ---------------------------------------------------------------------------
+
+class TaxItemUpdate(BaseModel):
+    """Partial update for a tax item. All fields optional."""
+    payer_name: Optional[str] = None
+    payer_ein: Optional[str] = None
+    w2_wages: Optional[float] = None
+    w2_federal_tax_withheld: Optional[float] = None
+    w2_state: Optional[str] = None
+    w2_state_wages: Optional[float] = None
+    w2_state_income_tax: Optional[float] = None
+    nec_nonemployee_compensation: Optional[float] = None
+    nec_federal_tax_withheld: Optional[float] = None
+    div_total_ordinary: Optional[float] = None
+    div_qualified: Optional[float] = None
+    div_total_capital_gain: Optional[float] = None
+    b_proceeds: Optional[float] = None
+    b_cost_basis: Optional[float] = None
+    b_gain_loss: Optional[float] = None
+    int_interest: Optional[float] = None
+    k1_ordinary_income: Optional[float] = None
+    k1_rental_income: Optional[float] = None
+    k1_guaranteed_payments: Optional[float] = None
+    k1_interest_income: Optional[float] = None
+    k1_dividends: Optional[float] = None
+    k1_short_term_capital_gain: Optional[float] = None
+    k1_long_term_capital_gain: Optional[float] = None
+    k1_section_179: Optional[float] = None
+    k1_distributions: Optional[float] = None
+    r_gross_distribution: Optional[float] = None
+    r_taxable_amount: Optional[float] = None
+    m_mortgage_interest: Optional[float] = None
+    m_points_paid: Optional[float] = None
+    m_property_tax: Optional[float] = None
+
+
+# ---------------------------------------------------------------------------
+# Scenario Calc (moved from api/routes/scenarios_calc.py)
+# ---------------------------------------------------------------------------
+
+class ScenarioCalcIn(BaseModel):
+    """Stateless calculation request (no save)."""
+    scenario_type: str
+    parameters: dict
+    annual_income: float
+    monthly_take_home: float
+    current_monthly_expenses: float
+    current_monthly_debt_payments: float = 0
+    current_savings: float = 0
+    current_investments: float = 0
+
+
+class ComposeIn(BaseModel):
+    scenario_ids: list[int]
+
+
+class MultiYearIn(BaseModel):
+    years: int = 10
+
+
+class MonteCarloIn(BaseModel):
+    runs: int = Field(default=1000, ge=100, le=10000)
+
+
+class CompareIn(BaseModel):
+    scenario_a_id: int
+    scenario_b_id: int

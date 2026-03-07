@@ -24,3 +24,5 @@ export * from "./smart-defaults";
 export * from "./income";
 export * from "./valuations";
 export * from "./rules";
+export * from "./demo";
+export * from "./errors";

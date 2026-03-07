@@ -5,6 +5,7 @@ export interface SetupStatus {
   income: boolean;
   accounts: boolean;
   complete: boolean;
+  setup_completed_at: string | null;
 }
 
 export function getSetupStatus(): Promise<SetupStatus> {

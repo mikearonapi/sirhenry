@@ -12,6 +12,8 @@ import logging
 import os
 from typing import Any, Optional
 
+import time
+
 import httpx
 
 from plaid.model.credit_payroll_income_get_request import CreditPayrollIncomeGetRequest
@@ -19,6 +21,24 @@ from plaid.model.credit_payroll_income_get_request import CreditPayrollIncomeGet
 from pipeline.plaid.client import get_plaid_client, _retry_on_transient
 
 logger = logging.getLogger(__name__)
+
+_RETRYABLE_STATUS = {429, 500, 503}
+_MAX_RETRIES = 3
+
+
+def _retry_httpx_post(url: str, **kwargs) -> httpx.Response:
+    """POST with exponential backoff retry on transient HTTP errors (429, 500, 503)."""
+    for attempt in range(_MAX_RETRIES):
+        resp = httpx.post(url, **kwargs)
+        if resp.status_code not in _RETRYABLE_STATUS:
+            return resp
+        wait = 2 ** attempt
+        logger.warning(
+            "Plaid HTTP %d for %s — retrying in %ds (attempt %d/%d)",
+            resp.status_code, url, wait, attempt + 1, _MAX_RETRIES,
+        )
+        time.sleep(wait)
+    return resp  # return last response if all retries exhausted
 
 PLAID_HOST_MAP = {
     "sandbox": "https://sandbox.plaid.com",
@@ -54,7 +74,7 @@ def create_plaid_user(client_user_id: str) -> dict[str, str]:
     Uses raw HTTP because plaid-python SDK v29 predates the Dec 2025
     API change where /user/create returns user_id instead of user_token.
     """
-    resp = httpx.post(
+    resp = _retry_httpx_post(
         f"{_plaid_base_url()}/user/create",
         headers=_plaid_headers(),
         json={
@@ -123,7 +143,7 @@ def create_income_link_token(
     if app_url:
         payload["redirect_uri"] = f"{app_url}/oauth-redirect"
 
-    resp = httpx.post(
+    resp = _retry_httpx_post(
         f"{_plaid_base_url()}/link/token/create",
         headers=_plaid_headers(),
         json=payload,
@@ -152,7 +172,7 @@ def get_payroll_income(user_token: str = "", user_id: str = "") -> dict[str, Any
         return _normalize_payroll_response(response)
     elif user_id:
         # Use raw HTTP for new user_id flow
-        resp = httpx.post(
+        resp = _retry_httpx_post(
             f"{_plaid_base_url()}/credit/payroll_income/get",
             headers=_plaid_headers(),
             json={**_plaid_auth(), "user_id": user_id},

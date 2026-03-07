@@ -78,6 +78,7 @@ export interface HouseholdProfile {
   state: string | null;
   dependents_json: string | null;
   spouse_a_name: string | null;
+  spouse_a_preferred_name: string | null;
   spouse_a_income: number;
   spouse_a_employer: string | null;
   spouse_a_work_state: string | null;
@@ -108,6 +109,7 @@ export interface HouseholdProfileIn {
   state?: string | null;
   dependents_json?: string | null;
   spouse_a_name?: string | null;
+  spouse_a_preferred_name?: string | null;
   spouse_a_income?: number;
   spouse_a_employer?: string | null;
   spouse_a_work_state?: string | null;

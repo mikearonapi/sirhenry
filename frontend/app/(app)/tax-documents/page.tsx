@@ -114,7 +114,7 @@ export default function TaxDocumentsPage() {
   }, [showCompare, year]);
 
   return (
-    <div className="space-y-8 print:space-y-4">
+    <div className="space-y-6 print:space-y-4">
       <PageHeader
         title="Tax Documents"
         subtitle="Upload, track, and prepare your tax documents"
@@ -122,14 +122,14 @@ export default function TaxDocumentsPage() {
           <div className="flex items-center gap-3 print:hidden">
             <Link
               href="/tax-strategy"
-              className="flex items-center gap-2 text-sm text-stone-600 border border-stone-200 rounded-lg px-4 py-2 hover:bg-stone-50"
+              className="flex items-center gap-2 text-sm text-text-secondary border border-border rounded-lg px-4 py-2 hover:bg-surface"
             >
               Tax Strategy
             </Link>
             <select
               value={year}
               onChange={(e) => setYear(Number(e.target.value))}
-              className="text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A]"
+              className="text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
             >
               {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
             </select>
@@ -138,8 +138,8 @@ export default function TaxDocumentsPage() {
               disabled={compareLoading}
               className={`flex items-center gap-2 text-sm border rounded-lg px-4 py-2 transition-colors ${
                 showCompare
-                  ? "bg-[#DCFCE7] border-[#16A34A]/30 text-[#16A34A]"
-                  : "text-stone-600 border-stone-200 hover:bg-stone-50"
+                  ? "bg-accent-light border-accent/30 text-accent"
+                  : "text-text-secondary border-border hover:bg-surface"
               }`}
             >
               {compareLoading ? <Loader2 size={14} className="animate-spin" /> : <ArrowLeftRight size={14} />}
@@ -147,7 +147,7 @@ export default function TaxDocumentsPage() {
             </button>
             <button
               onClick={() => window.print()}
-              className="flex items-center gap-2 text-sm text-stone-600 border border-stone-200 rounded-lg px-4 py-2 hover:bg-stone-50"
+              className="flex items-center gap-2 text-sm text-text-secondary border border-border rounded-lg px-4 py-2 hover:bg-surface"
             >
               <Printer size={14} /> Print / PDF
             </button>
@@ -156,7 +156,7 @@ export default function TaxDocumentsPage() {
       />
 
       {loading ? (
-        <div className="flex items-center gap-3 text-stone-400 justify-center h-48">
+        <div className="flex items-center gap-3 text-text-muted justify-center h-48">
           <Loader2 className="animate-spin" size={20} /> Loading tax data...
         </div>
       ) : (
@@ -193,17 +193,17 @@ export default function TaxDocumentsPage() {
           {carryForward.length > 0 && (
             <Card padding="lg" className="print:hidden">
               <div className="flex items-center gap-2 mb-3">
-                <FileCheck size={16} className="text-[#16A34A]" />
-                <h3 className="text-sm font-semibold text-stone-800">Expected Documents for {year}</h3>
-                <span className="text-xs text-stone-400 ml-auto">Based on {year - 1} tax data</span>
+                <FileCheck size={16} className="text-accent" />
+                <h3 className="text-sm font-semibold text-text-primary">Expected Documents for {year}</h3>
+                <span className="text-xs text-text-muted ml-auto">Based on {year - 1} tax data</span>
               </div>
-              <p className="text-xs text-stone-500 mb-3">These payers sent you tax documents last year. Track which ones you&apos;ve received.</p>
+              <p className="text-xs text-text-secondary mb-3">These payers sent you tax documents last year. Track which ones you&apos;ve received.</p>
               <div className="space-y-2">
                 {carryForward.map((item) => {
                   const key = `${item.form_type}-${item.payer_name}`;
                   const isReceived = receivedDocs.has(key);
                   return (
-                    <div key={key} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-colors ${isReceived ? "bg-green-50/50 border-green-100" : "bg-stone-50 border-stone-100"}`}>
+                    <div key={key} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-colors ${isReceived ? "bg-green-50/50 border-green-100" : "bg-surface border-card-border"}`}>
                       <button
                         onClick={() => {
                           setReceivedDocs((prev) => {
@@ -213,20 +213,20 @@ export default function TaxDocumentsPage() {
                             return next;
                           });
                         }}
-                        className={`w-5 h-5 rounded border flex items-center justify-center shrink-0 transition-colors ${isReceived ? "bg-[#16A34A] border-[#16A34A]" : "border-stone-300 hover:border-stone-400"}`}
+                        className={`w-5 h-5 rounded border flex items-center justify-center shrink-0 transition-colors ${isReceived ? "bg-accent border-accent" : "border-border hover:border-border"}`}
                       >
                         {isReceived && <CheckCircle size={12} className="text-white" />}
                       </button>
                       <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-medium ${isReceived ? "text-stone-400 line-through" : "text-stone-700"}`}>{item.payer_name}</p>
-                        <p className="text-xs text-stone-400">{item.form_type.toUpperCase().replace("_", "-")} &middot; {year - 1}: {formatCurrency(item.prior_year_amount)}</p>
+                        <p className={`text-sm font-medium ${isReceived ? "text-text-muted line-through" : "text-text-secondary"}`}>{item.payer_name}</p>
+                        <p className="text-xs text-text-muted">{item.form_type.toUpperCase().replace("_", "-")} &middot; {year - 1}: {formatCurrency(item.prior_year_amount)}</p>
                       </div>
-                      <Link href="/import" className="text-xs text-[#16A34A] hover:underline font-medium shrink-0">Upload</Link>
+                      <Link href="/import" className="text-xs text-accent hover:underline font-medium shrink-0">Upload</Link>
                     </div>
                   );
                 })}
               </div>
-              <p className="text-xs text-stone-400 mt-3">
+              <p className="text-xs text-text-muted mt-3">
                 {receivedDocs.size} of {carryForward.length} received
               </p>
             </Card>
@@ -273,19 +273,19 @@ export default function TaxDocumentsPage() {
           {/* CPA sharing note */}
           <Card padding="lg" className="print:hidden">
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-lg bg-[#DCFCE7] flex items-center justify-center flex-shrink-0">
-                <Printer size={20} className="text-[#16A34A]" />
+              <div className="w-10 h-10 rounded-lg bg-accent-light flex items-center justify-center flex-shrink-0">
+                <Printer size={20} className="text-accent" />
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-stone-800">Share with your Tax Preparer</h3>
-                <p className="text-sm text-stone-500 mt-1">
+                <h3 className="text-sm font-semibold text-text-primary">Share with your Tax Preparer</h3>
+                <p className="text-sm text-text-secondary mt-1">
                   Use the &quot;Print / PDF&quot; button above to save this report as a PDF. Send it along with
                   your original W-2, 1099, K-1, and other tax documents to your CPA or tax preparer.
                 </p>
                 <button
                   type="button"
                   onClick={() => askHenry(`Based on my ${year} tax report, what should I discuss with my CPA? What are the key things to flag?`)}
-                  className="flex items-center gap-1.5 text-xs text-[#16A34A] hover:underline mt-2"
+                  className="flex items-center gap-1.5 text-xs text-accent hover:underline mt-2"
                 >
                   <MessageCircle size={12} /> Ask <SirHenryName /> what to discuss with your CPA
                 </button>
@@ -333,15 +333,15 @@ function YearOverYearComparison({
   return (
     <Card padding="lg">
       <div className="flex items-center gap-2 mb-4">
-        <ArrowLeftRight size={18} className="text-[#16A34A]" />
-        <h3 className="text-sm font-semibold text-stone-800">
+        <ArrowLeftRight size={18} className="text-accent" />
+        <h3 className="text-sm font-semibold text-text-primary">
           Year-over-Year: {currentYear} vs {prevYear}
         </h3>
       </div>
 
       {/* Income comparison */}
       <div className="mb-4">
-        <h4 className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-2">Income</h4>
+        <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-2">Income</h4>
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
           {comparisons.filter((c) => c.current !== 0 || c.prev !== 0).map((c) => (
             <CompareCell key={c.label} label={c.label} current={c.current} prev={c.prev} currentYear={currentYear} prevYear={prevYear} />
@@ -351,7 +351,7 @@ function YearOverYearComparison({
 
       {/* Tax comparison */}
       <div>
-        <h4 className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-2">Tax Summary</h4>
+        <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-2">Tax Summary</h4>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
           {taxComparisons.map((c) => (
             <CompareCell key={c.label} label={c.label} current={c.current} prev={c.prev} currentYear={currentYear} prevYear={prevYear} isRate={c.isRate} invertColor={c.label === "Total Tax" || c.label === "Balance Due"} />
@@ -381,23 +381,23 @@ function CompareCell({
   // For taxes/balance due, up is bad (red), down is good (green)
   // For income, up is good (green), down is neutral
   const diffColorClass = isFlat
-    ? "text-stone-400"
+    ? "text-text-muted"
     : invertColor
       ? (isUp ? "text-red-600" : "text-green-600")
       : (isUp ? "text-green-600" : "text-red-600");
 
   return (
-    <div className="bg-stone-50 rounded-lg p-3">
-      <p className="text-xs text-stone-500 mb-1">{label}</p>
+    <div className="bg-surface rounded-lg p-3">
+      <p className="text-xs text-text-secondary mb-1">{label}</p>
       <div className="flex items-end justify-between gap-2">
         <div>
-          <p className="text-sm font-semibold font-mono tabular-nums text-stone-800">
+          <p className="text-sm font-semibold font-mono tabular-nums text-text-primary">
             {isRate ? `${current}%` : formatCurrency(current)}
           </p>
-          <p className="text-[10px] text-stone-400">
+          <p className="text-xs text-text-muted">
             {currentYear}: {isRate ? `${current}%` : formatCurrency(current, true)}
           </p>
-          <p className="text-[10px] text-stone-400">
+          <p className="text-xs text-text-muted">
             {prevYear}: {isRate ? `${prev}%` : formatCurrency(prev, true)}
           </p>
         </div>
@@ -408,12 +408,12 @@ function CompareCell({
               {isRate ? `${Math.abs(diff).toFixed(1)}pp` : formatCurrency(Math.abs(diff), true)}
             </span>
             {!isRate && pctChange !== 0 && (
-              <span className="text-[10px] opacity-70">({Math.abs(pctChange).toFixed(0)}%)</span>
+              <span className="text-xs opacity-70">({Math.abs(pctChange).toFixed(0)}%)</span>
             )}
           </div>
         )}
         {isFlat && (
-          <div className="flex items-center gap-0.5 text-xs text-stone-400">
+          <div className="flex items-center gap-0.5 text-xs text-text-muted">
             <Minus size={10} />
             <span>No change</span>
           </div>

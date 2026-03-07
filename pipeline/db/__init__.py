@@ -42,9 +42,12 @@ from .schema import (
     LifeEvent,
     InsurancePolicy,
     FamilyMember,
+    # Category Rules
+    CategoryRule,
     # Privacy & Audit
     UserPrivacyConsent,
     AuditLog,
+    ErrorLog,
     # Payroll / Income
     PayrollConnection,
     PayStubRecord,
@@ -55,6 +58,8 @@ from .schema import (
     UserContext,
     # Retirement budget
     RetirementBudgetOverride,
+    # App settings
+    AppSettings,
     # DB init
     init_db,
     init_extended_db,
@@ -117,6 +122,10 @@ from .models import (
     update_insurance_policy,
     delete_insurance_policy,
 )
+from .encryption import encrypt_token, decrypt_token, encrypt_field, decrypt_field
+from .recurring_detection import detect_recurring_transactions
+from .household_sync import sync_household_from_members
+from .backup import backup_database, list_backups, restore_backup
 
 __all__ = [
     "Account", "Base", "BusinessEntity", "Document", "FinancialPeriod",
@@ -128,11 +137,13 @@ __all__ = [
     "EquityGrant", "VestingEvent", "EquityTaxProjection", "TargetAllocation",
     "HouseholdProfile", "BenefitPackage", "HouseholdOptimization",
     "TaxProjection", "BenchmarkSnapshot", "LifeEvent", "InsurancePolicy",
-    "FamilyMember",
+    "FamilyMember", "CategoryRule",
+    "ErrorLog",
     "PayrollConnection", "PayStubRecord",
     "ChatConversation", "ChatMessage",
     "UserContext",
     "RetirementBudgetOverride",
+    "AppSettings",
     "init_db", "init_extended_db", "DATABASE_URL",
     "get_account", "get_all_accounts", "upsert_account",
     "get_document_by_hash", "create_document", "update_document_status",
@@ -151,5 +162,13 @@ __all__ = [
     "get_reminders", "create_reminder_record",
     "get_recurring", "get_net_worth_snapshots",
     "upsert_user_context", "get_active_user_context", "delete_user_context",
-    "UserContext",
+    "get_life_events", "get_life_event", "create_life_event", "update_life_event", "delete_life_event",
+    "get_insurance_policies", "get_insurance_policy", "create_insurance_policy",
+    "update_insurance_policy", "delete_insurance_policy",
+    # Encryption
+    "encrypt_token", "decrypt_token", "encrypt_field", "decrypt_field",
+    # Detection & sync
+    "detect_recurring_transactions", "sync_household_from_members",
+    # Backup
+    "backup_database", "list_backups", "restore_backup",
 ]

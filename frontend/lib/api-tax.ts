@@ -1,14 +1,31 @@
 import type {
+  BackdoorRothInput,
+  BackdoorRothResult,
+  DAFBunchingInput,
+  DAFBunchingResult,
+  DefinedBenefitInput,
   DefinedBenefitResult,
+  EstimatedPaymentsInput,
+  EstimatedPaymentsResult,
+  FilingStatusCompareInput,
   FilingStatusCompareResult,
+  MegaBackdoorInput,
   MegaBackdoorResult,
+  MultiYearTaxInput,
   MultiYearTaxProjection,
+  QBIDeductionInput,
   QBIDeductionResult,
+  RealEstateSTRInput,
   RealEstateSTRResult,
+  RothConversionInput,
   RothConversionResult,
+  SCorpInput,
   SCorpAnalysisResult,
+  Section179Input,
   Section179Result,
+  StateComparisonInput,
   StateComparisonResult,
+  StudentLoanInput,
   StudentLoanResult,
   TaxChecklist,
   TaxDeductionInsights,
@@ -60,31 +77,31 @@ export function getTaxDeductionOpportunities(taxYear: number): Promise<TaxDeduct
 
 // Tax Modeling (Strategy Lab)
 
-export function modelRothConversion(body: Record<string, unknown>): Promise<RothConversionResult> {
+export function modelRothConversion(body: RothConversionInput): Promise<RothConversionResult> {
   return request("/tax/model/roth-conversion", { method: "POST", body: JSON.stringify(body) });
 }
 
-export function modelSCorp(body: Record<string, unknown>): Promise<SCorpAnalysisResult> {
+export function modelSCorp(body: SCorpInput): Promise<SCorpAnalysisResult> {
   return request("/tax/model/scorp", { method: "POST", body: JSON.stringify(body) });
 }
 
-export function modelMultiYearTax(body: Record<string, unknown>): Promise<MultiYearTaxProjection> {
+export function modelMultiYearTax(body: MultiYearTaxInput): Promise<MultiYearTaxProjection> {
   return request("/tax/model/multi-year", { method: "POST", body: JSON.stringify(body) });
 }
 
-export function modelEstimatedPayments(body: Record<string, unknown>): Promise<{ quarterly_payments: Array<{ quarter: number; due_date: string; amount: number }> }> {
+export function modelEstimatedPayments(body: EstimatedPaymentsInput): Promise<EstimatedPaymentsResult> {
   return request("/tax/model/estimated-payments", { method: "POST", body: JSON.stringify(body) });
 }
 
-export function modelStudentLoan(body: Record<string, unknown>): Promise<StudentLoanResult> {
+export function modelStudentLoan(body: StudentLoanInput): Promise<StudentLoanResult> {
   return request("/tax/model/student-loan", { method: "POST", body: JSON.stringify(body) });
 }
 
-export function modelBackdoorRoth(body: Record<string, unknown>): Promise<{ eligible: boolean; steps: string[]; pro_rata_warning: boolean }> {
+export function modelBackdoorRoth(body: BackdoorRothInput): Promise<BackdoorRothResult> {
   return request("/tax/model/backdoor-roth", { method: "POST", body: JSON.stringify(body) });
 }
 
-export function modelDAFBunching(body: Record<string, unknown>): Promise<{ annual_tax: number; bunched_tax: number; savings: number }> {
+export function modelDAFBunching(body: DAFBunchingInput): Promise<DAFBunchingResult> {
   return request("/tax/model/daf-bunching", { method: "POST", body: JSON.stringify(body) });
 }
 
@@ -100,23 +117,23 @@ export function saveTaxStrategyProfile(profile: TaxStrategyProfile): Promise<{ s
 
 // New simulators
 
-export function modelMegaBackdoor(body: Record<string, unknown>): Promise<MegaBackdoorResult> {
+export function modelMegaBackdoor(body: MegaBackdoorInput): Promise<MegaBackdoorResult> {
   return request("/tax/model/mega-backdoor", { method: "POST", body: JSON.stringify(body) });
 }
 
-export function modelDefinedBenefit(body: Record<string, unknown>): Promise<DefinedBenefitResult> {
+export function modelDefinedBenefit(body: DefinedBenefitInput): Promise<DefinedBenefitResult> {
   return request("/tax/model/defined-benefit", { method: "POST", body: JSON.stringify(body) });
 }
 
-export function modelRealEstateSTR(body: Record<string, unknown>): Promise<RealEstateSTRResult> {
+export function modelRealEstateSTR(body: RealEstateSTRInput): Promise<RealEstateSTRResult> {
   return request("/tax/model/real-estate-str", { method: "POST", body: JSON.stringify(body) });
 }
 
-export function modelSection179(body: Record<string, unknown>): Promise<Section179Result> {
+export function modelSection179(body: Section179Input): Promise<Section179Result> {
   return request("/tax/model/section-179", { method: "POST", body: JSON.stringify(body) });
 }
 
-export function modelFilingStatusCompare(body: Record<string, unknown>): Promise<FilingStatusCompareResult> {
+export function modelFilingStatusCompare(body: FilingStatusCompareInput): Promise<FilingStatusCompareResult> {
   return request("/tax/model/filing-status-compare", { method: "POST", body: JSON.stringify(body) });
 }
 
@@ -124,10 +141,10 @@ export function updateTaxItem(id: number, updates: Partial<TaxItem>): Promise<{ 
   return request(`/tax/items/${id}`, { method: "PATCH", body: JSON.stringify(updates) });
 }
 
-export function modelQBIDeduction(body: Record<string, unknown>): Promise<QBIDeductionResult> {
+export function modelQBIDeduction(body: QBIDeductionInput): Promise<QBIDeductionResult> {
   return request("/tax/model/qbi-deduction", { method: "POST", body: JSON.stringify(body) });
 }
 
-export function modelStateComparison(body: Record<string, unknown>): Promise<StateComparisonResult> {
+export function modelStateComparison(body: StateComparisonInput): Promise<StateComparisonResult> {
   return request("/tax/model/state-comparison", { method: "POST", body: JSON.stringify(body) });
 }

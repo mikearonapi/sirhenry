@@ -18,7 +18,7 @@ const ROWS: [string, boolean, boolean, boolean][] = [
 
 export default function ComparisonTable() {
   return (
-    <section id="compare" className="bg-white py-24 px-6">
+    <section id="compare" className="bg-card py-24 px-6">
       <div className="max-w-3xl mx-auto">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-[#9CA3AF] text-center mb-4">
           How we compare
@@ -84,7 +84,7 @@ export default function ComparisonTable() {
                   </td>
                   <td className="px-4 py-3.5 text-center bg-[#F0FDF4]">
                     {col3 ? (
-                      <CheckCircle size={16} className="text-[#16A34A] mx-auto" />
+                      <CheckCircle size={16} className="text-accent mx-auto" />
                     ) : (
                       <Minus size={16} className="text-[#D1D5DB] mx-auto" />
                     )}
@@ -122,9 +122,9 @@ export default function ComparisonTable() {
                   )}
                   <span>Betterment</span>
                 </div>
-                <div className="flex items-center gap-2 text-xs font-semibold text-[#16A34A]">
+                <div className="flex items-center gap-2 text-xs font-semibold text-accent">
                   {col3 ? (
-                    <CheckCircle size={14} className="text-[#16A34A]" />
+                    <CheckCircle size={14} className="text-accent" />
                   ) : (
                     <Minus size={14} className="text-[#D1D5DB]" />
                   )}

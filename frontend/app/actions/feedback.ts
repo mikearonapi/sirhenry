@@ -1,6 +1,10 @@
 "use server";
 
-import { neon } from "@neondatabase/serverless";
+/**
+ * Feedback submission — posts to Supabase `user_feedback` table.
+ * Runs server-side only (Next.js Server Action).
+ */
+import { createClient } from "@supabase/supabase-js";
 
 type FeedbackType = "bug" | "feature" | "general";
 
@@ -30,35 +34,28 @@ export async function submitFeedback(
     return { success: false, message: "Please enter a valid email address." };
   }
 
-  const databaseUrl = process.env.DATABASE_URL;
-  if (!databaseUrl) {
-    console.warn("[feedback] DATABASE_URL not set — feedback not saved");
-    return { success: true, message: "Thank you for your feedback!" };
-  }
-
   try {
-    const sql = neon(databaseUrl);
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-    await sql`
-      CREATE TABLE IF NOT EXISTS user_feedback (
-        id SERIAL PRIMARY KEY,
-        feedback_type TEXT NOT NULL,
-        message TEXT NOT NULL,
-        email TEXT,
-        page_url TEXT,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-      )
-    `;
+    if (!supabaseUrl || !supabaseKey) {
+      console.warn("[feedback] Supabase not configured — feedback not saved");
+      return { success: true, message: "Thank you for your feedback!" };
+    }
 
-    await sql`
-      INSERT INTO user_feedback (feedback_type, message, email, page_url)
-      VALUES (
-        ${payload.feedback_type},
-        ${trimmedMessage},
-        ${trimmedEmail || null},
-        ${payload.page_url || null}
-      )
-    `;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const { error } = await supabase.from("user_feedback").insert({
+      feedback_type: payload.feedback_type,
+      message: trimmedMessage,
+      email: trimmedEmail || null,
+      page_url: payload.page_url || null,
+    });
+
+    if (error) {
+      console.error("[feedback] Supabase insert error:", error.message);
+      return { success: false, message: "Something went wrong. Please try again." };
+    }
 
     return { success: true, message: "Thank you for your feedback!" };
   } catch (error: unknown) {

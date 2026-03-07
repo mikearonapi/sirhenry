@@ -392,6 +392,169 @@ export interface StateComparisonResult {
   recommendation: string;
 }
 
+// ---------------------------------------------------------------------------
+// Tax Modeling Input Types (match backend Pydantic models in tax_modeling.py)
+// ---------------------------------------------------------------------------
+
+/** Input for Roth conversion ladder modeling. */
+export interface RothConversionInput {
+  traditional_balance: number;
+  current_income: number;
+  filing_status?: string;
+  years?: number;
+  target_bracket_rate?: number;
+  growth_rate?: number;
+}
+
+/** Input for S-Corp election modeling. */
+export interface SCorpInput {
+  gross_1099_income: number;
+  reasonable_salary: number;
+  business_expenses?: number;
+  state?: string;
+  filing_status?: string;
+}
+
+/** Input for multi-year tax projection. */
+export interface MultiYearTaxInput {
+  current_income: number;
+  income_growth_rate?: number;
+  filing_status?: string;
+  state_rate?: number;
+  years?: number;
+  roth_conversions?: number[] | null;
+  equity_vesting?: number[] | null;
+}
+
+/** Input for estimated quarterly tax payments. */
+export interface EstimatedPaymentsInput {
+  total_underwithholding: number;
+  prior_year_tax?: number;
+  current_withholding?: number;
+}
+
+/** Input for student loan optimizer. */
+export interface StudentLoanInput {
+  loan_balance: number;
+  interest_rate: number;
+  monthly_income: number;
+  filing_status?: string;
+  pslf_eligible?: boolean;
+}
+
+/** Input for backdoor Roth eligibility check. */
+export interface BackdoorRothInput {
+  has_traditional_ira_balance?: boolean;
+  traditional_ira_balance?: number;
+  income?: number;
+  filing_status?: string;
+}
+
+/** Input for DAF charitable bunching strategy. */
+export interface DAFBunchingInput {
+  annual_charitable: number;
+  standard_deduction?: number;
+  itemized_deductions_excl_charitable?: number;
+  bunch_years?: number;
+  filing_status?: string;
+  taxable_income?: number;
+}
+
+/** Input for mega backdoor Roth analysis. */
+export interface MegaBackdoorInput {
+  employer_plan_allows?: boolean;
+  current_employee_contrib?: number;
+  employer_match_contrib?: number;
+  plan_limit?: number;
+}
+
+/** Input for defined benefit plan analysis. */
+export interface DefinedBenefitInput {
+  self_employment_income: number;
+  age: number;
+  target_retirement_age?: number;
+  filing_status?: string;
+  existing_retirement_contrib?: number;
+}
+
+/** Input for short-term rental real estate analysis. */
+export interface RealEstateSTRInput {
+  property_value: number;
+  annual_rental_income: number;
+  average_stay_days: number;
+  hours_per_week_managing: number;
+  w2_income: number;
+  filing_status?: string;
+  land_value_pct?: number;
+}
+
+/** Input for Section 179 equipment deduction analysis. */
+export interface Section179Input {
+  equipment_cost: number;
+  business_income: number;
+  filing_status?: string;
+  equipment_category?: string;
+  equipment_index?: number;
+  business_use_pct?: number;
+  will_rent_out?: boolean;
+  has_existing_business?: boolean;
+}
+
+/** Input for filing status comparison (MFJ vs MFS). */
+export interface FilingStatusCompareInput {
+  spouse_a_income: number;
+  spouse_b_income: number;
+  investment_income?: number;
+  itemized_deductions?: number;
+  student_loan_payment?: number;
+  state?: string;
+}
+
+/** Input for QBI (Qualified Business Income) deduction check. */
+export interface QBIDeductionInput {
+  qbi_income: number;
+  taxable_income: number;
+  w2_wages_paid?: number;
+  qualified_property?: number;
+  filing_status?: string;
+  is_sstb?: boolean;
+}
+
+/** Input for state tax comparison. */
+export interface StateComparisonInput {
+  income: number;
+  filing_status?: string;
+  current_state?: string;
+  comparison_states?: string[] | null;
+}
+
+// ---------------------------------------------------------------------------
+// Tax Modeling Result Types
+// ---------------------------------------------------------------------------
+
+/** Result for backdoor Roth eligibility. */
+export interface BackdoorRothResult {
+  eligible: boolean;
+  steps: string[];
+  pro_rata_warning: boolean;
+}
+
+/** Result for DAF bunching strategy. */
+export interface DAFBunchingResult {
+  annual_tax: number;
+  bunched_tax: number;
+  savings: number;
+}
+
+/** Result for estimated quarterly payments. */
+export interface EstimatedPaymentsResult {
+  quarterly_payments: Array<{
+    quarter: number;
+    due_date: string;
+    amount: number;
+  }>;
+}
+
 export interface RealEstateSTRResult {
   qualifies_str: boolean;
   material_participation: boolean;

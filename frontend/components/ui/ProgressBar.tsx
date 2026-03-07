@@ -20,7 +20,7 @@ export default function ProgressBar({
   const heights = { xs: "h-1", sm: "h-2", md: "h-3" };
 
   return (
-    <div className={`w-full bg-stone-100 rounded-full ${heights[size]} overflow-hidden`}>
+    <div className={`w-full bg-surface rounded-full ${heights[size]} overflow-hidden`}>
       <div
         className={`${heights[size]} rounded-full transition-all duration-500`}
         style={{

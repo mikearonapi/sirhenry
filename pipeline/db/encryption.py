@@ -18,6 +18,12 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+_PLAID_ENV = os.getenv("PLAID_ENV", "sandbox").lower()
+_IS_PRODUCTION = _PLAID_ENV == "production"
+
+# ---------------------------------------------------------------------------
 # Plaid token encryption (existing)
 # ---------------------------------------------------------------------------
 _KEY = os.getenv("PLAID_ENCRYPTION_KEY", "")
@@ -29,6 +35,11 @@ def _get_fernet():
     if _fernet is not None:
         return _fernet
     if not _KEY:
+        if _IS_PRODUCTION:
+            raise RuntimeError(
+                "PLAID_ENCRYPTION_KEY is required in production. "
+                "Generate one: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
+            )
         logger.warning(
             "PLAID_ENCRYPTION_KEY not set — tokens will be stored in plaintext. "
             "Generate a key: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
@@ -40,22 +51,32 @@ def _get_fernet():
 
 
 def encrypt_token(plaintext: str) -> str:
-    """Encrypt a token. Falls back to plaintext if no key is configured."""
+    """Encrypt a Plaid token. Raises in production if no key is configured."""
     f = _get_fernet()
     if f is None:
+        # Dev/sandbox only — production raises in _get_fernet()
+        logger.warning("Storing Plaid token WITHOUT encryption (dev mode)")
         return plaintext
     return f.encrypt(plaintext.encode()).decode()
 
 
 def decrypt_token(ciphertext: str) -> str:
-    """Decrypt a token. Falls back to returning the raw value if no key or decryption fails."""
+    """Decrypt a Plaid token. Raises on failure instead of silently returning ciphertext."""
     f = _get_fernet()
     if f is None:
+        # Dev/sandbox — assume plaintext
         return ciphertext
     try:
         return f.decrypt(ciphertext.encode()).decode()
-    except Exception:
-        # Likely a plaintext value stored before encryption was enabled
+    except Exception as e:
+        logger.error(
+            "Failed to decrypt Plaid token — possible key mismatch or data corruption: %s",
+            e,
+        )
+        if _IS_PRODUCTION:
+            raise ValueError("Failed to decrypt Plaid token") from e
+        # Dev fallback: may be plaintext from before encryption was enabled
+        logger.warning("Returning raw value as fallback (dev mode)")
         return ciphertext
 
 
@@ -93,7 +114,7 @@ def encrypt_field(plaintext: Optional[str]) -> Optional[str]:
 
 
 def decrypt_field(ciphertext: Optional[str]) -> Optional[str]:
-    """Decrypt a data field. Falls back gracefully for unencrypted values."""
+    """Decrypt a data field. Falls back gracefully for unencrypted values in dev mode."""
     if ciphertext is None:
         return None
     f = _get_data_fernet()
@@ -101,6 +122,9 @@ def decrypt_field(ciphertext: Optional[str]) -> Optional[str]:
         return ciphertext
     try:
         return f.decrypt(ciphertext.encode()).decode()
-    except Exception:
-        # Plaintext from before encryption was enabled — return as-is
+    except Exception as e:
+        if _IS_PRODUCTION:
+            logger.error("Failed to decrypt field data: %s", e)
+            raise ValueError("Failed to decrypt field data") from e
+        # Dev: plaintext from before encryption was enabled — return as-is
         return ciphertext

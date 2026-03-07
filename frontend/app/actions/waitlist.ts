@@ -1,8 +1,9 @@
 /**
- * Waitlist signup — calls Neon Postgres via serverless driver.
+ * Waitlist signup — stores emails in Supabase.
  * In desktop builds (static export), this becomes a no-op since the landing
  * page is not part of the desktop app.
  */
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 export async function joinWaitlist(email: string): Promise<{ success: boolean; message: string }> {
   const trimmed = email.trim().toLowerCase();
@@ -12,28 +13,19 @@ export async function joinWaitlist(email: string): Promise<{ success: boolean; m
   }
 
   try {
-    const { neon } = await import("@neondatabase/serverless");
-    const databaseUrl = process.env.NEXT_PUBLIC_NEON_DATABASE_URL || process.env.DATABASE_URL;
-    if (!databaseUrl) {
-      console.warn("[waitlist] DATABASE_URL not set — email not saved:", trimmed);
+    if (!isSupabaseConfigured()) {
+      console.warn("[waitlist] Supabase not configured — email not saved:", trimmed);
       return { success: true, message: "You're on the list!" };
     }
 
-    const sql = neon(databaseUrl);
+    const { error } = await supabase
+      .from("waitlist")
+      .upsert({ email: trimmed }, { onConflict: "email" });
 
-    await sql`
-      CREATE TABLE IF NOT EXISTS waitlist (
-        id SERIAL PRIMARY KEY,
-        email TEXT UNIQUE NOT NULL,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-      )
-    `;
-
-    await sql`
-      INSERT INTO waitlist (email)
-      VALUES (${trimmed})
-      ON CONFLICT (email) DO NOTHING
-    `;
+    if (error) {
+      console.error("[waitlist] Supabase error:", error.message);
+      return { success: false, message: "Something went wrong. Please try again." };
+    }
 
     return { success: true, message: "You're on the list!" };
   } catch (error: unknown) {

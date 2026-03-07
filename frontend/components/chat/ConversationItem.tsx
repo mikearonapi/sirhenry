@@ -61,15 +61,15 @@ export default function ConversationItem({ conv, isActive, onClick, onDelete }: 
       onKeyDown={(e) => e.key === "Enter" && onClick()}
       className={`w-full text-left px-3 py-2.5 rounded-lg group transition-colors relative cursor-pointer ${
         isActive
-          ? "bg-[#16A34A]/10 text-stone-900 border border-[#16A34A]/20"
-          : "text-stone-600 hover:bg-stone-100 hover:text-stone-900 border border-transparent"
+          ? "bg-accent/10 text-text-primary border border-accent/20"
+          : "text-text-secondary hover:bg-surface hover:text-text-primary border border-transparent"
       }`}
     >
       <div className="flex items-start justify-between gap-2">
         <p className="text-[12.5px] font-medium leading-snug line-clamp-2 flex-1">{conv.title}</p>
         <button
           onClick={handleDelete}
-          className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:text-red-500 flex-shrink-0 mt-0.5 text-stone-400"
+          className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:text-red-500 flex-shrink-0 mt-0.5 text-text-muted"
           title="Delete conversation"
         >
           <Trash2 size={12} />
@@ -77,12 +77,12 @@ export default function ConversationItem({ conv, isActive, onClick, onDelete }: 
       </div>
       <div className="flex items-center gap-1.5 mt-1">
         {contextLabel && (
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-stone-100 text-stone-500 border border-stone-200">
+          <span className="text-xs px-1.5 py-0.5 rounded bg-surface text-text-secondary border border-border">
             {contextLabel}
           </span>
         )}
-        <span className="text-[10px] text-stone-400">{timeAgo(conv.updated_at)}</span>
-        <span className="text-[10px] text-stone-300">· {conv.message_count} msgs</span>
+        <span className="text-xs text-text-muted">{timeAgo(conv.updated_at)}</span>
+        <span className="text-xs text-text-muted">· {conv.message_count} msgs</span>
       </div>
     </div>
   );

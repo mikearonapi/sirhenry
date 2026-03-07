@@ -159,7 +159,7 @@ export default function RulesPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="animate-spin text-stone-300" size={32} />
+        <Loader2 className="animate-spin text-text-muted" size={32} />
       </div>
     );
   }
@@ -206,21 +206,21 @@ export default function RulesPage() {
       )}
 
       {/* Tab bar */}
-      <div className="flex gap-1 bg-stone-100 rounded-lg p-1">
+      <div className="flex gap-1 bg-surface rounded-lg p-1">
         {TABS.map((t) => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
             className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
               tab === t.key
-                ? "bg-white text-stone-900 shadow-sm"
-                : "text-stone-500 hover:text-stone-700"
+                ? "bg-card text-text-primary shadow-sm"
+                : "text-text-secondary hover:text-text-secondary"
             }`}
           >
             <t.icon size={15} />
             {t.label}
             <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-              tab === t.key ? "bg-stone-100 text-stone-600" : "bg-stone-200/50 text-stone-400"
+              tab === t.key ? "bg-surface text-text-secondary" : "bg-surface text-text-muted"
             }`}>
               {t.key === "category" ? categoryRules.length :
                t.key === "vendor" ? vendorRules.length :
@@ -257,7 +257,7 @@ export default function RulesPage() {
 
       {/* Toast */}
       {toast && (
-        <div className="fixed bottom-6 right-6 bg-stone-900 text-white text-sm px-4 py-2.5 rounded-lg shadow-lg z-50 animate-in fade-in slide-in-from-bottom-2">
+        <div className="fixed bottom-6 right-6 bg-text-primary text-white text-sm px-4 py-2.5 rounded-lg shadow-lg z-50 animate-in fade-in slide-in-from-bottom-2">
           {toast}
         </div>
       )}
@@ -344,18 +344,18 @@ function GenerateRulesWizard({ onComplete }: { onComplete: () => void }) {
   if (step === "idle") {
     return (
       <div className="flex items-center gap-3">
-        <label className="flex items-center gap-1.5 text-xs text-stone-500 cursor-pointer select-none">
+        <label className="flex items-center gap-1.5 text-xs text-text-secondary cursor-pointer select-none">
           <input
             type="checkbox"
             checked={includeAi}
             onChange={(e) => setIncludeAi(e.target.checked)}
-            className="rounded border-stone-300 text-[#16A34A] focus:ring-green-500"
+            className="rounded border-border text-accent focus:ring-green-500"
           />
           Include AI suggestions
         </label>
         <button
           onClick={handleGenerate}
-          className="flex items-center gap-2 px-4 py-2 bg-[#16A34A] text-white text-sm font-medium rounded-lg hover:bg-[#15803D] transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-accent text-white text-sm font-medium rounded-lg hover:bg-accent-hover transition-colors"
         >
           <Wand2 size={15} />
           Generate Rules
@@ -370,11 +370,11 @@ function GenerateRulesWizard({ onComplete }: { onComplete: () => void }) {
       <Card>
         <div className="flex flex-col items-center py-8 gap-4">
           <div className="relative">
-            <Loader2 className="animate-spin text-[#16A34A]" size={32} />
+            <Loader2 className="animate-spin text-accent" size={32} />
           </div>
           <div className="text-center">
-            <p className="font-medium text-stone-700">Analyzing your transactions...</p>
-            <p className="text-sm text-stone-400 mt-1">
+            <p className="font-medium text-text-secondary">Analyzing your transactions...</p>
+            <p className="text-sm text-text-muted mt-1">
               {includeAi
                 ? "Analyzing patterns and using AI for uncategorized merchants"
                 : "Finding merchants with consistent categorization patterns"}
@@ -393,18 +393,18 @@ function GenerateRulesWizard({ onComplete }: { onComplete: () => void }) {
         <Card>
           <div className="flex flex-col items-center py-8 gap-4">
             <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center">
-              <CheckCircle2 className="text-[#16A34A]" size={28} />
+              <CheckCircle2 className="text-accent" size={28} />
             </div>
             <div className="text-center">
-              <p className="font-semibold text-stone-800">All caught up</p>
-              <p className="text-sm text-stone-500 mt-1">
+              <p className="font-semibold text-text-primary">All caught up</p>
+              <p className="text-sm text-text-secondary mt-1">
                 All {response.stats.existing_rules_skipped} merchant patterns already have rules.
                 Correct individual transactions to teach new patterns.
               </p>
             </div>
             <button
               onClick={() => { setStep("idle"); setResponse(null); }}
-              className="px-4 py-2 text-sm text-stone-600 hover:text-stone-800 transition-colors"
+              className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary transition-colors"
             >
               Dismiss
             </button>
@@ -418,28 +418,28 @@ function GenerateRulesWizard({ onComplete }: { onComplete: () => void }) {
     return (
       <Card padding="none">
         {/* Header */}
-        <div className="px-5 py-4 border-b border-stone-100">
+        <div className="px-5 py-4 border-b border-card-border">
           <div className="flex items-start justify-between">
             <div>
-              <h3 className="font-semibold text-stone-800 flex items-center gap-2">
-                <Sparkles size={16} className="text-[#16A34A]" />
+              <h3 className="font-semibold text-text-primary flex items-center gap-2">
+                <Sparkles size={16} className="text-accent" />
                 {selectedRules.length} rules found
               </h3>
-              <p className="text-sm text-stone-400 mt-0.5">
+              <p className="text-sm text-text-muted mt-0.5">
                 Covering {totalTxns.toLocaleString()} transactions across {categoryBreakdown.length} categories
               </p>
             </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowDetails(!showDetails)}
-                className="flex items-center gap-1 px-3 py-1.5 text-xs text-stone-500 hover:text-stone-700 border border-stone-200 rounded-md hover:bg-stone-50 transition-colors"
+                className="flex items-center gap-1 px-3 py-1.5 text-xs text-text-secondary hover:text-text-secondary border border-border rounded-md hover:bg-surface transition-colors"
               >
                 {showDetails ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
                 {showDetails ? "Summary" : "Review Details"}
               </button>
               <button
                 onClick={handleApply}
-                className="flex items-center gap-1.5 px-4 py-1.5 bg-[#16A34A] text-white text-sm font-medium rounded-md hover:bg-[#15803D] transition-colors"
+                className="flex items-center gap-1.5 px-4 py-1.5 bg-accent text-white text-sm font-medium rounded-md hover:bg-accent-hover transition-colors"
               >
                 <Zap size={14} />
                 Create {selectedRules.length} Rules
@@ -450,19 +450,19 @@ function GenerateRulesWizard({ onComplete }: { onComplete: () => void }) {
           {/* Source breakdown */}
           <div className="flex gap-3 mt-3">
             {response.stats.from_patterns > 0 && (
-              <span className="text-xs text-stone-400">
+              <span className="text-xs text-text-muted">
                 <span className="inline-block w-2 h-2 rounded-full bg-green-400 mr-1" />
                 {response.stats.from_patterns} from patterns
               </span>
             )}
             {response.stats.from_ai > 0 && (
-              <span className="text-xs text-stone-400">
+              <span className="text-xs text-text-muted">
                 <span className="inline-block w-2 h-2 rounded-full bg-blue-400 mr-1" />
                 {response.stats.from_ai} from AI
               </span>
             )}
             {response.stats.existing_rules_skipped > 0 && (
-              <span className="text-xs text-stone-400">
+              <span className="text-xs text-text-muted">
                 {response.stats.existing_rules_skipped} existing rules kept
               </span>
             )}
@@ -474,10 +474,10 @@ function GenerateRulesWizard({ onComplete }: { onComplete: () => void }) {
           <div className="px-5 py-4">
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
               {categoryBreakdown.map(([cat, { count, txns }]) => (
-                <div key={cat} className="flex items-center gap-2 p-2.5 rounded-lg bg-stone-50">
+                <div key={cat} className="flex items-center gap-2 p-2.5 rounded-lg bg-surface">
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium text-stone-700 truncate">{cat}</p>
-                    <p className="text-[10px] text-stone-400">{count} rules, {txns} txns</p>
+                    <p className="text-xs font-medium text-text-secondary truncate">{cat}</p>
+                    <p className="text-xs text-text-muted">{count} rules, {txns} txns</p>
                   </div>
                 </div>
               ))}
@@ -489,8 +489,8 @@ function GenerateRulesWizard({ onComplete }: { onComplete: () => void }) {
         {showDetails && (
           <div className="max-h-[500px] overflow-y-auto">
             <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-stone-50 z-10">
-                <tr className="border-b border-stone-100 text-left">
+              <thead className="sticky top-0 bg-surface z-10">
+                <tr className="border-b border-card-border text-left">
                   <th className="px-4 py-2 w-8">
                     <input
                       type="checkbox"
@@ -502,14 +502,14 @@ function GenerateRulesWizard({ onComplete }: { onComplete: () => void }) {
                           setExcluded(new Set());
                         }
                       }}
-                      className="rounded border-stone-300"
+                      className="rounded border-border"
                     />
                   </th>
-                  <th className="px-3 py-2 text-xs font-medium text-stone-500 uppercase tracking-wider">Merchant</th>
-                  <th className="px-3 py-2 text-xs font-medium text-stone-500 uppercase tracking-wider">Category</th>
-                  <th className="px-3 py-2 text-xs font-medium text-stone-500 uppercase tracking-wider">Segment</th>
-                  <th className="px-3 py-2 text-xs font-medium text-stone-500 uppercase tracking-wider">Entity</th>
-                  <th className="px-3 py-2 text-xs font-medium text-stone-500 uppercase tracking-wider text-right">Txns</th>
+                  <th className="px-3 py-2 text-xs font-medium text-text-secondary uppercase tracking-wider">Merchant</th>
+                  <th className="px-3 py-2 text-xs font-medium text-text-secondary uppercase tracking-wider">Category</th>
+                  <th className="px-3 py-2 text-xs font-medium text-text-secondary uppercase tracking-wider">Segment</th>
+                  <th className="px-3 py-2 text-xs font-medium text-text-secondary uppercase tracking-wider">Entity</th>
+                  <th className="px-3 py-2 text-xs font-medium text-text-secondary uppercase tracking-wider text-right">Txns</th>
                 </tr>
               </thead>
               <tbody>
@@ -518,7 +518,7 @@ function GenerateRulesWizard({ onComplete }: { onComplete: () => void }) {
                   return (
                     <tr
                       key={rule.merchant}
-                      className={`border-b border-stone-50 hover:bg-stone-50/50 transition-colors ${
+                      className={`border-b border-border-light hover:bg-surface/50 transition-colors ${
                         isExcluded ? "opacity-40" : ""
                       }`}
                     >
@@ -527,13 +527,13 @@ function GenerateRulesWizard({ onComplete }: { onComplete: () => void }) {
                           type="checkbox"
                           checked={!isExcluded}
                           onChange={() => toggleRule(rule.merchant)}
-                          className="rounded border-stone-300"
+                          className="rounded border-border"
                         />
                       </td>
                       <td className="px-3 py-2 font-mono text-xs">{rule.merchant}</td>
                       <td className="px-3 py-2">
                         {rule.category && (
-                          <span className="inline-block bg-stone-100 text-stone-700 text-xs px-2 py-0.5 rounded-full truncate max-w-[180px]">
+                          <span className="inline-block bg-surface text-text-secondary text-xs px-2 py-0.5 rounded-full truncate max-w-[180px]">
                             {rule.category}
                           </span>
                         )}
@@ -543,13 +543,13 @@ function GenerateRulesWizard({ onComplete }: { onComplete: () => void }) {
                           <span className={`inline-block text-xs px-2 py-0.5 rounded-full ${
                             rule.segment === "business" ? "bg-blue-50 text-blue-700" :
                             rule.segment === "personal" ? "bg-green-50 text-green-700" :
-                            "bg-stone-100 text-stone-700"
+                            "bg-surface text-text-secondary"
                           }`}>
                             {rule.segment}
                           </span>
                         )}
                       </td>
-                      <td className="px-3 py-2 text-xs text-stone-500 truncate max-w-[120px]">
+                      <td className="px-3 py-2 text-xs text-text-secondary truncate max-w-[120px]">
                         {rule.entity_name || "—"}
                       </td>
                       <td className="px-3 py-2 text-right font-mono text-xs">{rule.transaction_count}</td>
@@ -575,13 +575,13 @@ function GenerateRulesWizard({ onComplete }: { onComplete: () => void }) {
     return (
       <Card>
         <div className="flex flex-col items-center py-8 gap-4">
-          <Loader2 className="animate-spin text-[#16A34A]" size={32} />
+          <Loader2 className="animate-spin text-accent" size={32} />
           <div className="text-center">
-            <p className="font-medium text-stone-700">Creating rules and categorizing transactions...</p>
-            <p className="text-sm text-stone-400 mt-1">This may take a moment</p>
+            <p className="font-medium text-text-secondary">Creating rules and categorizing transactions...</p>
+            <p className="text-sm text-text-muted mt-1">This may take a moment</p>
           </div>
-          <div className="w-64 h-1.5 bg-stone-100 rounded-full overflow-hidden">
-            <div className="h-full bg-[#16A34A] rounded-full animate-pulse" style={{ width: "70%" }} />
+          <div className="w-64 h-1.5 bg-surface rounded-full overflow-hidden">
+            <div className="h-full bg-accent rounded-full animate-pulse" style={{ width: "70%" }} />
           </div>
         </div>
       </Card>
@@ -594,23 +594,23 @@ function GenerateRulesWizard({ onComplete }: { onComplete: () => void }) {
       <Card>
         <div className="flex flex-col items-center py-8 gap-4">
           <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center">
-            <CheckCircle2 className="text-[#16A34A]" size={28} />
+            <CheckCircle2 className="text-accent" size={28} />
           </div>
           <div className="text-center">
-            <p className="font-semibold text-stone-800">Rules created successfully</p>
-            <p className="text-sm text-stone-500 mt-1">
-              Created <span className="font-medium text-stone-700">{result.rules_created}</span> rules and categorized{" "}
-              <span className="font-medium text-stone-700">{result.transactions_categorized}</span> transactions
+            <p className="font-semibold text-text-primary">Rules created successfully</p>
+            <p className="text-sm text-text-secondary mt-1">
+              Created <span className="font-medium text-text-secondary">{result.rules_created}</span> rules and categorized{" "}
+              <span className="font-medium text-text-secondary">{result.transactions_categorized}</span> transactions
             </p>
             {result.rules_created === 0 && (
-              <p className="text-xs text-stone-400 mt-2">
+              <p className="text-xs text-text-muted mt-2">
                 All patterns already have rules. Try correcting individual transactions to teach new patterns.
               </p>
             )}
           </div>
           <button
             onClick={handleDone}
-            className="px-4 py-2 bg-stone-900 text-white text-sm font-medium rounded-lg hover:bg-stone-800 transition-colors"
+            className="px-4 py-2 bg-text-primary text-white text-sm font-medium rounded-lg hover:bg-text-secondary transition-colors"
           >
             Done
           </button>
@@ -644,12 +644,12 @@ function CategoryRulesTab({
     return (
       <div className="space-y-6">
         {/* Empty state with generate CTA */}
-        <div className="bg-white rounded-xl border border-dashed border-stone-200 p-12 text-center">
-          <div className="text-stone-200 mb-4 flex justify-center">
+        <div className="bg-card rounded-xl border border-dashed border-border p-12 text-center">
+          <div className="text-text-muted mb-4 flex justify-center">
             <Wand2 size={48} />
           </div>
-          <h3 className="font-semibold text-stone-700 mb-2">No category rules yet</h3>
-          <p className="text-stone-400 text-sm mb-6 max-w-md mx-auto">
+          <h3 className="font-semibold text-text-secondary mb-2">No category rules yet</h3>
+          <p className="text-text-muted text-sm mb-6 max-w-md mx-auto">
             Generate rules automatically from your transaction history. Sir Henry will analyze your spending patterns and create rules to categorize future transactions instantly.
           </p>
           <GenerateRulesWizard onComplete={onRulesGenerated} />
@@ -664,7 +664,7 @@ function CategoryRulesTab({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-xs text-stone-400">
+        <p className="text-xs text-text-muted">
           Rules are learned when you correct a transaction category. They are applied automatically before AI categorization.
         </p>
         <GenerateRulesWizard onComplete={onRulesGenerated} />
@@ -673,13 +673,13 @@ function CategoryRulesTab({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-stone-100 text-left">
-                <th className="px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">Merchant Pattern</th>
-                <th className="px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">Category</th>
-                <th className="px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">Segment</th>
-                <th className="px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">Entity</th>
-                <th className="px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider text-right">Matches</th>
-                <th className="px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider text-right">Actions</th>
+              <tr className="border-b border-card-border text-left">
+                <th className="px-4 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">Merchant Pattern</th>
+                <th className="px-4 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">Category</th>
+                <th className="px-4 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">Segment</th>
+                <th className="px-4 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">Entity</th>
+                <th className="px-4 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider text-right">Matches</th>
+                <th className="px-4 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -687,21 +687,21 @@ function CategoryRulesTab({
                 <tr
                   key={rule.id}
                   onClick={() => onEdit(rule)}
-                  className={`border-b border-stone-50 hover:bg-stone-50/50 transition-colors cursor-pointer ${
+                  className={`border-b border-border-light hover:bg-surface/50 transition-colors cursor-pointer ${
                     !rule.is_active ? "opacity-50" : ""
                   }`}
                 >
                   <td className="px-4 py-3">
                     <span className="font-mono text-xs">{rule.merchant_pattern}</span>
                     {(rule.effective_from || rule.effective_to) && (
-                      <span className="block text-[10px] text-stone-400 mt-0.5">
+                      <span className="block text-xs text-text-muted mt-0.5">
                         {rule.effective_from || "..."} — {rule.effective_to || "ongoing"}
                       </span>
                     )}
                   </td>
                   <td className="px-4 py-3">
                     {rule.category && (
-                      <span className="inline-block bg-stone-100 text-stone-700 text-xs px-2 py-0.5 rounded-full">
+                      <span className="inline-block bg-surface text-text-secondary text-xs px-2 py-0.5 rounded-full">
                         {rule.category}
                       </span>
                     )}
@@ -711,40 +711,40 @@ function CategoryRulesTab({
                       <span className={`inline-block text-xs px-2 py-0.5 rounded-full ${
                         rule.segment === "business" ? "bg-blue-50 text-blue-700" :
                         rule.segment === "personal" ? "bg-green-50 text-green-700" :
-                        "bg-stone-100 text-stone-700"
+                        "bg-surface text-text-secondary"
                       }`}>
                         {rule.segment}
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-xs text-stone-600">{rule.entity_name || "—"}</td>
+                  <td className="px-4 py-3 text-xs text-text-secondary">{rule.entity_name || "—"}</td>
                   <td className="px-4 py-3 text-right font-mono text-xs">{rule.match_count}</td>
                   <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-end gap-1">
                       <button
                         onClick={() => onEdit(rule)}
-                        className="p-1.5 rounded-md hover:bg-stone-100 text-stone-400 hover:text-stone-600 transition-colors"
+                        className="p-1.5 rounded-md hover:bg-surface text-text-muted hover:text-text-secondary transition-colors"
                         title="Edit rule"
                       >
                         <Pencil size={14} />
                       </button>
                       <button
                         onClick={() => onApplyRetro(rule)}
-                        className="p-1.5 rounded-md hover:bg-stone-100 text-stone-400 hover:text-stone-600 transition-colors"
+                        className="p-1.5 rounded-md hover:bg-surface text-text-muted hover:text-text-secondary transition-colors"
                         title="Apply retroactively"
                       >
                         <RotateCcw size={14} />
                       </button>
                       <button
                         onClick={() => onToggle(rule)}
-                        className="p-1.5 rounded-md hover:bg-stone-100 text-stone-400 hover:text-stone-600 transition-colors"
+                        className="p-1.5 rounded-md hover:bg-surface text-text-muted hover:text-text-secondary transition-colors"
                         title={rule.is_active ? "Deactivate" : "Activate"}
                       >
                         {rule.is_active ? <ToggleRight size={14} className="text-green-600" /> : <ToggleLeft size={14} />}
                       </button>
                       <button
                         onClick={() => onDelete(rule.id)}
-                        className="p-1.5 rounded-md hover:bg-red-50 text-stone-400 hover:text-red-600 transition-colors"
+                        className="p-1.5 rounded-md hover:bg-red-50 text-text-muted hover:text-red-600 transition-colors"
                         title="Delete"
                       >
                         <Trash2 size={14} />
@@ -777,52 +777,52 @@ function VendorRulesTab({ rules }: { rules: VendorRuleWithEntity[] }) {
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-stone-400">
+      <p className="text-xs text-text-muted">
         Vendor rules assign transactions from specific merchants to business entities. Manage them on the Business page.
       </p>
       <Card padding="none">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-stone-100 text-left">
-                <th className="px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">Vendor Pattern</th>
-                <th className="px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">Entity</th>
-                <th className="px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">Segment</th>
-                <th className="px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider">Date Range</th>
-                <th className="px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider text-right">Priority</th>
-                <th className="px-4 py-3 text-xs font-medium text-stone-500 uppercase tracking-wider text-right">Status</th>
+              <tr className="border-b border-card-border text-left">
+                <th className="px-4 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">Vendor Pattern</th>
+                <th className="px-4 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">Entity</th>
+                <th className="px-4 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">Segment</th>
+                <th className="px-4 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider">Date Range</th>
+                <th className="px-4 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider text-right">Priority</th>
+                <th className="px-4 py-3 text-xs font-medium text-text-secondary uppercase tracking-wider text-right">Status</th>
               </tr>
             </thead>
             <tbody>
               {rules.map((rule) => (
                 <tr
                   key={rule.id}
-                  className={`border-b border-stone-50 hover:bg-stone-50/50 transition-colors ${
+                  className={`border-b border-border-light hover:bg-surface/50 transition-colors ${
                     !rule.is_active ? "opacity-50" : ""
                   }`}
                 >
                   <td className="px-4 py-3 font-mono text-xs">{rule.vendor_pattern}</td>
-                  <td className="px-4 py-3 text-xs text-stone-700 font-medium">{rule.entity_name || "Unknown"}</td>
+                  <td className="px-4 py-3 text-xs text-text-secondary font-medium">{rule.entity_name || "Unknown"}</td>
                   <td className="px-4 py-3">
                     {rule.segment_override ? (
                       <span className="inline-block bg-blue-50 text-blue-700 text-xs px-2 py-0.5 rounded-full">
                         {rule.segment_override}
                       </span>
                     ) : (
-                      <span className="text-stone-300 text-xs">—</span>
+                      <span className="text-text-muted text-xs">—</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-xs text-stone-500">
+                  <td className="px-4 py-3 text-xs text-text-secondary">
                     {rule.effective_from || rule.effective_to ? (
                       <span>{rule.effective_from || "..."} — {rule.effective_to || "ongoing"}</span>
                     ) : (
-                      <span className="text-stone-300">Always</span>
+                      <span className="text-text-muted">Always</span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-right font-mono text-xs">{rule.priority}</td>
                   <td className="px-4 py-3 text-right">
                     <span className={`inline-block text-xs px-2 py-0.5 rounded-full ${
-                      rule.is_active ? "bg-green-50 text-green-700" : "bg-stone-100 text-stone-500"
+                      rule.is_active ? "bg-green-50 text-green-700" : "bg-surface text-text-secondary"
                     }`}>
                       {rule.is_active ? "Active" : "Inactive"}
                     </span>
@@ -868,36 +868,36 @@ function ContextTab({
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-stone-400">
+      <p className="text-xs text-text-muted">
         Facts Sir Henry has learned through conversations. These are included in his context to personalize advice.
       </p>
       <div className="grid gap-4">
         {Object.entries(grouped).map(([category, items]) => {
-          const config = CONTEXT_CATEGORIES[category] || { label: category, color: "bg-stone-50 text-stone-700" };
+          const config = CONTEXT_CATEGORIES[category] || { label: category, color: "bg-surface text-text-secondary" };
           return (
             <Card key={category} padding="sm">
               <div className="flex items-center gap-2 mb-3">
                 <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${config.color}`}>
                   {config.label}
                 </span>
-                <span className="text-xs text-stone-400">{items.length} {items.length === 1 ? "fact" : "facts"}</span>
+                <span className="text-xs text-text-muted">{items.length} {items.length === 1 ? "fact" : "facts"}</span>
               </div>
               <div className="space-y-2">
                 {items.map((fact) => (
                   <div
                     key={fact.id}
-                    className="flex items-start justify-between gap-3 p-3 rounded-lg bg-stone-50/80 group"
+                    className="flex items-start justify-between gap-3 p-3 rounded-lg bg-surface/80 group"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm text-stone-700">{fact.value}</p>
+                      <p className="text-sm text-text-secondary">{fact.value}</p>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="text-[10px] text-stone-400 font-mono">{fact.key}</span>
-                        <span className="text-[10px] text-stone-300">via {fact.source}</span>
+                        <span className="text-xs text-text-muted font-mono">{fact.key}</span>
+                        <span className="text-xs text-text-muted">via {fact.source}</span>
                       </div>
                     </div>
                     <button
                       onClick={() => onDelete(fact.id)}
-                      className="p-1 rounded hover:bg-red-50 text-stone-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
+                      className="p-1 rounded hover:bg-red-50 text-text-muted hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
                       title="Remove"
                     >
                       <Trash2 size={13} />

@@ -37,8 +37,8 @@ export default function MegaBackdoorRothSim() {
     >
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="flex items-center gap-2">
-          <input type="checkbox" id="allows-aftertax" checked={allows} onChange={(e) => setAllows(e.target.checked)} className="rounded border-stone-300" />
-          <label htmlFor="allows-aftertax" className="text-sm text-stone-600">Plan Allows After-Tax</label>
+          <input type="checkbox" id="allows-aftertax" checked={allows} onChange={(e) => setAllows(e.target.checked)} className="rounded border-border" />
+          <label htmlFor="allows-aftertax" className="text-sm text-text-secondary">Plan Allows After-Tax</label>
         </div>
         <LabeledInput label="Employee Contributions" value={employeeContrib} onChange={setEmployeeContrib} />
         <LabeledInput label="Employer Match" value={employerMatch} onChange={setEmployerMatch} />
@@ -53,7 +53,7 @@ export default function MegaBackdoorRothSim() {
             <ResultBox label="Status" value={result.available ? "Eligible" : "Not Available"} />
           </div>
           {result.explanation && (
-            <p className="text-sm text-stone-700 bg-blue-50 rounded-lg p-3">{result.explanation}</p>
+            <p className="text-sm text-text-secondary bg-blue-50 rounded-lg p-3">{result.explanation}</p>
           )}
         </div>
       )}

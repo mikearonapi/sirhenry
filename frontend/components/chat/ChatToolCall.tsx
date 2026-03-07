@@ -30,10 +30,10 @@ export default function ChatToolCall({ actions, dark = true }: ChatToolCallProps
 
   const ringBg = dark ? "bg-green-900/30" : "bg-green-100";
   const iconActive = dark ? "text-green-400" : "text-green-600";
-  const iconDone = dark ? "text-zinc-500" : "text-stone-400";
-  const labelActive = dark ? "text-zinc-400" : "text-stone-600";
-  const labelDone = dark ? "text-zinc-600" : "text-stone-400";
-  const thinkingText = dark ? "text-zinc-500" : "text-stone-500";
+  const iconDone = dark ? "text-zinc-500" : "text-text-muted";
+  const labelActive = dark ? "text-zinc-400" : "text-text-secondary";
+  const labelDone = dark ? "text-zinc-600" : "text-text-muted";
+  const thinkingText = dark ? "text-zinc-500" : "text-text-muted";
 
   return (
     <div className="flex gap-3 items-start">

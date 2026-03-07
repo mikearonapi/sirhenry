@@ -15,18 +15,18 @@ const STEPS = [
 
 export default function GettingStartedChecklist({ onAddAccount }: GettingStartedChecklistProps) {
   return (
-    <div className="bg-white border border-stone-100 rounded-xl p-6 shadow-sm">
-      <h3 className="text-sm font-semibold text-stone-900 mb-1">Getting Started</h3>
-      <p className="text-xs text-stone-500 mb-4">Complete these steps to get a full picture of your financial life.</p>
+    <div className="bg-card border border-card-border rounded-xl p-6 shadow-sm">
+      <h3 className="text-sm font-semibold text-text-primary mb-1">Getting Started</h3>
+      <p className="text-xs text-text-secondary mb-4">Complete these steps to get a full picture of your financial life.</p>
       <div className="space-y-3">
         {STEPS.map((step, i) => (
-          <button key={i} onClick={onAddAccount} className="w-full flex items-center gap-3 p-3 rounded-lg border border-dashed border-stone-200 hover:border-[#16A34A] hover:bg-green-50 transition-colors text-left">
-            <div className="w-6 h-6 rounded-full bg-stone-100 flex items-center justify-center text-xs font-bold text-stone-500 shrink-0">{i + 1}</div>
+          <button key={i} onClick={onAddAccount} className="w-full flex items-center gap-3 p-3 rounded-lg border border-dashed border-border hover:border-accent hover:bg-green-50 transition-colors text-left">
+            <div className="w-6 h-6 rounded-full bg-surface flex items-center justify-center text-xs font-bold text-text-secondary shrink-0">{i + 1}</div>
             <div>
-              <p className="text-sm font-medium text-stone-800">{step.label}</p>
-              <p className="text-xs text-stone-500">{step.sub}</p>
+              <p className="text-sm font-medium text-text-primary">{step.label}</p>
+              <p className="text-xs text-text-secondary">{step.sub}</p>
             </div>
-            <Plus size={14} className="ml-auto text-stone-400 shrink-0" />
+            <Plus size={14} className="ml-auto text-text-muted shrink-0" />
           </button>
         ))}
       </div>

@@ -11,7 +11,7 @@ import {
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen font-sans bg-white">
+    <div className="min-h-screen font-sans bg-card">
       <HeroSection />
       <HenryParadoxSection />
       <ProblemsSection />

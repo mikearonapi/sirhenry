@@ -44,7 +44,7 @@ const CAPABILITIES: Capability[] = [
 
 export default function CapabilitiesSection() {
   return (
-    <section id="how-it-works" className="bg-white py-24 px-6">
+    <section id="how-it-works" className="bg-card py-24 px-6">
       <div className="max-w-5xl mx-auto">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-[#9CA3AF] text-center mb-4">
           How it works
@@ -67,14 +67,14 @@ export default function CapabilitiesSection() {
           {CAPABILITIES.map((cap) => (
             <div
               key={cap.tag}
-              className="border border-[#E5E7EB] rounded-xl p-7 hover:border-[#16A34A]/30 hover:bg-[#F0FDF4]/30 transition-colors"
+              className="border border-[#E5E7EB] rounded-xl p-7 hover:border-accent/30 hover:bg-[#F0FDF4]/30 transition-colors"
             >
               <div className="flex items-start gap-4 mb-4">
                 <div className="w-11 h-11 rounded-lg bg-[#F0FDF4] flex items-center justify-center shrink-0">
-                  <cap.icon size={22} className="text-[#16A34A]" />
+                  <cap.icon size={22} className="text-accent" />
                 </div>
                 <div>
-                  <p className="text-[#16A34A] text-xs font-semibold uppercase tracking-wide mb-0.5">
+                  <p className="text-accent text-xs font-semibold uppercase tracking-wide mb-0.5">
                     {cap.tag}
                   </p>
                   <h3

@@ -9,7 +9,7 @@ import {
   getEconomicIndicators, getQuote, getTickerHistory, researchCompany,
   getHoldings,
 } from "@/lib/api";
-import type { EconomicIndicator, MarketQuote } from "@/types/api";
+import type { CompanyResearch, EconomicIndicator, MarketQuote } from "@/types/api";
 import { getErrorMessage } from "@/lib/errors";
 import Card from "@/components/ui/Card";
 import PageHeader from "@/components/ui/PageHeader";
@@ -39,7 +39,7 @@ export default function MarketPage() {
   const [quote, setQuote] = useState<MarketQuote | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [history, setHistory] = useState<Array<{ date: string; close: number }>>([]);
-  const [research, setResearch] = useState<Record<string, unknown> | null>(null);
+  const [research, setResearch] = useState<CompanyResearch | null>(null);
   const [userTickers, setUserTickers] = useState<string[]>([]);
 
   useEffect(() => {
@@ -90,7 +90,7 @@ export default function MarketPage() {
         actions={
           <button
             onClick={() => window.dispatchEvent(new CustomEvent("ask-henry", { detail: { message: "How do current market conditions affect my portfolio? Any adjustments I should consider?" } }))}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-[#16A34A]/10 text-[#16A34A] hover:bg-[#16A34A]/20 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
           >
             <MessageCircle size={14} /> Ask <SirHenryName />
           </button>
@@ -108,19 +108,19 @@ export default function MarketPage() {
       <Card padding="lg">
         <div className="flex gap-3">
           <div className="relative flex-1">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
             <input
               value={searchTicker}
               onChange={(e) => setSearchTicker(e.target.value.toUpperCase())}
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
               placeholder="Search any ticker (e.g. AAPL, MSFT, TSLA)..."
-              className="w-full pl-10 pr-4 py-3 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A]"
+              className="w-full pl-10 pr-4 py-3 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
             />
           </div>
           <button
             onClick={() => handleSearch()}
             disabled={quoteLoading}
-            className="bg-[#16A34A] text-white px-6 py-3 rounded-lg text-sm font-medium hover:bg-[#15803D] shadow-sm disabled:opacity-60"
+            className="bg-accent text-white px-6 py-3 rounded-lg text-sm font-medium hover:bg-accent-hover shadow-sm disabled:opacity-60"
           >
             {quoteLoading ? <Loader2 size={16} className="animate-spin" /> : "Search"}
           </button>
@@ -128,13 +128,13 @@ export default function MarketPage() {
         {/* User's portfolio tickers */}
         {userTickers.length > 0 && (
           <div className="mt-3">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-stone-400 mb-2">Your Portfolio</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-2">Your Portfolio</p>
             <div className="flex gap-2 flex-wrap">
               {userTickers.map((t) => (
                 <button
                   key={t}
                   onClick={() => { setSearchTicker(t); handleSearch(t); }}
-                  className="text-xs px-3 py-1.5 rounded-full border border-[#16A34A]/30 text-[#16A34A] bg-green-50 hover:bg-green-100 hover:border-[#16A34A]/50 transition-colors font-medium"
+                  className="text-xs px-3 py-1.5 rounded-full border border-accent/30 text-accent bg-green-50 hover:bg-green-100 hover:border-accent/50 transition-colors font-medium"
                 >
                   {t}
                 </button>
@@ -144,14 +144,14 @@ export default function MarketPage() {
         )}
         <div className={userTickers.length > 0 ? "mt-2" : "mt-3"}>
           {userTickers.length > 0 && (
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-stone-400 mb-2">Market Indices & Popular</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-2">Market Indices & Popular</p>
           )}
           <div className="flex gap-2 flex-wrap">
             {QUICK_TICKERS.filter((t) => !userTickers.includes(t)).map((t) => (
               <button
                 key={t}
                 onClick={() => { setSearchTicker(t); handleSearch(t); }}
-                className="text-xs px-3 py-1.5 rounded-full border border-stone-200 text-stone-600 hover:bg-stone-50 hover:border-stone-300 transition-colors"
+                className="text-xs px-3 py-1.5 rounded-full border border-border text-text-secondary hover:bg-surface hover:border-border transition-colors"
               >
                 {t}
               </button>
@@ -167,11 +167,11 @@ export default function MarketPage() {
             <Card padding="lg">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <p className="text-2xl font-bold text-stone-900">{quote.ticker}</p>
-                  <p className="text-sm text-stone-500">{quote.company_name}</p>
+                  <p className="text-2xl font-bold text-text-primary">{quote.ticker}</p>
+                  <p className="text-sm text-text-secondary">{quote.company_name}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-3xl font-bold text-stone-900 font-mono tabular-nums">{quote.price ? formatCurrency(quote.price) : "N/A"}</p>
+                  <p className="text-3xl font-bold text-text-primary font-mono tabular-nums">{quote.price ? formatCurrency(quote.price) : "N/A"}</p>
                   {quote.change != null && (
                     <p className={`text-sm font-medium ${quote.change >= 0 ? "text-green-600" : "text-red-600"}`}>
                       {quote.change >= 0 ? "+" : ""}{formatCurrency(quote.change)} ({quote.change_pct?.toFixed(2)}%)
@@ -200,7 +200,7 @@ export default function MarketPage() {
           </div>
 
           <Card padding="lg">
-            <h3 className="text-sm font-semibold text-stone-800 mb-3">Key Metrics</h3>
+            <h3 className="text-sm font-semibold text-text-primary mb-3">Key Metrics</h3>
             <div className="space-y-2.5">
               {[
                 { label: "Market Cap", value: quote.market_cap ? formatCurrency(quote.market_cap, true) : "N/A" },
@@ -215,14 +215,14 @@ export default function MarketPage() {
                 { label: "Industry", value: quote.industry ?? "N/A" },
               ].map(({ label, value }) => (
                 <div key={label} className="flex justify-between text-sm">
-                  <span className="text-stone-500">{label}</span>
-                  <span className="font-medium text-stone-800 tabular-nums">{value}</span>
+                  <span className="text-text-secondary">{label}</span>
+                  <span className="font-medium text-text-primary tabular-nums">{value}</span>
                 </div>
               ))}
             </div>
             {research && typeof research.description === "string" && (
-              <div className="mt-4 pt-3 border-t border-stone-100">
-                <p className="text-xs text-stone-500 leading-relaxed line-clamp-4">{research.description}</p>
+              <div className="mt-4 pt-3 border-t border-card-border">
+                <p className="text-xs text-text-secondary leading-relaxed line-clamp-4">{research.description}</p>
               </div>
             )}
           </Card>
@@ -231,24 +231,24 @@ export default function MarketPage() {
 
       {/* Economic Indicators */}
       <div>
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-stone-400 mb-3">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-3">
           Economic Indicators
         </h2>
         {loading ? (
-          <div className="flex justify-center py-12"><Loader2 className="animate-spin text-stone-300" size={24} /></div>
+          <div className="flex justify-center py-12"><Loader2 className="animate-spin text-text-muted" size={24} /></div>
         ) : indicators.length === 0 ? (
           <Card padding="lg">
             <div className="text-center py-8">
-              <Globe size={32} className="text-stone-300 mx-auto mb-3" />
-              <p className="text-sm text-stone-500">Economic indicators require an Alpha Vantage API key.</p>
-              <p className="text-xs text-stone-400 mt-1">Add ALPHA_VANTAGE_API_KEY to your .env file (free at alphavantage.co)</p>
+              <Globe size={32} className="text-text-muted mx-auto mb-3" />
+              <p className="text-sm text-text-secondary">Economic indicators require an Alpha Vantage API key.</p>
+              <p className="text-xs text-text-muted mt-1">Add ALPHA_VANTAGE_API_KEY to your .env file (free at alphavantage.co)</p>
             </div>
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {indicators.map((ind) => {
               const IconComp = CATEGORY_ICONS[ind.category] || Activity;
-              const colorClass = CATEGORY_COLORS[ind.category] || "text-stone-600 bg-stone-50";
+              const colorClass = CATEGORY_COLORS[ind.category] || "text-text-secondary bg-surface";
               const [textColor, bgColor] = colorClass.split(" ");
               return (
                 <Card key={ind.series_id} padding="lg">
@@ -257,10 +257,10 @@ export default function MarketPage() {
                       <IconComp size={18} className={textColor} />
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-stone-800">{ind.label}</p>
-                      <p className="text-xs text-stone-400">{ind.latest_date}</p>
+                      <p className="text-sm font-semibold text-text-primary">{ind.label}</p>
+                      <p className="text-xs text-text-muted">{ind.latest_date}</p>
                     </div>
-                    <p className="ml-auto text-xl font-bold text-stone-900 font-mono tabular-nums">
+                    <p className="ml-auto text-xl font-bold text-text-primary font-mono tabular-nums">
                       {ind.latest_value?.toFixed(ind.unit === "percent" ? 2 : 1)}{ind.unit === "percent" ? "%" : ""}
                     </p>
                   </div>

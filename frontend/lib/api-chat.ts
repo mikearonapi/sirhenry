@@ -1,5 +1,5 @@
 import type { ChatMessage, ChatResponse, ChatConversation, ChatConversationDetail } from "@/types/api";
-import { request, BASE } from "./api-client";
+import { request, getBase, getAuthHeaders } from "./api-client";
 
 export interface SendChatOptions {
   conversationId?: number;
@@ -41,9 +41,10 @@ export async function streamChatMessage(
   onEvent: (event: StreamEvent) => void,
   signal?: AbortSignal,
 ): Promise<void> {
-  const response = await fetch(`${BASE}/chat/stream`, {
+  const authHeaders = await getAuthHeaders();
+  const response = await fetch(`${getBase()}/chat/stream`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeaders },
     body: JSON.stringify({
       messages,
       conversation_id: options.conversationId ?? null,

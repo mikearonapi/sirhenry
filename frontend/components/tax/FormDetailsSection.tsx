@@ -69,16 +69,16 @@ function EditableCell({
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={handleKeyDown}
           autoFocus
-          className="w-28 text-sm border border-[#16A34A] rounded px-2 py-0.5 text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-[#16A34A]"
+          className="w-28 text-sm border border-accent rounded px-2 py-0.5 text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-accent"
         />
         {saving ? (
-          <Loader2 size={12} className="animate-spin text-stone-400" />
+          <Loader2 size={12} className="animate-spin text-text-muted" />
         ) : (
           <>
             <button onClick={save} className="text-green-600 hover:text-green-700" title="Save">
               <Check size={12} />
             </button>
-            <button onClick={cancel} className="text-stone-400 hover:text-stone-600" title="Cancel">
+            <button onClick={cancel} className="text-text-muted hover:text-text-secondary" title="Cancel">
               <X size={12} />
             </button>
           </>
@@ -91,7 +91,7 @@ function EditableCell({
     <span className="group inline-flex items-center gap-1 cursor-pointer" onClick={startEdit}>
       <span className="tabular-nums">{formatCurrency(value ?? 0)}</span>
       {edited && <span className="w-1.5 h-1.5 rounded-full bg-blue-400 flex-shrink-0" title="Edited" />}
-      <Pencil size={10} className="text-stone-300 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+      <Pencil size={10} className="text-text-muted opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
     </span>
   );
 }
@@ -118,10 +118,10 @@ export default function FormDetailsSection({ items, summary, year, onItemUpdated
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-stone-400">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-text-muted">
           Form Details — {year}
         </h2>
-        <span className="text-[10px] text-stone-400 flex items-center gap-1 print:hidden">
+        <span className="text-xs text-text-muted flex items-center gap-1 print:hidden">
           <Pencil size={9} /> Click any value to edit
         </span>
       </div>
@@ -131,27 +131,27 @@ export default function FormDetailsSection({ items, summary, year, onItemUpdated
         <Card padding="lg">
           <div className="flex items-center gap-2 mb-4">
             <Building2 size={18} className="text-indigo-500" />
-            <h3 className="text-sm font-semibold text-stone-800">W-2 Forms ({w2Items.length})</h3>
+            <h3 className="text-sm font-semibold text-text-primary">W-2 Forms ({w2Items.length})</h3>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <caption className="sr-only">W-2 forms for {year}</caption>
-              <thead className="bg-stone-50">
+              <thead className="bg-surface">
                 <tr>
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-stone-500">Employer</th>
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-stone-500">EIN</th>
-                  <th className="text-right px-3 py-2 text-xs font-semibold text-stone-500">Wages</th>
-                  <th className="text-right px-3 py-2 text-xs font-semibold text-stone-500">Fed W/H</th>
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-stone-500">States</th>
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-text-secondary">Employer</th>
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-text-secondary">EIN</th>
+                  <th className="text-right px-3 py-2 text-xs font-semibold text-text-secondary">Wages</th>
+                  <th className="text-right px-3 py-2 text-xs font-semibold text-text-secondary">Fed W/H</th>
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-text-secondary">States</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-stone-100">
+              <tbody className="divide-y divide-card-border">
                 {w2Items.map((item) => {
                   const allocs = safeJsonParse<Array<{ state: string; wages: number; tax: number }>>(item.w2_state_allocations, []);
                   return (
                     <tr key={item.id}>
-                      <td className="px-3 py-2 font-medium text-stone-800">{item.payer_name ?? "—"}</td>
-                      <td className="px-3 py-2 text-stone-500">{item.payer_ein ?? "—"}</td>
+                      <td className="px-3 py-2 font-medium text-text-primary">{item.payer_name ?? "—"}</td>
+                      <td className="px-3 py-2 text-text-secondary">{item.payer_ein ?? "—"}</td>
                       <td className="px-3 py-2 text-right">
                         <EditableCell itemId={item.id} field="w2_wages" value={item.w2_wages} onSaved={handleSaved} />
                       </td>
@@ -167,7 +167,7 @@ export default function FormDetailsSection({ items, summary, year, onItemUpdated
                               </span>
                             ))}
                           </div>
-                        ) : <span className="text-xs text-stone-400">—</span>}
+                        ) : <span className="text-xs text-text-muted">—</span>}
                       </td>
                     </tr>
                   );
@@ -183,21 +183,21 @@ export default function FormDetailsSection({ items, summary, year, onItemUpdated
         <Card padding="lg">
           <div className="flex items-center gap-2 mb-4">
             <DollarSign size={18} className="text-green-500" />
-            <h3 className="text-sm font-semibold text-stone-800">1099 Forms</h3>
+            <h3 className="text-sm font-semibold text-text-primary">1099 Forms</h3>
           </div>
           <div className="space-y-4">
             {necItems.length > 0 && (
               <div>
-                <h4 className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-2">1099-NEC</h4>
+                <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-2">1099-NEC</h4>
                 {necItems.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between text-sm py-2 border-b border-stone-50 last:border-0">
+                  <div key={item.id} className="flex items-center justify-between text-sm py-2 border-b border-border-light last:border-0">
                     <div>
-                      <p className="font-medium text-stone-800">{item.payer_name ?? "Unknown"}</p>
-                      <p className="text-xs text-stone-400">EIN: {item.payer_ein ?? "N/A"}</p>
+                      <p className="font-medium text-text-primary">{item.payer_name ?? "Unknown"}</p>
+                      <p className="text-xs text-text-muted">EIN: {item.payer_ein ?? "N/A"}</p>
                     </div>
                     <div className="text-right">
                       <EditableCell itemId={item.id} field="nec_nonemployee_compensation" value={item.nec_nonemployee_compensation} onSaved={handleSaved} />
-                      <p className="text-xs text-stone-400">W/H: {formatCurrency(item.nec_federal_tax_withheld ?? 0)}</p>
+                      <p className="text-xs text-text-muted">W/H: {formatCurrency(item.nec_federal_tax_withheld ?? 0)}</p>
                     </div>
                   </div>
                 ))}
@@ -205,21 +205,21 @@ export default function FormDetailsSection({ items, summary, year, onItemUpdated
             )}
             {divItems.length > 0 && (
               <div>
-                <h4 className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-2">1099-DIV</h4>
+                <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-2">1099-DIV</h4>
                 {divItems.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between text-sm py-2 border-b border-stone-50 last:border-0">
-                    <p className="font-medium text-stone-800">{item.payer_name ?? "Unknown"}</p>
+                  <div key={item.id} className="flex items-center justify-between text-sm py-2 border-b border-border-light last:border-0">
+                    <p className="font-medium text-text-primary">{item.payer_name ?? "Unknown"}</p>
                     <div className="text-right text-xs space-y-0.5">
                       <p className="flex items-center justify-end gap-1">
-                        <span className="text-stone-400">Ordinary:</span>
+                        <span className="text-text-muted">Ordinary:</span>
                         <EditableCell itemId={item.id} field="div_total_ordinary" value={item.div_total_ordinary} onSaved={handleSaved} />
                       </p>
                       <p className="flex items-center justify-end gap-1">
-                        <span className="text-stone-400">Qualified:</span>
+                        <span className="text-text-muted">Qualified:</span>
                         <EditableCell itemId={item.id} field="div_qualified" value={item.div_qualified} onSaved={handleSaved} />
                       </p>
                       <p className="flex items-center justify-end gap-1">
-                        <span className="text-stone-400">Cap. Gain:</span>
+                        <span className="text-text-muted">Cap. Gain:</span>
                         <EditableCell itemId={item.id} field="div_total_capital_gain" value={item.div_total_capital_gain} onSaved={handleSaved} />
                       </p>
                     </div>
@@ -229,10 +229,10 @@ export default function FormDetailsSection({ items, summary, year, onItemUpdated
             )}
             {intItems.length > 0 && (
               <div>
-                <h4 className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-2">1099-INT</h4>
+                <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-2">1099-INT</h4>
                 {intItems.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between text-sm py-2 border-b border-stone-50 last:border-0">
-                    <p className="font-medium text-stone-800">{item.payer_name ?? "Unknown"}</p>
+                  <div key={item.id} className="flex items-center justify-between text-sm py-2 border-b border-border-light last:border-0">
+                    <p className="font-medium text-text-primary">{item.payer_name ?? "Unknown"}</p>
                     <EditableCell itemId={item.id} field="int_interest" value={item.int_interest} onSaved={handleSaved} />
                   </div>
                 ))}
@@ -240,8 +240,8 @@ export default function FormDetailsSection({ items, summary, year, onItemUpdated
             )}
             {bItems.length > 0 && (
               <div>
-                <h4 className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-2">1099-B (Capital Gains)</h4>
-                <p className="text-sm text-stone-600">
+                <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-wide mb-2">1099-B (Capital Gains)</h4>
+                <p className="text-sm text-text-secondary">
                   {bItems.length} form(s) on file — {summary ? formatCurrency(summary.capital_gains_long + summary.capital_gains_short) : "—"} total
                 </p>
               </div>
@@ -255,26 +255,26 @@ export default function FormDetailsSection({ items, summary, year, onItemUpdated
         <Card padding="lg">
           <div className="flex items-center gap-2 mb-4">
             <FileText size={18} className="text-purple-500" />
-            <h3 className="text-sm font-semibold text-stone-800">K-1 Forms ({k1Items.length})</h3>
+            <h3 className="text-sm font-semibold text-text-primary">K-1 Forms ({k1Items.length})</h3>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <caption className="sr-only">K-1 forms for {year}</caption>
-              <thead className="bg-stone-50">
+              <thead className="bg-surface">
                 <tr>
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-stone-500">Partnership / Entity</th>
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-stone-500">EIN</th>
-                  <th className="text-right px-3 py-2 text-xs font-semibold text-stone-500">Ordinary</th>
-                  <th className="text-right px-3 py-2 text-xs font-semibold text-stone-500">Guaranteed</th>
-                  <th className="text-right px-3 py-2 text-xs font-semibold text-stone-500">Rental</th>
-                  <th className="text-right px-3 py-2 text-xs font-semibold text-stone-500">Distributions</th>
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-text-secondary">Partnership / Entity</th>
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-text-secondary">EIN</th>
+                  <th className="text-right px-3 py-2 text-xs font-semibold text-text-secondary">Ordinary</th>
+                  <th className="text-right px-3 py-2 text-xs font-semibold text-text-secondary">Guaranteed</th>
+                  <th className="text-right px-3 py-2 text-xs font-semibold text-text-secondary">Rental</th>
+                  <th className="text-right px-3 py-2 text-xs font-semibold text-text-secondary">Distributions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-stone-100">
+              <tbody className="divide-y divide-card-border">
                 {k1Items.map((item) => (
                   <tr key={item.id}>
-                    <td className="px-3 py-2 font-medium text-stone-800">{item.payer_name ?? "—"}</td>
-                    <td className="px-3 py-2 text-stone-500">{item.payer_ein ?? "—"}</td>
+                    <td className="px-3 py-2 font-medium text-text-primary">{item.payer_name ?? "—"}</td>
+                    <td className="px-3 py-2 text-text-secondary">{item.payer_ein ?? "—"}</td>
                     <td className="px-3 py-2 text-right">
                       <EditableCell itemId={item.id} field="k1_ordinary_income" value={item.k1_ordinary_income} onSaved={handleSaved} />
                     </td>

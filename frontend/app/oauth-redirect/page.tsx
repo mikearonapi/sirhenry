@@ -86,16 +86,16 @@ export default function OAuthRedirectPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-stone-50">
-        <div className="max-w-md w-full mx-4 bg-white rounded-2xl shadow-sm border border-stone-200 p-8 text-center space-y-4">
+      <div className="min-h-screen flex items-center justify-center bg-surface">
+        <div className="max-w-md w-full mx-4 bg-card rounded-2xl shadow-sm border border-border p-8 text-center space-y-4">
           <AlertCircle className="mx-auto text-red-500" size={40} />
-          <h1 className="text-lg font-semibold text-stone-800">
+          <h1 className="text-lg font-semibold text-text-primary">
             Connection error
           </h1>
-          <p className="text-sm text-stone-500">{error}</p>
+          <p className="text-sm text-text-muted">{error}</p>
           <button
             onClick={() => router.push("/accounts")}
-            className="mt-4 px-5 py-2.5 bg-[#16A34A] text-white rounded-lg text-sm font-medium hover:bg-[#15803D]"
+            className="mt-4 px-5 py-2.5 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent-hover"
           >
             Back to Accounts
           </button>
@@ -105,13 +105,13 @@ export default function OAuthRedirectPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-stone-50">
-      <div className="max-w-md w-full mx-4 bg-white rounded-2xl shadow-sm border border-stone-200 p-8 text-center space-y-4">
-        <Loader2 className="mx-auto animate-spin text-[#16A34A]" size={40} />
-        <h1 className="text-lg font-semibold text-stone-800">
+    <div className="min-h-screen flex items-center justify-center bg-surface">
+      <div className="max-w-md w-full mx-4 bg-card rounded-2xl shadow-sm border border-border p-8 text-center space-y-4">
+        <Loader2 className="mx-auto animate-spin text-accent" size={40} />
+        <h1 className="text-lg font-semibold text-text-primary">
           Finishing connection
         </h1>
-        <p className="text-sm text-stone-500">{status}</p>
+        <p className="text-sm text-text-muted">{status}</p>
       </div>
     </div>
   );

@@ -12,16 +12,16 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.database import engine
 from api.routes import (
-    account_links, accounts, assets, benchmarks, budget, budget_forecast, chat,
-    documents, entities,
+    account_links, accounts, assets, auth_routes, benchmarks, budget,
+    chat, demo, documents, entities, error_reports,
     equity_comp, family_members, goal_suggestions, goals,
-    household, household_optimization,
+    household,
     import_routes, income, insights, insurance,
     life_events, market, plaid, privacy,
-    portfolio, portfolio_analytics, portfolio_crypto,
-    recurring, reminders, reports, retirement, retirement_scenarios, rules,
-    scenarios, scenarios_calc, setup_status, smart_defaults, tax, tax_analysis,
-    tax_strategies, tax_modeling, transactions, user_context, valuations,
+    portfolio,
+    recurring, reminders, reports, retirement, rules,
+    scenarios, setup_status, smart_defaults, tax,
+    tax_modeling, transactions, user_context, valuations,
 )
 from pipeline.db import init_db  # importing pipeline.db also registers all extended models
 
@@ -68,25 +68,9 @@ async def _periodic_plaid_sync(interval_seconds: float) -> None:
         await asyncio.sleep(interval_seconds)
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Register field-level encryption events before any DB operations
-    from pipeline.db.field_encryption import register_encryption_events
-    register_encryption_events()
-
-    logger.info("Initializing database...")
-    await init_db(engine)
-    logger.info("Database ready.")
-
-    # Run tracked schema migrations (idempotent, applied at most once)
-    try:
-        from api.database import AsyncSessionLocal
-        from pipeline.db.migrations import run_migrations
-        async with AsyncSessionLocal() as session:
-            await run_migrations(session)
-    except Exception as e:
-        logger.error(f"Schema migration failed: {e}")
-        raise
+async def _deferred_startup_tasks() -> None:
+    """Non-critical startup tasks that run in the background after the server is ready."""
+    from api.database import AsyncSessionLocal
 
     # Load known PII names into the logging redaction filter
     try:
@@ -110,7 +94,6 @@ async def lifespan(app: FastAPI):
 
     # Auto-recompute financial period summaries for recent years
     try:
-        from api.database import AsyncSessionLocal
         from pipeline.ai.report_gen import recompute_all_periods
         from datetime import datetime, timezone
         current_year = datetime.now(timezone.utc).year
@@ -129,6 +112,38 @@ async def lifespan(app: FastAPI):
         logger.info(f"Auto-recomputed period summaries for years: {years_with_data}")
     except Exception as e:
         logger.warning(f"Period auto-recompute failed (non-fatal): {e}")
+
+    # Seed all reminders (tax, Amazon, financial reviews, Plaid health, etc.)
+    try:
+        await _seed_all_reminders()
+    except Exception as e:
+        logger.warning(f"Reminder seeding failed (non-fatal): {e}")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Register field-level encryption events before any DB operations
+    from pipeline.db.field_encryption import register_encryption_events
+    register_encryption_events()
+
+    # Backup the user's database before any startup operations
+    from pipeline.db.backup import backup_database
+    from pipeline.utils import DATABASE_URL
+    backup_database(DATABASE_URL, reason="startup")
+
+    # Critical path: init DB + migrations (must complete before serving requests)
+    logger.info("Initializing database...")
+    await init_db(engine)
+    logger.info("Database ready.")
+
+    try:
+        from api.database import AsyncSessionLocal
+        from pipeline.db.migrations import run_migrations
+        async with AsyncSessionLocal() as session:
+            await run_migrations(session)
+    except Exception as e:
+        logger.error(f"Schema migration failed: {e}")
+        raise
 
     # Validate Plaid environment and encryption key
     plaid_env = os.environ.get("PLAID_ENV", "sandbox")
@@ -163,11 +178,8 @@ async def lifespan(app: FastAPI):
                 "Generate one: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
             )
 
-    # Seed all reminders (tax, Amazon, financial reviews, Plaid health, etc.)
-    try:
-        await _seed_all_reminders()
-    except Exception as e:
-        logger.warning(f"Reminder seeding failed (non-fatal): {e}")
+    # Defer slow tasks (period recompute, PII loading, reminders) to background
+    deferred_task = asyncio.create_task(_deferred_startup_tasks())
 
     # Start periodic Plaid sync (configurable via PLAID_SYNC_INTERVAL_HOURS, 0 = disabled)
     sync_interval_hours = float(os.environ.get("PLAID_SYNC_INTERVAL_HOURS", "6"))
@@ -180,6 +192,7 @@ async def lifespan(app: FastAPI):
 
     yield
 
+    deferred_task.cancel()
     if sync_task:
         sync_task.cancel()
         try:
@@ -201,6 +214,8 @@ cors_origins = [
     "http://localhost:3001",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:3001",
+    "tauri://localhost",        # Tauri desktop app (macOS/Linux)
+    "https://tauri.localhost",  # Tauri desktop app (Windows)
 ]
 # Auto-detect LAN IPs so the frontend can reach the API from any local machine
 try:
@@ -225,6 +240,32 @@ app.add_middleware(
     allow_headers=["Content-Type", "Authorization"],
 )
 
+# Localhost guard: when no Supabase auth is configured (local-first mode),
+# restrict API access to loopback addresses only. This prevents network-adjacent
+# devices from accessing unprotected financial data.
+_SUPABASE_CONFIGURED = bool(os.getenv("SUPABASE_JWT_SECRET") or os.getenv("SUPABASE_URL"))
+
+if not _SUPABASE_CONFIGURED:
+    from starlette.middleware.base import BaseHTTPMiddleware
+    from starlette.requests import Request as StarletteRequest
+    from starlette.responses import JSONResponse
+
+    class LocalhostGuardMiddleware(BaseHTTPMiddleware):
+        """Reject non-loopback requests when running without external auth."""
+
+        _LOOPBACK = {"127.0.0.1", "::1", "localhost"}
+
+        async def dispatch(self, request: StarletteRequest, call_next):
+            client_host = request.client.host if request.client else ""
+            if client_host not in self._LOOPBACK:
+                return JSONResponse(
+                    {"detail": "Access restricted to localhost"},
+                    status_code=403,
+                )
+            return await call_next(request)
+
+    app.add_middleware(LocalhostGuardMiddleware)
+
 app.include_router(account_links.router)
 app.include_router(accounts.router)
 app.include_router(assets.router)
@@ -235,27 +276,25 @@ app.include_router(import_routes.router)
 app.include_router(reports.router)
 app.include_router(insights.router)
 app.include_router(tax.router)
-app.include_router(tax_analysis.router, prefix="/tax")
-app.include_router(tax_strategies.router, prefix="/tax")
+# tax_analysis and tax_strategies are included by tax.router
 app.include_router(plaid.router)
 app.include_router(budget.router)
-app.include_router(budget_forecast.router, prefix="/budget")
+# budget_forecast is included by budget.router
 app.include_router(recurring.router)
 app.include_router(goal_suggestions.router)
 app.include_router(goals.router)
 app.include_router(reminders.router)
 app.include_router(chat.router)
 app.include_router(portfolio.router)
-app.include_router(portfolio_analytics.router, prefix="/portfolio")
-app.include_router(portfolio_crypto.router, prefix="/portfolio")
+# portfolio_analytics and portfolio_crypto are included by portfolio.router
 app.include_router(market.router)
 app.include_router(retirement.router)
-app.include_router(retirement_scenarios.router, prefix="/retirement")
+# retirement_scenarios is included by retirement.router
 app.include_router(scenarios.router)
-app.include_router(scenarios_calc.router, prefix="/scenarios")
+# scenarios_calc is included by scenarios.router
 app.include_router(equity_comp.router)
 app.include_router(household.router)
-app.include_router(household_optimization.router, prefix="/household")
+# household_optimization is included by household.router
 app.include_router(family_members.router)
 app.include_router(life_events.router)
 app.include_router(insurance.router)
@@ -268,6 +307,39 @@ app.include_router(income.router)
 app.include_router(rules.router)
 app.include_router(user_context.router)
 app.include_router(valuations.router)
+app.include_router(auth_routes.router)
+app.include_router(demo.router)
+app.include_router(error_reports.router)
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc: Exception):
+    """Log unhandled exceptions to error_logs table for visibility."""
+    import traceback
+    from starlette.responses import JSONResponse
+
+    logger.error(f"Unhandled exception on {request.method} {request.url.path}: {exc}")
+
+    try:
+        from api.database import AsyncSessionLocal
+        from pipeline.security.error_reporting import submit_error_report
+        async with AsyncSessionLocal() as session:
+            async with session.begin():
+                await submit_error_report(
+                    session,
+                    error_type="backend_unhandled",
+                    message=str(exc),
+                    stack_trace=traceback.format_exc(),
+                    source_url=str(request.url.path),
+                    context={"method": request.method},
+                )
+    except Exception as log_err:
+        logger.warning(f"Failed to log error to DB (non-fatal): {log_err}")
+
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error"},
+    )
 
 
 @app.get("/health")

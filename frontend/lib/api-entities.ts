@@ -8,7 +8,7 @@ import type {
   VendorEntityRule,
   VendorEntityRuleCreateIn,
 } from "@/types/api";
-import { request, BASE } from "./api-client";
+import { request, getBase } from "./api-client";
 
 export function getBusinessEntities(includeInactive = false): Promise<BusinessEntity[]> {
   return request(`/entities?include_inactive=${includeInactive}`);
@@ -90,5 +90,5 @@ export function getEntityTransactions(entityId: number, year: number, month?: nu
 export function getEntityExpenseCsvUrl(entityId: number, year: number, month?: number): string {
   const path = `/entities/${entityId}/expenses/csv?year=${year}`;
   const full = month ? `${path}&month=${month}` : path;
-  return `${BASE}${full}`;
+  return `${getBase()}${full}`;
 }

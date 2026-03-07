@@ -41,14 +41,14 @@ export default function EstimatedPaymentsSim() {
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-sm">
             <caption className="sr-only">Quarterly payments</caption>
-            <thead className="bg-stone-50">
+            <thead className="bg-surface">
               <tr>
-                <th className="text-left px-3 py-2 text-xs font-semibold text-stone-500">Quarter</th>
-                <th className="text-left px-3 py-2 text-xs font-semibold text-stone-500">Due Date</th>
-                <th className="text-right px-3 py-2 text-xs font-semibold text-stone-500">Amount</th>
+                <th className="text-left px-3 py-2 text-xs font-semibold text-text-muted">Quarter</th>
+                <th className="text-left px-3 py-2 text-xs font-semibold text-text-muted">Due Date</th>
+                <th className="text-right px-3 py-2 text-xs font-semibold text-text-muted">Amount</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-stone-100">
+            <tbody className="divide-y divide-border">
               {result.quarterly_payments.map((q) => (
                 <tr key={q.quarter}>
                   <td className="px-3 py-2 font-medium">Q{q.quarter}</td>

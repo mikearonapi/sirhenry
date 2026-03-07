@@ -3,11 +3,11 @@ import { useCallback, useEffect, useState } from "react";
 import {
   Bell, Plus, Check, Clock, AlertCircle, Loader2, Calendar, X, Pencil,
   User, ToggleLeft, ToggleRight, Link2, Database, Download, Trash2,
-  RefreshCw, Building2, Settings,
+  RefreshCw, Building2, Settings, Bug, ChevronDown, ChevronRight,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
-import { getReminders, createReminder, updateReminder, seedTaxDeadlines, getPlaidItems, syncPlaid } from "@/lib/api";
-import type { Reminder, PlaidItem } from "@/types/api";
+import { getReminders, createReminder, updateReminder, seedTaxDeadlines, getPlaidItems, syncPlaid, getErrorReports, updateErrorReportStatus } from "@/lib/api";
+import type { Reminder, PlaidItem, ErrorReportOut } from "@/types/api";
 import { getErrorMessage } from "@/lib/errors";
 
 const TYPE_COLORS: Record<string, string> = {
@@ -15,7 +15,7 @@ const TYPE_COLORS: Record<string, string> = {
   bill: "bg-orange-50 text-orange-700 border-orange-100",
   subscription: "bg-blue-50 text-blue-700 border-blue-100",
   goal: "bg-purple-50 text-purple-700 border-purple-100",
-  custom: "bg-stone-50 text-stone-700 border-stone-100",
+  custom: "bg-surface text-text-secondary border-card-border",
 };
 
 const TYPE_ICONS: Record<string, React.ReactNode> = {
@@ -28,6 +28,7 @@ const TYPE_ICONS: Record<string, React.ReactNode> = {
 
 const SETTINGS_TABS = [
   { id: "reminders", label: "Reminders", icon: Bell },
+  { id: "errors", label: "Error Logs", icon: Bug },
   { id: "profile", label: "Profile", icon: User },
   { id: "notifications", label: "Notifications", icon: ToggleLeft },
   { id: "integrations", label: "Integrations", icon: Link2 },
@@ -87,6 +88,13 @@ export default function AdminPage() {
   const [plaidLoading, setPlaidLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
+  // Error logs state
+  const [errorLogs, setErrorLogs] = useState<ErrorReportOut[]>([]);
+  const [errorLogsTotal, setErrorLogsTotal] = useState(0);
+  const [errorLogsLoading, setErrorLogsLoading] = useState(false);
+  const [errorStatusFilter, setErrorStatusFilter] = useState("");
+  const [expandedError, setExpandedError] = useState<number | null>(null);
+
   // Data management
   const [exporting, setExporting] = useState(false);
 
@@ -100,6 +108,27 @@ export default function AdminPage() {
   }, [filterType]);
 
   useEffect(() => { load(); }, [load]);
+
+  const loadErrorLogs = useCallback(async () => {
+    setErrorLogsLoading(true);
+    try {
+      const data = await getErrorReports({ status: errorStatusFilter || undefined, limit: 50 });
+      setErrorLogs(data.items);
+      setErrorLogsTotal(data.total);
+    } catch (e: unknown) { setError(getErrorMessage(e)); }
+    setErrorLogsLoading(false);
+  }, [errorStatusFilter]);
+
+  useEffect(() => {
+    if (activeTab === "errors") loadErrorLogs();
+  }, [activeTab, loadErrorLogs]);
+
+  async function handleUpdateErrorStatus(id: number, newStatus: string) {
+    try {
+      await updateErrorReportStatus(id, newStatus);
+      loadErrorLogs();
+    } catch (e: unknown) { setError(getErrorMessage(e)); }
+  }
 
   useEffect(() => {
     if (activeTab === "integrations" && plaidItems.length === 0) {
@@ -256,15 +285,15 @@ export default function AdminPage() {
           </div>
           <div className="flex items-center gap-1 shrink-0">
             <button onClick={() => openEditReminder(r)} title="Edit reminder" aria-label="Edit reminder"
-              className="p-1.5 rounded-lg hover:bg-white/50 transition-colors">
+              className="p-1.5 rounded-lg hover:bg-card/50 transition-colors">
               <Pencil size={13} />
             </button>
             <button onClick={() => handleComplete(r.id)} title="Mark complete" aria-label="Mark complete"
-              className="p-1.5 rounded-lg hover:bg-white/50 transition-colors">
+              className="p-1.5 rounded-lg hover:bg-card/50 transition-colors">
               <Check size={13} />
             </button>
             <button onClick={() => handleDismiss(r.id)} title="Dismiss" aria-label="Dismiss reminder"
-              className="p-1.5 rounded-lg hover:bg-white/50 transition-colors">
+              className="p-1.5 rounded-lg hover:bg-card/50 transition-colors">
               <X size={13} />
             </button>
           </div>
@@ -277,18 +306,18 @@ export default function AdminPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-stone-900">Settings</h1>
-          <p className="text-stone-500 text-sm mt-0.5">App configuration, reminders, integrations, and preferences</p>
+          <h1 className="text-2xl font-bold text-text-primary">Settings</h1>
+          <p className="text-text-secondary text-sm mt-0.5">App configuration, reminders, integrations, and preferences</p>
         </div>
         {activeTab === "reminders" && (
           <div className="flex items-center gap-3">
             <button onClick={handleSeedAll} disabled={seeding}
-              className="flex items-center gap-2 text-sm text-stone-600 border border-stone-200 rounded-lg px-4 py-2 hover:bg-stone-50 disabled:opacity-60">
+              className="flex items-center gap-2 text-sm text-text-secondary border border-border rounded-lg px-4 py-2 hover:bg-surface disabled:opacity-60">
               {seeding ? <Loader2 size={13} className="animate-spin" /> : <Calendar size={13} />}
               Seed All Reminders
             </button>
             <button onClick={() => { if (showAdd) resetReminderForm(); else setShowAdd(true); }}
-              className="flex items-center gap-2 bg-[#16A34A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#15803D]">
+              className="flex items-center gap-2 bg-accent text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-hover">
               {showAdd ? <X size={14} /> : <Plus size={14} />} {showAdd ? "Cancel" : "Add Reminder"}
             </button>
           </div>
@@ -296,15 +325,15 @@ export default function AdminPage() {
       </div>
 
       {/* Tab navigation */}
-      <div className="flex gap-1 border-b border-stone-200 overflow-x-auto">
+      <div className="flex gap-1 border-b border-border overflow-x-auto">
         {SETTINGS_TABS.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             onClick={() => setActiveTab(id)}
             className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
               activeTab === id
-                ? "border-[#16A34A] text-[#16A34A]"
-                : "border-transparent text-stone-500 hover:text-stone-700 hover:border-stone-300"
+                ? "border-accent text-accent"
+                : "border-transparent text-text-secondary hover:text-text-secondary hover:border-border"
             }`}
           >
             <Icon size={15} />
@@ -326,25 +355,25 @@ export default function AdminPage() {
 
       {/* Add form */}
       {showAdd && (
-        <div className="bg-white rounded-xl border border-stone-100 shadow-sm p-5">
-          <h2 className="font-semibold text-stone-800 mb-4">
+        <div className="bg-card rounded-xl border border-card-border shadow-sm p-5">
+          <h2 className="font-semibold text-text-primary mb-4">
             {editingReminder ? "Edit Reminder" : "New Reminder"}
           </h2>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="col-span-2">
-              <label className="block text-xs text-stone-500 mb-1">Title</label>
+              <label className="block text-xs text-text-secondary mb-1">Title</label>
               <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Pay credit card bill"
-                className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A]" />
+                className="w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent" />
             </div>
             <div>
-              <label className="block text-xs text-stone-500 mb-1">Due Date</label>
+              <label className="block text-xs text-text-secondary mb-1">Due Date</label>
               <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
-                className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A]" />
+                className="w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent" />
             </div>
             <div>
-              <label className="block text-xs text-stone-500 mb-1">Type</label>
+              <label className="block text-xs text-text-secondary mb-1">Type</label>
               <select value={reminderType} onChange={(e) => setReminderType(e.target.value as typeof reminderType)}
-                className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A]">
+                className="w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent">
                 <option value="bill">Bill</option>
                 <option value="tax">Tax</option>
                 <option value="subscription">Subscription</option>
@@ -353,18 +382,18 @@ export default function AdminPage() {
               </select>
             </div>
             <div>
-              <label className="block text-xs text-stone-500 mb-1">Amount (optional)</label>
+              <label className="block text-xs text-text-secondary mb-1">Amount (optional)</label>
               <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00"
-                className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A]" />
+                className="w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent" />
             </div>
           </div>
           <div className="flex gap-3 mt-4">
             <button onClick={handleAdd} disabled={saving || !title || !dueDate}
-              className="flex items-center gap-2 bg-[#16A34A] text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-[#15803D] disabled:opacity-60">
+              className="flex items-center gap-2 bg-accent text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-60">
               {saving ? <Loader2 size={13} className="animate-spin" /> : null}
               {editingReminder ? "Update Reminder" : "Add Reminder"}
             </button>
-            <button onClick={resetReminderForm} className="text-sm text-stone-500 hover:text-stone-700 px-3">Cancel</button>
+            <button onClick={resetReminderForm} className="text-sm text-text-secondary hover:text-text-secondary px-3">Cancel</button>
           </div>
         </div>
       )}
@@ -373,14 +402,14 @@ export default function AdminPage() {
       <div className="flex gap-2">
         {["", "tax", "bill", "subscription", "goal", "custom"].map((t) => (
           <button key={t} onClick={() => setFilterType(t)}
-            className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${filterType === t ? "border-[#16A34A] bg-[#DCFCE7] text-[#16A34A]" : "border-stone-200 text-stone-500 hover:border-stone-300"}`}>
+            className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${filterType === t ? "border-accent bg-accent-light text-accent" : "border-border text-text-secondary hover:border-border"}`}>
             {t === "" ? "All" : t.charAt(0).toUpperCase() + t.slice(1)}
           </button>
         ))}
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-12"><Loader2 className="animate-spin text-stone-300" size={24} /></div>
+        <div className="flex justify-center py-12"><Loader2 className="animate-spin text-text-muted" size={24} /></div>
       ) : (
         <>
           {/* Overdue */}
@@ -410,7 +439,7 @@ export default function AdminPage() {
           {/* Later */}
           {later.length > 0 && (
             <div>
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-stone-400 mb-3">
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-text-muted mb-3">
                 Upcoming ({later.length})
               </h2>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
@@ -420,12 +449,12 @@ export default function AdminPage() {
           )}
 
           {reminders.length === 0 && (
-            <div className="bg-white rounded-xl border border-dashed border-stone-200 p-12 text-center">
-              <Bell className="mx-auto text-stone-200 mb-4" size={40} />
-              <h3 className="font-semibold text-stone-700 mb-2">No reminders yet</h3>
-              <p className="text-stone-400 text-sm mb-4">Add reminders for bills, tax deadlines, and financial events.</p>
+            <div className="bg-card rounded-xl border border-dashed border-border p-12 text-center">
+              <Bell className="mx-auto text-text-muted mb-4" size={40} />
+              <h3 className="font-semibold text-text-secondary mb-2">No reminders yet</h3>
+              <p className="text-text-muted text-sm mb-4">Add reminders for bills, tax deadlines, and financial events.</p>
               <button onClick={handleSeedAll}
-                className="bg-[#16A34A] text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-[#15803D]">
+                className="bg-accent text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-accent-hover">
                 Seed All Reminders
               </button>
             </div>
@@ -435,31 +464,123 @@ export default function AdminPage() {
         </div>
       )}
 
+      {/* ── ERROR LOGS TAB ── */}
+      {activeTab === "errors" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-text-primary">Error Reports</h3>
+              <p className="text-xs text-text-secondary mt-0.5">{errorLogsTotal} total error{errorLogsTotal !== 1 ? "s" : ""} logged</p>
+            </div>
+            <div className="flex gap-2">
+              {["", "new", "acknowledged", "resolved"].map((s) => (
+                <button key={s} onClick={() => setErrorStatusFilter(s)}
+                  className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${errorStatusFilter === s ? "border-accent bg-accent-light text-accent" : "border-border text-text-secondary hover:border-border"}`}>
+                  {s === "" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+          {errorLogsLoading ? (
+            <div className="flex justify-center py-12"><Loader2 className="animate-spin text-text-muted" size={24} /></div>
+          ) : errorLogs.length === 0 ? (
+            <div className="bg-card rounded-xl border border-dashed border-border p-12 text-center">
+              <Bug className="mx-auto text-text-muted mb-4" size={40} />
+              <h3 className="font-semibold text-text-secondary mb-2">No error logs</h3>
+              <p className="text-text-muted text-sm">Error reports submitted by users will appear here.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {errorLogs.map((el) => {
+                const isExpanded = expandedError === el.id;
+                const statusColor = el.status === "new" ? "bg-red-50 text-red-600" : el.status === "acknowledged" ? "bg-amber-50 text-amber-600" : "bg-green-50 text-green-600";
+                return (
+                  <div key={el.id} className="bg-card border border-card-border rounded-xl overflow-hidden">
+                    <button onClick={() => setExpandedError(isExpanded ? null : el.id)}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-surface/50 transition-colors">
+                      {isExpanded ? <ChevronDown size={14} className="text-text-muted shrink-0" /> : <ChevronRight size={14} className="text-text-muted shrink-0" />}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-text-primary truncate">{el.message || "No message"}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-xs text-text-muted">{new Date(el.timestamp).toLocaleString()}</span>
+                          <span className="text-xs text-text-muted">{el.error_type}</span>
+                          {el.source_url && <span className="text-xs text-text-muted truncate max-w-[200px]">{el.source_url}</span>}
+                        </div>
+                      </div>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${statusColor}`}>{el.status}</span>
+                    </button>
+                    {isExpanded && (
+                      <div className="px-4 pb-4 border-t border-card-border pt-3 space-y-3">
+                        {el.stack_trace && (
+                          <div>
+                            <p className="text-xs font-medium text-text-secondary mb-1">Stack Trace</p>
+                            <pre className="text-xs text-text-muted bg-surface rounded-lg p-3 overflow-x-auto max-h-48 whitespace-pre-wrap font-mono">{el.stack_trace}</pre>
+                          </div>
+                        )}
+                        {el.user_note && (
+                          <div>
+                            <p className="text-xs font-medium text-text-secondary mb-1">User Note</p>
+                            <p className="text-xs text-text-muted">{el.user_note}</p>
+                          </div>
+                        )}
+                        {el.user_agent && (
+                          <p className="text-xs text-text-muted">UA: {el.user_agent}</p>
+                        )}
+                        {el.context_json && (
+                          <div>
+                            <p className="text-xs font-medium text-text-secondary mb-1">Context</p>
+                            <pre className="text-xs text-text-muted bg-surface rounded-lg p-3 overflow-x-auto font-mono">{el.context_json}</pre>
+                          </div>
+                        )}
+                        <div className="flex gap-2 pt-1">
+                          {el.status !== "acknowledged" && (
+                            <button onClick={() => handleUpdateErrorStatus(el.id, "acknowledged")}
+                              className="text-xs px-3 py-1.5 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors">
+                              Acknowledge
+                            </button>
+                          )}
+                          {el.status !== "resolved" && (
+                            <button onClick={() => handleUpdateErrorStatus(el.id, "resolved")}
+                              className="text-xs px-3 py-1.5 rounded-lg bg-green-50 text-green-700 hover:bg-green-100 transition-colors">
+                              Resolve
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── PROFILE TAB ── */}
       {activeTab === "profile" && (
         <div className="max-w-lg space-y-4">
-          <p className="text-xs text-stone-500">These preferences are stored locally on this device.</p>
+          <p className="text-xs text-text-secondary">These preferences are stored locally on this device.</p>
           <div>
-            <label className="text-xs text-stone-500">Your Name</label>
+            <label className="text-xs text-text-secondary">Your Name</label>
             <input type="text" value={prefName} onChange={(e) => setPrefName(e.target.value)}
-              placeholder="e.g. Mike" className="mt-1 w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20" />
+              placeholder="e.g. Mike" className="mt-1 w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20" />
           </div>
           <div>
-            <label className="text-xs text-stone-500">Active Tax Year</label>
+            <label className="text-xs text-text-secondary">Active Tax Year</label>
             <input type="number" value={prefTaxYear} onChange={(e) => setPrefTaxYear(Number(e.target.value))}
-              className="mt-1 w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20" />
+              className="mt-1 w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20" />
           </div>
           <div>
-            <label className="text-xs text-stone-500">Base Currency</label>
+            <label className="text-xs text-text-secondary">Base Currency</label>
             <select value={prefCurrency} onChange={(e) => setPrefCurrency(e.target.value)}
-              className="mt-1 w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20">
+              className="mt-1 w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20">
               <option value="USD">USD — US Dollar</option>
               <option value="EUR">EUR — Euro</option>
               <option value="GBP">GBP — British Pound</option>
               <option value="CAD">CAD — Canadian Dollar</option>
             </select>
           </div>
-          <button onClick={saveProfile} className="flex items-center gap-2 bg-[#16A34A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#15803D]">
+          <button onClick={saveProfile} className="flex items-center gap-2 bg-accent text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-hover">
             {prefSaved ? <Check size={14} /> : null} {prefSaved ? "Saved!" : "Save Profile"}
           </button>
         </div>
@@ -468,7 +589,7 @@ export default function AdminPage() {
       {/* ── NOTIFICATIONS TAB ── */}
       {activeTab === "notifications" && (
         <div className="max-w-lg space-y-5">
-          <p className="text-xs text-stone-500">Notification preferences are stored locally. Actual alerts appear in the Reminders section.</p>
+          <p className="text-xs text-text-secondary">Notification preferences are stored locally. Actual alerts appear in the Reminders section.</p>
           {([
             { label: "Budget overage alerts", sub: "Notify when spending exceeds budget", val: notifBudgetAlert, set: setNotifBudgetAlert },
             { label: "Goal milestone alerts", sub: "Notify when you reach a goal milestone", val: notifGoalMilestone, set: setNotifGoalMilestone },
@@ -477,23 +598,23 @@ export default function AdminPage() {
           ] as { label: string; sub: string; val: boolean; set: (v: boolean) => void }[]).map(({ label, sub, val, set }) => (
             <div key={label} className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-stone-800">{label}</p>
-                <p className="text-xs text-stone-500">{sub}</p>
+                <p className="text-sm font-medium text-text-primary">{label}</p>
+                <p className="text-xs text-text-secondary">{sub}</p>
               </div>
-              <button onClick={() => set(!val)} className={`transition-colors ${val ? "text-[#16A34A]" : "text-stone-300"}`}>
+              <button onClick={() => set(!val)} className={`transition-colors ${val ? "text-accent" : "text-text-muted"}`}>
                 {val ? <ToggleRight size={28} /> : <ToggleLeft size={28} />}
               </button>
             </div>
           ))}
           <div>
-            <label className="text-xs text-stone-500">Budget alert threshold (%)</label>
+            <label className="text-xs text-text-secondary">Budget alert threshold (%)</label>
             <div className="flex items-center gap-3 mt-1">
               <input type="number" value={notifBudgetThreshold} onChange={(e) => setNotifBudgetThreshold(Number(e.target.value))}
-                className="w-24 text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20" />
-              <span className="text-xs text-stone-500">Alert when budget is {notifBudgetThreshold}% spent</span>
+                className="w-24 text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20" />
+              <span className="text-xs text-text-secondary">Alert when budget is {notifBudgetThreshold}% spent</span>
             </div>
           </div>
-          <button onClick={saveNotifications} className="flex items-center gap-2 bg-[#16A34A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#15803D]">
+          <button onClick={saveNotifications} className="flex items-center gap-2 bg-accent text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-hover">
             {notifSaved ? <Check size={14} /> : null} {notifSaved ? "Saved!" : "Save Notifications"}
           </button>
         </div>
@@ -504,31 +625,31 @@ export default function AdminPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-semibold text-stone-900">Plaid Connections</h3>
-              <p className="text-xs text-stone-500 mt-0.5">Bank and investment accounts linked via Plaid</p>
+              <h3 className="text-sm font-semibold text-text-primary">Plaid Connections</h3>
+              <p className="text-xs text-text-secondary mt-0.5">Bank and investment accounts linked via Plaid</p>
             </div>
             <button onClick={handleSyncAll} disabled={syncing}
-              className="flex items-center gap-2 text-sm text-stone-600 border border-stone-200 rounded-lg px-3 py-2 hover:bg-stone-50 disabled:opacity-60">
+              className="flex items-center gap-2 text-sm text-text-secondary border border-border rounded-lg px-3 py-2 hover:bg-surface disabled:opacity-60">
               {syncing ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />} Sync All
             </button>
           </div>
           {plaidLoading ? (
-            <div className="flex items-center gap-2 text-stone-400 text-sm py-4"><Loader2 size={16} className="animate-spin" /> Loading connections...</div>
+            <div className="flex items-center gap-2 text-text-muted text-sm py-4"><Loader2 size={16} className="animate-spin" /> Loading connections...</div>
           ) : plaidItems.length === 0 ? (
-            <div className="bg-stone-50 border border-dashed border-stone-200 rounded-xl p-8 text-center">
-              <Building2 size={28} className="mx-auto text-stone-300 mb-3" />
-              <p className="text-sm text-stone-500">No Plaid connections yet.</p>
-              <p className="text-xs text-stone-400 mt-1">Connect bank accounts from the <a href="/accounts" className="text-[#16A34A] hover:underline">Accounts</a> page.</p>
+            <div className="bg-surface border border-dashed border-border rounded-xl p-8 text-center">
+              <Building2 size={28} className="mx-auto text-text-muted mb-3" />
+              <p className="text-sm text-text-secondary">No Plaid connections yet.</p>
+              <p className="text-xs text-text-muted mt-1">Connect bank accounts from the <a href="/accounts" className="text-accent hover:underline">Accounts</a> page.</p>
             </div>
           ) : (
             <div className="space-y-3">
               {plaidItems.map((item) => (
-                <div key={item.id} className="flex items-center justify-between bg-white border border-stone-100 rounded-xl px-4 py-3">
+                <div key={item.id} className="flex items-center justify-between bg-card border border-card-border rounded-xl px-4 py-3">
                   <div className="flex items-center gap-3">
-                    <Building2 size={18} className="text-stone-400" />
+                    <Building2 size={18} className="text-text-muted" />
                     <div>
-                      <p className="text-sm font-medium text-stone-900">{item.institution_name || "Unknown Institution"}</p>
-                      <p className="text-xs text-stone-400">
+                      <p className="text-sm font-medium text-text-primary">{item.institution_name || "Unknown Institution"}</p>
+                      <p className="text-xs text-text-muted">
                         {item.account_count} account{item.account_count !== 1 ? "s" : ""}
                         {item.last_synced_at ? ` · Last synced ${new Date(item.last_synced_at).toLocaleDateString()}` : ""}
                       </p>
@@ -543,7 +664,7 @@ export default function AdminPage() {
                   </span>
                 </div>
               ))}
-              <p className="text-xs text-stone-400">To add or remove connections, go to <a href="/accounts" className="text-[#16A34A] hover:underline">Accounts</a>.</p>
+              <p className="text-xs text-text-muted">To add or remove connections, go to <a href="/accounts" className="text-accent hover:underline">Accounts</a>.</p>
             </div>
           )}
         </div>
@@ -552,11 +673,11 @@ export default function AdminPage() {
       {/* ── DISPLAY TAB ── */}
       {activeTab === "display" && (
         <div className="max-w-lg space-y-4">
-          <p className="text-xs text-stone-500">Display preferences are stored locally on this device.</p>
+          <p className="text-xs text-text-secondary">Display preferences are stored locally on this device.</p>
           <div>
-            <label className="text-xs text-stone-500">Date Format</label>
+            <label className="text-xs text-text-secondary">Date Format</label>
             <select value={dispDateFormat} onChange={(e) => setDispDateFormat(e.target.value)}
-              className="mt-1 w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20">
+              className="mt-1 w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20">
               <option value="MM/DD/YYYY">MM/DD/YYYY (US)</option>
               <option value="DD/MM/YYYY">DD/MM/YYYY (International)</option>
               <option value="YYYY-MM-DD">YYYY-MM-DD (ISO)</option>
@@ -564,14 +685,14 @@ export default function AdminPage() {
           </div>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-stone-800">Show cents in currency</p>
-              <p className="text-xs text-stone-500">Display $1,234.56 vs $1,235</p>
+              <p className="text-sm font-medium text-text-primary">Show cents in currency</p>
+              <p className="text-xs text-text-secondary">Display $1,234.56 vs $1,235</p>
             </div>
-            <button onClick={() => setDispShowCents(!dispShowCents)} className={`transition-colors ${dispShowCents ? "text-[#16A34A]" : "text-stone-300"}`}>
+            <button onClick={() => setDispShowCents(!dispShowCents)} className={`transition-colors ${dispShowCents ? "text-accent" : "text-text-muted"}`}>
               {dispShowCents ? <ToggleRight size={28} /> : <ToggleLeft size={28} />}
             </button>
           </div>
-          <button onClick={saveDisplay} className="flex items-center gap-2 bg-[#16A34A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#15803D]">
+          <button onClick={saveDisplay} className="flex items-center gap-2 bg-accent text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-hover">
             {dispSaved ? <Check size={14} /> : null} {dispSaved ? "Saved!" : "Save Preferences"}
           </button>
         </div>
@@ -580,26 +701,26 @@ export default function AdminPage() {
       {/* ── DATA MANAGEMENT TAB ── */}
       {activeTab === "data" && (
         <div className="space-y-4 max-w-lg">
-          <div className="bg-white border border-stone-100 rounded-xl p-4">
+          <div className="bg-card border border-card-border rounded-xl p-4">
             <div className="flex items-start gap-3">
-              <Download size={18} className="text-stone-400 mt-0.5 shrink-0" />
+              <Download size={18} className="text-text-muted mt-0.5 shrink-0" />
               <div className="flex-1">
-                <p className="text-sm font-semibold text-stone-900">Export Data</p>
-                <p className="text-xs text-stone-500 mt-0.5">Download your reminders and connection metadata as JSON for backup or migration.</p>
+                <p className="text-sm font-semibold text-text-primary">Export Data</p>
+                <p className="text-xs text-text-secondary mt-0.5">Download your reminders and connection metadata as JSON for backup or migration.</p>
                 <button onClick={handleExportData} disabled={exporting}
-                  className="mt-3 flex items-center gap-2 bg-stone-800 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-stone-700 disabled:opacity-60">
+                  className="mt-3 flex items-center gap-2 bg-text-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-text-secondary disabled:opacity-60">
                   {exporting ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
                   {exporting ? "Exporting..." : "Export JSON"}
                 </button>
               </div>
             </div>
           </div>
-          <div className="bg-white border border-stone-100 rounded-xl p-4">
+          <div className="bg-card border border-card-border rounded-xl p-4">
             <div className="flex items-start gap-3">
               <Trash2 size={18} className="text-red-400 mt-0.5 shrink-0" />
               <div className="flex-1">
-                <p className="text-sm font-semibold text-stone-900">Clear Local Preferences</p>
-                <p className="text-xs text-stone-500 mt-0.5">Remove all locally stored settings (profile, display, notification preferences). Does not affect your financial data.</p>
+                <p className="text-sm font-semibold text-text-primary">Clear Local Preferences</p>
+                <p className="text-xs text-text-secondary mt-0.5">Remove all locally stored settings (profile, display, notification preferences). Does not affect your financial data.</p>
                 <button
                   onClick={() => {
                     if (!confirm("Clear all local preferences? This only affects display and notification settings.")) return;

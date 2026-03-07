@@ -15,7 +15,7 @@ interface Props {
 
 function varianceColor(variance: number, section: BudgetSection): string {
   if (section === "expense") return variance >= 0 ? "text-green-600" : "text-red-600";
-  return variance <= 0 ? "text-green-600" : "text-stone-500";
+  return variance <= 0 ? "text-green-600" : "text-text-secondary";
 }
 
 export default function BudgetCategoryRow({ item, section, onEdit, onDelete }: Props) {
@@ -56,17 +56,17 @@ export default function BudgetCategoryRow({ item, section, onEdit, onDelete }: P
   const color = varianceColor(item.variance, section);
 
   return (
-    <div className="flex items-center px-4 py-2.5 hover:bg-stone-50/50 group">
+    <div className="flex items-center px-4 py-2.5 hover:bg-surface/50 group">
       <div className="flex-1 min-w-0 pl-7">
-        <p className="text-sm text-stone-700">{item.category}</p>
+        <p className="text-sm text-text-secondary">{item.category}</p>
         {item.segment === "business" && (
-          <span className="text-[10px] text-blue-600 font-medium">BUSINESS</span>
+          <span className="text-xs text-blue-600 font-medium">BUSINESS</span>
         )}
       </div>
       <div className="w-24 text-right">
         {editing ? (
           <div className="flex items-center gap-1 justify-end">
-            <span className="text-xs text-stone-400">$</span>
+            <span className="text-xs text-text-muted">$</span>
             <input
               ref={inputRef}
               type="number"
@@ -76,20 +76,20 @@ export default function BudgetCategoryRow({ item, section, onEdit, onDelete }: P
               onBlur={handleSave}
               min="0"
               step="10"
-              className="w-16 text-sm text-right border border-[#16A34A] rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-[#16A34A]"
+              className="w-16 text-sm text-right border border-accent rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-accent"
             />
           </div>
         ) : (
           <button
             onClick={handleStartEdit}
-            className="text-sm tabular-nums text-stone-700 hover:text-[#16A34A] hover:underline cursor-text"
+            className="text-sm tabular-nums text-text-secondary hover:text-accent hover:underline cursor-text"
           >
             {formatCurrency(item.budget_amount)}
           </button>
         )}
       </div>
       <div className="w-24 text-right">
-        <span className="text-sm tabular-nums text-stone-500">{formatCurrency(item.actual_amount)}</span>
+        <span className="text-sm tabular-nums text-text-secondary">{formatCurrency(item.actual_amount)}</span>
       </div>
       <div className="w-28 text-right pl-2">
         <span className={`text-sm font-semibold tabular-nums ${color}`}>
@@ -100,7 +100,7 @@ export default function BudgetCategoryRow({ item, section, onEdit, onDelete }: P
         <button
           onClick={() => onDelete(item.id)}
           aria-label="Delete budget line"
-          className="text-xs text-stone-300 hover:text-red-500 opacity-0 group-hover:opacity-100"
+          className="text-xs text-text-muted hover:text-red-500 opacity-0 group-hover:opacity-100"
         >
           <X size={14} />
         </button>

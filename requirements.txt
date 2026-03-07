@@ -26,6 +26,9 @@ plaid-python==29.0.0
 # Market Data
 yfinance==0.2.48
 
+# Authentication
+PyJWT[crypto]>=2.8
+
 # Encryption
 cryptography==44.0.0
 
@@ -38,3 +41,4 @@ httpx==0.28.1
 # Testing
 pytest==8.3.4
 pytest-asyncio==0.24.0
+pytest-cov==6.1.1

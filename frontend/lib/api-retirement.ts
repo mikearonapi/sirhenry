@@ -1,15 +1,15 @@
-import type { BudgetSnapshot, RetirementProfile, RetirementResults, RetirementBudget } from "@/types/api";
+import type { BudgetSnapshot, RetirementProfile, RetirementProfileInput, RetirementResults, RetirementBudget } from "@/types/api";
 import { request } from "./api-client";
 
 export function getRetirementProfiles(): Promise<RetirementProfile[]> {
   return request("/retirement/profiles");
 }
 
-export function createRetirementProfile(body: Omit<RetirementProfile, "id" | "target_nest_egg" | "projected_nest_egg_at_retirement" | "monthly_savings_needed" | "retirement_readiness_pct" | "years_money_will_last" | "projected_monthly_retirement_income" | "savings_gap" | "fire_number" | "coast_fire_number" | "last_computed_at">): Promise<RetirementProfile> {
+export function createRetirementProfile(body: RetirementProfileInput): Promise<RetirementProfile> {
   return request("/retirement/profiles", { method: "POST", body: JSON.stringify(body) });
 }
 
-export function updateRetirementProfile(id: number, body: Record<string, unknown>): Promise<RetirementProfile> {
+export function updateRetirementProfile(id: number, body: RetirementProfileInput): Promise<RetirementProfile> {
   return request(`/retirement/profiles/${id}`, { method: "PATCH", body: JSON.stringify(body) });
 }
 
@@ -17,7 +17,7 @@ export function deleteRetirementProfile(id: number): Promise<void> {
   return request(`/retirement/profiles/${id}`, { method: "DELETE" });
 }
 
-export function calculateRetirement(body: Record<string, unknown>): Promise<RetirementResults> {
+export function calculateRetirement(body: RetirementProfileInput): Promise<RetirementResults> {
   return request("/retirement/calculate", { method: "POST", body: JSON.stringify(body) });
 }
 

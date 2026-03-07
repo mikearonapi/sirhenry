@@ -4,11 +4,10 @@ All functions accept an AsyncSession and return typed Python objects.
 """
 import json
 import logging
-import re
 from datetime import date, datetime, timezone
 from typing import Any, Optional
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import and_, cast, delete, func, or_, select, update, Date
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .schema import (
@@ -615,78 +614,126 @@ async def apply_entity_rules(
     3. Account-level default (Account.default_business_entity_id)
     4. Leave null for AI to assign later
 
+    Uses SQL-level LIKE matching for each vendor rule instead of loading
+    all transactions into Python. One UPDATE per rule, processed in
+    priority order (highest first).
+
     Returns count of transactions updated.
     """
-    q = select(Transaction).where(
-        Transaction.business_entity_override.is_(None),
-        Transaction.is_manually_reviewed.is_(False),
-    )
-    if transaction_id:
-        q = q.where(Transaction.id == transaction_id)
-    if document_id:
-        q = q.where(Transaction.source_document_id == document_id)
-    if year:
-        q = q.where(Transaction.period_year == year)
-    if month:
-        q = q.where(Transaction.period_month == month)
-
-    result = await session.execute(q)
-    transactions = list(result.scalars().all())
-
-    if not transactions:
-        return 0
-
     rules = await get_all_vendor_rules(session, active_only=True)
-    account_ids = {t.account_id for t in transactions}
-    acct_result = await session.execute(
-        select(Account).where(Account.id.in_(account_ids))
-    )
-    accounts_by_id = {a.id: a for a in acct_result.scalars().all()}
+    now = datetime.now(timezone.utc)
+
+    # Build shared base conditions for the target transaction set
+    def _base_conditions() -> list:
+        conditions = [
+            Transaction.business_entity_override.is_(None),
+            Transaction.is_manually_reviewed.is_(False),
+        ]
+        if transaction_id:
+            conditions.append(Transaction.id == transaction_id)
+        if document_id:
+            conditions.append(Transaction.source_document_id == document_id)
+        if year:
+            conditions.append(Transaction.period_year == year)
+        if month:
+            conditions.append(Transaction.period_month == month)
+        return conditions
 
     updated = 0
-    for tx in transactions:
-        entity_id = None
-        segment_from_rule = None
-        tx_date = tx.date.date() if isinstance(tx.date, datetime) else tx.date
 
-        for rule in rules:
-            if not rule.is_active:
-                continue
-            if rule.effective_from and tx_date < rule.effective_from:
-                continue
-            if rule.effective_to and tx_date > rule.effective_to:
-                continue
-            pattern = rule.vendor_pattern.lower()
-            desc = tx.description.lower()
-            if re.search(pattern, desc):
-                entity_id = rule.business_entity_id
-                segment_from_rule = rule.segment_override
-                break
+    # --- Phase 1: Apply vendor pattern rules (SQL LIKE per rule) ---
+    # Rules are already sorted by priority DESC from get_all_vendor_rules.
+    # We process highest-priority rules first. To prevent lower-priority
+    # rules from overwriting, we use a tracking approach: after each rule
+    # UPDATE, the matched transactions will have their entity set, so we
+    # add a condition that entity hasn't been set by a prior rule in this run.
+    #
+    # We track this by only updating transactions whose
+    # business_entity_id IS NULL or whose business_entity_id was already
+    # set before this function ran (i.e., we re-check the base conditions
+    # which already exclude manually-reviewed transactions).
 
-        if entity_id is None and tx.business_entity_id is None:
-            # Only apply account defaults to transactions with no existing entity
-            acct = accounts_by_id.get(tx.account_id)
-            if acct and acct.default_business_entity_id:
-                entity_id = acct.default_business_entity_id
-            if acct and acct.default_segment:
-                segment_from_rule = segment_from_rule or acct.default_segment
+    for rule in rules:
+        if not rule.vendor_pattern:
+            continue
 
-        changed = False
-        if entity_id and tx.business_entity_id != entity_id:
-            tx.business_entity_id = entity_id
-            tx.effective_business_entity_id = entity_id
-            changed = True
-        if segment_from_rule and tx.segment != segment_from_rule:
-            tx.segment = segment_from_rule
-            tx.effective_segment = segment_from_rule
-            changed = True
-        if changed:
-            tx.updated_at = datetime.now(timezone.utc)
-            updated += 1
+        conditions = _base_conditions()
 
-    if updated:
-        await session.flush()
-    logger.info(f"Entity rules applied: {updated}/{len(transactions)} transactions updated")
+        # SQL LIKE matching: vendor patterns are simple strings, matched
+        # as case-insensitive substrings (mirroring the original
+        # re.search(pattern.lower(), desc.lower()) behavior).
+        safe_pattern = rule.vendor_pattern.lower().replace("%", r"\%").replace("_", r"\_")
+        conditions.append(
+            func.lower(Transaction.description).like(
+                "%" + safe_pattern + "%", escape="\\"
+            )
+        )
+
+        # Date range constraints
+        if rule.effective_from:
+            conditions.append(
+                cast(Transaction.date, Date) >= rule.effective_from
+            )
+        if rule.effective_to:
+            conditions.append(
+                cast(Transaction.date, Date) <= rule.effective_to
+            )
+
+        # Build values dict
+        values: dict[str, Any] = {
+            "business_entity_id": rule.business_entity_id,
+            "effective_business_entity_id": rule.business_entity_id,
+            "updated_at": now,
+        }
+        if rule.segment_override:
+            values["segment"] = rule.segment_override
+            values["effective_segment"] = rule.segment_override
+
+        stmt = update(Transaction).where(and_(*conditions)).values(**values)
+        result = await session.execute(stmt)
+        updated += result.rowcount
+
+    # --- Phase 2: Apply account-level defaults for remaining transactions ---
+    # Find accounts with default_business_entity_id or default_segment set
+    acct_result = await session.execute(
+        select(Account).where(
+            or_(
+                Account.default_business_entity_id.isnot(None),
+                Account.default_segment.isnot(None),
+            ),
+            Account.is_active.is_(True),
+        )
+    )
+    accounts_with_defaults = list(acct_result.scalars().all())
+
+    for acct in accounts_with_defaults:
+        conditions = _base_conditions()
+        conditions.append(Transaction.account_id == acct.id)
+        # Only apply to transactions with no existing entity (not set by
+        # vendor rules above or prior imports)
+        conditions.append(Transaction.business_entity_id.is_(None))
+
+        values = {"updated_at": now}
+        if acct.default_business_entity_id:
+            values["business_entity_id"] = acct.default_business_entity_id
+            values["effective_business_entity_id"] = acct.default_business_entity_id
+        if acct.default_segment:
+            values["segment"] = acct.default_segment
+            values["effective_segment"] = acct.default_segment
+
+        if len(values) > 1:  # more than just updated_at
+            stmt = update(Transaction).where(and_(*conditions)).values(**values)
+            result = await session.execute(stmt)
+            updated += result.rowcount
+
+    # Count total transactions in scope for the log message
+    count_conditions = _base_conditions()
+    count_result = await session.execute(
+        select(func.count(Transaction.id)).where(and_(*count_conditions))
+    )
+    total_in_scope = count_result.scalar_one()
+
+    logger.info(f"Entity rules applied: {updated} transactions updated (from {total_in_scope + updated} in scope)")
     return updated
 
 

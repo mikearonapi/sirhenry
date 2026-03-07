@@ -21,13 +21,13 @@ export function AutoFilledIndicator({ source, className = "" }: AutoFilledIndica
       onMouseEnter={() => setShowTooltip(true)}
       onMouseLeave={() => setShowTooltip(false)}
     >
-      <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-[#DCFCE7] text-[#16A34A]">
+      <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-accent-light text-accent">
         <Sparkles size={10} />
-        <span className="text-[10px] font-medium leading-none">Auto-filled</span>
+        <span className="text-xs font-medium leading-none">Auto-filled</span>
       </span>
 
       {showTooltip && (
-        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1.5 rounded-lg bg-stone-800 text-white text-[11px] whitespace-nowrap shadow-lg z-50">
+        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1.5 rounded-lg bg-stone-800 text-white text-xs whitespace-nowrap shadow-lg z-50">
           From {source}
           <span className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-t-[5px] border-t-stone-800" />
         </span>
@@ -47,7 +47,7 @@ interface MissingDataHintProps {
  */
 export function MissingDataHint({ message, className = "" }: MissingDataHintProps) {
   return (
-    <span className={`inline-flex items-center gap-1 text-[11px] text-stone-400 italic ${className}`}>
+    <span className={`inline-flex items-center gap-1 text-xs text-text-muted italic ${className}`}>
       <Info size={11} />
       {message}
     </span>

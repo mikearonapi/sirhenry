@@ -60,18 +60,18 @@ export default function EditRuleModal({ rule, onSave, onClose }: EditRuleModalPr
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto"
+        className="bg-card rounded-2xl shadow-2xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-start justify-between px-6 pt-5 pb-4 border-b border-stone-100">
+        <div className="flex items-start justify-between px-6 pt-5 pb-4 border-b border-card-border">
           <div>
-            <h2 className="text-lg font-semibold text-stone-900">Edit Rule</h2>
-            <p className="font-mono text-sm text-stone-500 mt-0.5">{rule.merchant_pattern}</p>
+            <h2 className="text-lg font-semibold text-text-primary">Edit Rule</h2>
+            <p className="font-mono text-sm text-text-secondary mt-0.5">{rule.merchant_pattern}</p>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-stone-100 text-stone-400 hover:text-stone-600 transition-colors"
+            className="p-1.5 rounded-lg hover:bg-surface text-text-muted hover:text-text-secondary transition-colors"
           >
             <X size={18} />
           </button>
@@ -81,11 +81,11 @@ export default function EditRuleModal({ rule, onSave, onClose }: EditRuleModalPr
         <div className="px-6 py-5 space-y-4">
           {/* Category */}
           <div>
-            <label className="text-xs text-stone-500 block mb-1">Category</label>
+            <label className="text-xs text-text-secondary block mb-1">Category</label>
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="w-full rounded-lg border border-stone-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#16A34A]/30 focus:border-[#16A34A]"
+              className="w-full rounded-lg border border-border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
             >
               <option value="">— None —</option>
               {categories.map((c) => (
@@ -100,11 +100,11 @@ export default function EditRuleModal({ rule, onSave, onClose }: EditRuleModalPr
 
           {/* Tax Category */}
           <div>
-            <label className="text-xs text-stone-500 block mb-1">Tax Category</label>
+            <label className="text-xs text-text-secondary block mb-1">Tax Category</label>
             <select
               value={taxCategory}
               onChange={(e) => setTaxCategory(e.target.value)}
-              className="w-full rounded-lg border border-stone-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#16A34A]/30 focus:border-[#16A34A]"
+              className="w-full rounded-lg border border-border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
             >
               <option value="">— None —</option>
               {taxCategories.map((c) => (
@@ -118,14 +118,14 @@ export default function EditRuleModal({ rule, onSave, onClose }: EditRuleModalPr
 
           {/* Segment */}
           <div>
-            <label className="text-xs text-stone-500 block mb-1">Segment</label>
+            <label className="text-xs text-text-secondary block mb-1">Segment</label>
             <select
               value={segment}
               onChange={(e) => {
                 setSegment(e.target.value);
                 if (e.target.value !== "business") setEntityId(null);
               }}
-              className="w-full rounded-lg border border-stone-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#16A34A]/30 focus:border-[#16A34A]"
+              className="w-full rounded-lg border border-border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
             >
               {SEGMENTS.map((s) => (
                 <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
@@ -136,11 +136,11 @@ export default function EditRuleModal({ rule, onSave, onClose }: EditRuleModalPr
           {/* Business Entity (only when segment = business) */}
           {segment === "business" && (
             <div>
-              <label className="text-xs text-stone-500 block mb-1">Business Entity</label>
+              <label className="text-xs text-text-secondary block mb-1">Business Entity</label>
               <select
                 value={entityId ?? ""}
                 onChange={(e) => setEntityId(e.target.value ? Number(e.target.value) : null)}
-                className="w-full rounded-lg border border-stone-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#16A34A]/30 focus:border-[#16A34A]"
+                className="w-full rounded-lg border border-border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
               >
                 <option value="">— None —</option>
                 {entities.map((ent) => (
@@ -152,45 +152,45 @@ export default function EditRuleModal({ rule, onSave, onClose }: EditRuleModalPr
 
           {/* Date Range */}
           <div>
-            <label className="text-xs text-stone-500 block mb-1">Date Range (optional)</label>
+            <label className="text-xs text-text-secondary block mb-1">Date Range (optional)</label>
             <div className="grid grid-cols-2 gap-3">
               <input
                 type="date"
                 value={effectiveFrom}
                 onChange={(e) => setEffectiveFrom(e.target.value)}
                 placeholder="From"
-                className="w-full rounded-lg border border-stone-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#16A34A]/30 focus:border-[#16A34A]"
+                className="w-full rounded-lg border border-border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
               />
               <input
                 type="date"
                 value={effectiveTo}
                 onChange={(e) => setEffectiveTo(e.target.value)}
                 placeholder="To"
-                className="w-full rounded-lg border border-stone-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#16A34A]/30 focus:border-[#16A34A]"
+                className="w-full rounded-lg border border-border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
               />
             </div>
-            <p className="text-[10px] text-stone-400 mt-1">Leave blank to apply to all transactions regardless of date</p>
+            <p className="text-xs text-text-muted mt-1">Leave blank to apply to all transactions regardless of date</p>
           </div>
 
           {/* Info line */}
-          <div className="flex items-center gap-4 pt-2 text-[10px] text-stone-400">
+          <div className="flex items-center gap-4 pt-2 text-xs text-text-muted">
             <span>Matched {rule.match_count} transactions</span>
             <span>Source: {rule.source}</span>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-stone-100">
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-card-border">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm text-stone-600 hover:text-stone-800 transition-colors"
+            className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 bg-[#16A34A] text-white text-sm font-medium rounded-lg hover:bg-[#15803D] transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-accent text-white text-sm font-medium rounded-lg hover:bg-accent-hover transition-colors disabled:opacity-50"
           >
             {saving && <Loader2 size={14} className="animate-spin" />}
             Save Changes

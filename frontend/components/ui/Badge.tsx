@@ -8,12 +8,12 @@ interface BadgeProps {
 }
 
 const VARIANT_STYLES: Record<string, string> = {
-  default: "bg-stone-100 text-stone-700",
-  success: "bg-green-50 text-green-700",
-  warning: "bg-amber-50 text-amber-700",
-  danger: "bg-red-50 text-red-700",
-  info: "bg-blue-50 text-blue-700",
-  accent: "bg-[#DCFCE7] text-[#16A34A]",
+  default: "bg-surface text-text-secondary",
+  success: "bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-400",
+  warning: "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
+  danger: "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400",
+  info: "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400",
+  accent: "bg-accent-light text-accent",
 };
 
 export default function Badge({ children, variant = "default", className = "", dot }: BadgeProps) {
@@ -28,8 +28,8 @@ export default function Badge({ children, variant = "default", className = "", d
             : variant === "warning" ? "bg-amber-500"
             : variant === "danger" ? "bg-red-500"
             : variant === "info" ? "bg-blue-500"
-            : variant === "accent" ? "bg-[#16A34A]"
-            : "bg-stone-400"
+            : variant === "accent" ? "bg-accent"
+            : "bg-text-muted"
           }`}
         />
       )}

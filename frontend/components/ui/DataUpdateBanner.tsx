@@ -89,7 +89,7 @@ export function DataUpdateBanner({
             <button
               onClick={handleApply}
               disabled={applying}
-              className="px-3 py-1.5 text-xs font-medium rounded-lg bg-[#16A34A] text-white hover:bg-[#15803d] transition-colors disabled:opacity-50"
+              className="px-3 py-1.5 text-xs font-medium rounded-lg bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50"
             >
               {applying ? (
                 <RefreshCw size={12} className="animate-spin" />
@@ -119,18 +119,18 @@ export function DataUpdateBanner({
                 type="checkbox"
                 checked={selected.has(s.field)}
                 onChange={() => toggleSelection(s.field)}
-                className="w-4 h-4 rounded border-amber-300 text-[#16A34A] focus:ring-[#16A34A]"
+                className="w-4 h-4 rounded border-amber-300 text-accent focus:ring-accent"
               />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-stone-800">{s.label}</p>
-                <p className="text-xs text-stone-500">{s.source}</p>
+                <p className="text-sm font-medium text-text-primary">{s.label}</p>
+                <p className="text-xs text-text-secondary">{s.source}</p>
               </div>
               <div className="flex items-center gap-2 text-sm font-mono">
-                <span className="text-stone-400">
+                <span className="text-text-muted">
                   {formatValue(s.current)}
                 </span>
-                <ArrowRight size={12} className="text-stone-300" />
-                <span className="text-[#16A34A] font-semibold">
+                <ArrowRight size={12} className="text-text-muted" />
+                <span className="text-accent font-semibold">
                   {formatValue(s.suggested)}
                 </span>
               </div>
@@ -140,7 +140,7 @@ export function DataUpdateBanner({
             <button
               onClick={handleApply}
               disabled={applying || selected.size === 0}
-              className="px-4 py-2 text-sm font-medium rounded-lg bg-[#16A34A] text-white hover:bg-[#15803d] transition-colors disabled:opacity-50 flex items-center gap-2"
+              className="px-4 py-2 text-sm font-medium rounded-lg bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50 flex items-center gap-2"
             >
               {applying ? (
                 <>

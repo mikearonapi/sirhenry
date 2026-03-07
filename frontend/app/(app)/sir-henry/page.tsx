@@ -222,7 +222,7 @@ export default function SirHenryPage() {
   const isStreaming = loading && (streamingText.length > 0 || activeTools.length > 0);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#faf9f7]">
+    <div className="flex h-screen overflow-hidden bg-background">
 
       {/* ── Overlay backdrop ── */}
       {sidebarOpen && (
@@ -234,16 +234,16 @@ export default function SirHenryPage() {
 
       {/* ── Left sidebar: conversation history (collapsible overlay) ── */}
       <aside
-        className={`fixed inset-y-0 left-0 lg:left-60 z-40 w-64 flex-shrink-0 border-r border-stone-200 flex flex-col bg-white shadow-xl transition-all duration-200 ease-in-out ${
+        className={`fixed inset-y-0 left-0 lg:left-60 z-40 w-64 flex-shrink-0 border-r border-border flex flex-col bg-card shadow-xl transition-all duration-200 ease-in-out ${
           sidebarOpen ? "opacity-100 visible" : "opacity-0 invisible -translate-x-8"
         }`}
       >
         {/* Header */}
-        <div className="px-4 py-4 border-b border-stone-200 flex items-center justify-between">
+        <div className="px-4 py-4 border-b border-border flex items-center justify-between">
           <div className="flex items-center gap-2">
             <SirHenryAvatar size={8} />
             <span
-              className="text-stone-900 font-semibold text-[13px]"
+              className="text-text-primary font-semibold text-[13px]"
               style={{ fontFamily: "var(--font-display, sans-serif)" }}
             >
               <SirHenryName />
@@ -253,14 +253,14 @@ export default function SirHenryPage() {
             <button
               onClick={startNewConversation}
               title="New conversation"
-              className="p-1.5 rounded-lg hover:bg-stone-100 text-stone-400 hover:text-stone-700 transition-colors"
+              className="p-1.5 rounded-lg hover:bg-surface text-text-muted hover:text-text-secondary transition-colors"
             >
               <Plus size={15} />
             </button>
             <button
               onClick={() => setSidebarOpen(false)}
               title="Close sidebar"
-              className="p-1.5 rounded-lg hover:bg-stone-100 text-stone-400 hover:text-stone-700 transition-colors"
+              className="p-1.5 rounded-lg hover:bg-surface text-text-muted hover:text-text-secondary transition-colors"
             >
               <X size={15} />
             </button>
@@ -271,7 +271,7 @@ export default function SirHenryPage() {
         <div className="flex-1 overflow-hidden">
           {historyLoading ? (
             <div className="flex items-center justify-center py-10">
-              <Loader2 size={16} className="animate-spin text-stone-300" />
+              <Loader2 size={16} className="animate-spin text-text-muted" />
             </div>
           ) : (
             <ConversationList
@@ -290,23 +290,23 @@ export default function SirHenryPage() {
       <div className="flex-1 flex flex-col overflow-hidden">
 
         {/* Chat toolbar */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-stone-200 bg-white">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card">
           <div className="flex items-center gap-3">
             <button
               onClick={() => window.dispatchEvent(new Event("open-app-sidebar"))}
               title="Open navigation"
-              className="p-1.5 rounded-lg hover:bg-stone-100 text-stone-500 hover:text-stone-700 transition-colors lg:hidden"
+              className="p-1.5 rounded-lg hover:bg-surface text-text-secondary hover:text-text-secondary transition-colors lg:hidden"
             >
               <PanelLeft size={18} />
             </button>
             <button
               onClick={() => setSidebarOpen(true)}
               title="Conversation history"
-              className="p-1.5 rounded-lg hover:bg-stone-100 text-stone-500 hover:text-stone-700 transition-colors"
+              className="p-1.5 rounded-lg hover:bg-surface text-text-secondary hover:text-text-secondary transition-colors"
             >
               <Menu size={18} />
             </button>
-            <div className="text-[13px] text-stone-500">
+            <div className="text-[13px] text-text-secondary">
               {activeConvId
                 ? conversations.find((c) => c.id === activeConvId)?.title ?? "Conversation"
                 : "New Conversation"}
@@ -315,7 +315,7 @@ export default function SirHenryPage() {
           {hasMessages && (
             <button
               onClick={startNewConversation}
-              className="flex items-center gap-1.5 text-[12px] text-stone-400 hover:text-stone-700 transition-colors"
+              className="flex items-center gap-1.5 text-[12px] text-text-muted hover:text-text-secondary transition-colors"
             >
               <RefreshCw size={13} />
               New chat
@@ -326,7 +326,7 @@ export default function SirHenryPage() {
         {/* Messages */}
         <div
           ref={scrollRef}
-          className="flex-1 overflow-y-auto bg-[#faf9f7]"
+          className="flex-1 overflow-y-auto bg-background"
           style={{ scrollBehavior: "smooth" }}
         >
           {!hasMessages && !loading ? (
@@ -350,7 +350,7 @@ export default function SirHenryPage() {
                           className={`flex items-center gap-2 text-[12px] px-3 py-1.5 rounded-lg ${
                             t.done
                               ? "bg-green-50 text-green-700 border border-green-100"
-                              : "bg-stone-100 text-stone-500"
+                              : "bg-surface text-text-secondary"
                           }`}
                         >
                           {t.done
@@ -372,10 +372,10 @@ export default function SirHenryPage() {
                   <SirHenryAvatar size={8} />
                   <div className="flex-1 min-w-0 max-w-[90%]">
                     <div
-                      className="prose-chat text-[14px] leading-relaxed text-stone-700"
+                      className="prose-chat text-[14px] leading-relaxed text-text-secondary"
                       dangerouslySetInnerHTML={{ __html: renderStreamingMarkdown(streamingText, false) }}
                     />
-                    <span className="inline-block w-0.5 h-3.5 bg-[#16A34A] animate-pulse" />
+                    <span className="inline-block w-0.5 h-3.5 bg-accent animate-pulse" />
                   </div>
                 </div>
               )}
@@ -386,7 +386,7 @@ export default function SirHenryPage() {
                   <SirHenryAvatar size={8} />
                   <div className="flex gap-1 pt-2">
                     {[0, 1, 2].map((i) => (
-                      <span key={i} className="w-1.5 h-1.5 bg-stone-300 rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+                      <span key={i} className="w-1.5 h-1.5 bg-text-muted rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
                     ))}
                   </div>
                 </div>
@@ -414,12 +414,12 @@ export default function SirHenryPage() {
 
         {/* Quick follow-ups */}
         {hasMessages && !loading && (
-          <div className="px-6 pt-2 pb-0 flex gap-2 overflow-x-auto scrollbar-hide bg-[#faf9f7]">
+          <div className="px-6 pt-2 pb-0 flex gap-2 overflow-x-auto scrollbar-hide bg-background">
             {["Tell me more", "Can you fix that?", "Show the details", "What else should I know?"].map((q) => (
               <button
                 key={q}
                 onClick={() => handleSend(q)}
-                className="flex-shrink-0 text-[11px] px-3 py-1.5 rounded-full bg-white text-stone-500 border border-stone-200 hover:bg-stone-50 hover:text-stone-700 hover:border-stone-300 transition-all"
+                className="flex-shrink-0 text-xs px-3 py-1.5 rounded-full bg-card text-text-secondary border border-border hover:bg-surface hover:text-text-secondary hover:border-border transition-all"
               >
                 {q}
               </button>
@@ -428,9 +428,9 @@ export default function SirHenryPage() {
         )}
 
         {/* Input */}
-        <div className="px-6 py-4 bg-[#faf9f7]">
+        <div className="px-6 py-4 bg-background">
           <div className="max-w-3xl mx-auto">
-            <div className="flex items-center gap-3 bg-white rounded-2xl border-2 border-stone-200 focus-within:border-green-400 transition-all px-4 py-3">
+            <div className="flex items-center gap-3 bg-card rounded-2xl border-2 border-border focus-within:border-green-400 transition-all px-4 py-3">
               <textarea
                 ref={inputRef}
                 value={input}
@@ -438,29 +438,29 @@ export default function SirHenryPage() {
                 onKeyDown={handleKeyDown}
                 placeholder="Ask Sir Henry anything about your finances..."
                 rows={1}
-                className="flex-1 resize-none text-[14px] bg-transparent placeholder:text-stone-400 text-stone-800 max-h-[160px] leading-relaxed"
+                className="flex-1 resize-none text-[14px] bg-transparent placeholder:text-text-muted text-text-primary max-h-[160px] leading-relaxed"
                 style={{ minHeight: "24px", outline: "none", boxShadow: "none", border: "none" }}
                 disabled={loading}
               />
               <button
                 onClick={() => handleSend()}
                 disabled={!input.trim() || loading}
-                className="w-9 h-9 bg-stone-800 text-white rounded-xl flex items-center justify-center hover:bg-stone-900 disabled:opacity-20 disabled:hover:bg-stone-800 transition-all flex-shrink-0"
+                className="w-9 h-9 bg-text-primary text-white rounded-xl flex items-center justify-center hover:bg-text-secondary disabled:opacity-20 disabled:hover:bg-text-primary transition-all flex-shrink-0"
               >
                 {loading ? <Loader2 size={15} className="animate-spin" /> : <ArrowRight size={15} />}
               </button>
             </div>
             <div className="flex items-center justify-between mt-2 px-1">
-              <p className="text-[10px] text-stone-400">Shift + Enter for new line</p>
+              <p className="text-xs text-text-muted">Shift + Enter for new line</p>
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setShowPrivacy(true)}
-                  className="text-[10px] text-stone-400 hover:text-stone-600 flex items-center gap-1 transition-colors"
+                  className="text-xs text-text-muted hover:text-text-secondary flex items-center gap-1 transition-colors"
                 >
                   <Shield size={9} />
                   Your privacy
                 </button>
-                <p className="text-[10px] text-stone-400 flex items-center gap-1">
+                <p className="text-xs text-text-muted flex items-center gap-1">
                   <Sparkles size={9} />
                   <SirHenryName /> · Powered by Claude
                 </p>

@@ -61,8 +61,8 @@ export default function WealthTab({ profile }: WealthTabProps) {
   if (!profile || !localProfile) {
     return (
       <div className="text-center py-12">
-        <TrendingUp size={32} className="mx-auto text-stone-300 mb-3" />
-        <p className="text-sm text-stone-500">Create a household profile on the Profile tab first.</p>
+        <TrendingUp size={32} className="mx-auto text-text-muted mb-3" />
+        <p className="text-sm text-text-secondary">Create a household profile on the Profile tab first.</p>
       </div>
     );
   }
@@ -90,11 +90,11 @@ export default function WealthTab({ profile }: WealthTabProps) {
 
   return (
     <div className="space-y-6">
-      {error && <div className="text-sm text-red-600 bg-red-50 p-3 rounded-lg">{error}</div>}
+      {error && <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 p-3 rounded-lg">{error}</div>}
 
       <Card padding="lg">
-        <h3 className="text-sm font-semibold text-stone-900 mb-1">Account Contribution Priority</h3>
-        <p className="text-xs text-stone-500 mb-4">
+        <h3 className="text-sm font-semibold text-text-primary mb-1">Account Contribution Priority</h3>
+        <p className="text-xs text-text-secondary mb-4">
           Financial Order of Operations for {profile.spouse_a_name || "Spouse A"} &amp; {profile.spouse_b_name || "Spouse B"} at {formatCurrency(combined, true)} combined income.
         </p>
         <div className="space-y-2">
@@ -106,25 +106,25 @@ export default function WealthTab({ profile }: WealthTabProps) {
               try { relevance = (JSON.parse(profile.dependents_json || "[]") as unknown[]).length > 0 ? "relevant" : "check"; } catch { relevance = "check"; }
             }
 
-            const icon = relevance === "locked" ? <Lock size={14} className="text-stone-400" /> :
+            const icon = relevance === "locked" ? <Lock size={14} className="text-text-muted" /> :
               relevance === "check" ? <Info size={14} className="text-amber-500" /> :
               <CheckCircle2 size={14} className="text-green-500" />;
 
-            const bg = relevance === "locked" ? "bg-stone-50 border-stone-100 opacity-60" :
-              relevance === "check" ? "bg-amber-50 border-amber-100" :
-              i === 0 ? "bg-green-50 border-green-200" : "bg-white border-stone-100";
+            const bg = relevance === "locked" ? "bg-surface border-card-border opacity-60" :
+              relevance === "check" ? "bg-amber-50 dark:bg-amber-950/40 border-amber-100 dark:border-amber-900" :
+              i === 0 ? "bg-green-50 dark:bg-green-950/40 border-green-200 dark:border-green-900" : "bg-card border-card-border";
 
             return (
               <div key={step.key} className={`p-3 rounded-xl border ${bg} flex items-start gap-3`}>
-                <div className="w-6 h-6 rounded-full bg-stone-100 flex items-center justify-center text-xs font-bold text-stone-500 shrink-0 mt-0.5">
+                <div className="w-6 h-6 rounded-full bg-surface flex items-center justify-center text-xs font-bold text-text-secondary shrink-0 mt-0.5">
                   {step.step}
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     {icon}
-                    <p className="text-sm font-medium text-stone-900">{step.label}</p>
+                    <p className="text-sm font-medium text-text-primary">{step.label}</p>
                   </div>
-                  <p className="text-xs text-stone-500 mt-0.5">{step.description}</p>
+                  <p className="text-xs text-text-secondary mt-0.5">{step.description}</p>
                   {step.key === "roth" && rothStatus !== "eligible" && (
                     <p className="text-xs text-amber-600 mt-1">
                       {rothStatus === "ineligible"
@@ -140,31 +140,31 @@ export default function WealthTab({ profile }: WealthTabProps) {
       </Card>
 
       <Card padding="lg">
-        <h3 className="text-sm font-semibold text-stone-900 mb-1">Social Security Outlook</h3>
-        <p className="text-xs text-stone-500 mb-4">
+        <h3 className="text-sm font-semibold text-text-primary mb-1">Social Security Outlook</h3>
+        <p className="text-xs text-text-secondary mb-4">
           Rough estimated monthly benefit based on current income levels (simplified bend-point formula).
           For precise projections, create an account at ssa.gov/myaccount.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {([["a", profile.spouse_a_name, profile.spouse_a_income, ssA], ["b", profile.spouse_b_name, profile.spouse_b_income, ssB]] as [string, string | null, number, number][]).map(([s, name, income, est]) => (
-            <div key={s} className="p-4 bg-stone-50 rounded-xl border border-stone-100">
-              <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide">{name || `Spouse ${s.toUpperCase()}`}</p>
-              <p className="text-xs text-stone-400 mt-0.5">Income: {formatCurrency(income, true)}</p>
+            <div key={s} className="p-4 bg-surface rounded-xl border border-card-border">
+              <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide">{name || `Spouse ${s.toUpperCase()}`}</p>
+              <p className="text-xs text-text-muted mt-0.5">Income: {formatCurrency(income, true)}</p>
               <div className="mt-3 grid grid-cols-3 gap-2 text-center">
                 <div>
-                  <p className="text-sm font-bold text-stone-700">{formatCurrency(est * 0.7)}/mo</p>
-                  <p className="text-xs text-stone-400">At 62</p>
+                  <p className="text-sm font-bold text-text-secondary">{formatCurrency(est * 0.7)}/mo</p>
+                  <p className="text-xs text-text-muted">At 62</p>
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-stone-900">{formatCurrency(est)}/mo</p>
-                  <p className="text-xs text-stone-400">At 67 (FRA)</p>
+                  <p className="text-sm font-bold text-text-primary">{formatCurrency(est)}/mo</p>
+                  <p className="text-xs text-text-muted">At 67 (FRA)</p>
                 </div>
                 <div>
                   <p className="text-sm font-bold text-green-700">{formatCurrency(est * 1.24)}/mo</p>
-                  <p className="text-xs text-stone-400">At 70</p>
+                  <p className="text-xs text-text-muted">At 70</p>
                 </div>
               </div>
-              <p className="text-xs text-stone-400 mt-2 italic">
+              <p className="text-xs text-text-muted mt-2 italic">
                 Delaying from 67→70 increases benefit by 24% permanently.
               </p>
             </div>
@@ -175,11 +175,11 @@ export default function WealthTab({ profile }: WealthTabProps) {
       <Card padding="lg">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-sm font-semibold text-stone-900">Estate Planning Checklist</h3>
-            <p className="text-xs text-stone-500 mt-0.5">Track the status of essential estate documents.</p>
+            <h3 className="text-sm font-semibold text-text-primary">Estate Planning Checklist</h3>
+            <p className="text-xs text-text-secondary mt-0.5">Track the status of essential estate documents.</p>
           </div>
           <button onClick={saveEstate} disabled={saving}
-            className="flex items-center gap-2 bg-stone-800 text-white px-3 py-2 rounded-lg text-xs font-medium hover:bg-stone-700 disabled:opacity-60">
+            className="flex items-center gap-2 bg-stone-800 dark:bg-stone-700 text-white px-3 py-2 rounded-lg text-xs font-medium hover:bg-stone-700 dark:hover:bg-stone-600 disabled:opacity-60">
             {saving && <Loader2 size={12} className="animate-spin" />} Save
           </button>
         </div>
@@ -187,14 +187,14 @@ export default function WealthTab({ profile }: WealthTabProps) {
         <div className="space-y-4">
           {estateDocs.map((doc) => {
             const val = localProfile[doc.key] || "";
-            const badge = val ? ESTATE_STATUS_BADGE[val] : "bg-stone-100 text-stone-500";
+            const badge = val ? ESTATE_STATUS_BADGE[val] : "bg-surface text-text-secondary";
             const reviewDate = estateReviewDates[doc.key] || "";
             return (
-              <div key={doc.key} className="p-3 rounded-xl border border-stone-100 bg-stone-50">
+              <div key={doc.key} className="p-3 rounded-xl border border-card-border bg-surface">
                 <div className="flex items-start justify-between gap-4 mb-2">
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-stone-900">{doc.label}</p>
-                    <p className="text-xs text-stone-500">{doc.desc}</p>
+                    <p className="text-sm font-medium text-text-primary">{doc.label}</p>
+                    <p className="text-xs text-text-secondary">{doc.desc}</p>
                   </div>
                   <select
                     value={val}
@@ -207,24 +207,24 @@ export default function WealthTab({ profile }: WealthTabProps) {
                   </select>
                 </div>
                 <div className="flex items-center gap-2 mt-1">
-                  <label className="text-[10px] text-stone-400 whitespace-nowrap">Last reviewed:</label>
+                  <label className="text-xs text-text-muted whitespace-nowrap">Last reviewed:</label>
                   <input
                     type="date"
                     value={reviewDate}
                     onChange={(e) => setEstateDate(doc.key, e.target.value)}
-                    className="text-[11px] border border-stone-200 rounded px-2 py-0.5 text-stone-600 focus:outline-none focus:ring-1 focus:ring-[#16A34A]/20"
+                    className="text-xs border border-border rounded px-2 py-0.5 text-text-secondary focus:outline-none focus:ring-1 focus:ring-accent/20"
                   />
                   {!reviewDate && val === "complete" && (
-                    <span className="text-[10px] text-amber-600 italic">Add a review date</span>
+                    <span className="text-xs text-amber-600 italic">Add a review date</span>
                   )}
                   {reviewDate && (() => {
                     const months = Math.floor((Date.now() - new Date(reviewDate).getTime()) / (1000 * 60 * 60 * 24 * 30));
                     return months > 24 ? (
-                      <span className="text-[10px] text-red-500 font-medium">Review overdue ({months}mo ago)</span>
+                      <span className="text-xs text-red-500 font-medium">Review overdue ({months}mo ago)</span>
                     ) : months > 12 ? (
-                      <span className="text-[10px] text-amber-600">Review soon ({months}mo ago)</span>
+                      <span className="text-xs text-amber-600">Review soon ({months}mo ago)</span>
                     ) : (
-                      <span className="text-[10px] text-green-600">{months}mo ago</span>
+                      <span className="text-xs text-green-600">{months}mo ago</span>
                     );
                   })()}
                 </div>
@@ -232,20 +232,20 @@ export default function WealthTab({ profile }: WealthTabProps) {
             );
           })}
 
-          <div className="pt-3 border-t border-stone-100">
+          <div className="pt-3 border-t border-card-border">
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
-                <p className="text-sm font-medium text-stone-900">Beneficiary Review</p>
-                <p className="text-xs text-stone-500">Review beneficiary designations on all retirement accounts, life insurance, and bank accounts annually.</p>
+                <p className="text-sm font-medium text-text-primary">Beneficiary Review</p>
+                <p className="text-xs text-text-secondary">Review beneficiary designations on all retirement accounts, life insurance, and bank accounts annually.</p>
               </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setLocalProfile((p) => p ? { ...p, beneficiaries_reviewed: !p.beneficiaries_reviewed, beneficiaries_reviewed_date: !p.beneficiaries_reviewed ? new Date().toISOString().split("T")[0] : p.beneficiaries_reviewed_date } : p)}
-                  className={`p-1 rounded ${localProfile.beneficiaries_reviewed ? "text-green-500" : "text-stone-300 hover:text-stone-400"}`}
+                  className={`p-1 rounded ${localProfile.beneficiaries_reviewed ? "text-green-500" : "text-text-muted hover:text-text-muted"}`}
                 >
                   {localProfile.beneficiaries_reviewed ? <CheckCircle2 size={20} /> : <Circle size={20} />}
                 </button>
-                <span className="text-xs text-stone-500">
+                <span className="text-xs text-text-secondary">
                   {localProfile.beneficiaries_reviewed
                     ? `Reviewed ${localProfile.beneficiaries_reviewed_date || ""}`
                     : "Not yet reviewed"}

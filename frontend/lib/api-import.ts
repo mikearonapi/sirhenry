@@ -1,5 +1,5 @@
 import type { ImportResult } from "@/types/api";
-import { BASE, request } from "./api-client";
+import { getBase, getAuthHeaders, request } from "./api-client";
 
 export async function uploadFile(
   file: File,
@@ -21,7 +21,8 @@ export async function uploadFile(
   if (options.taxYear) form.append("tax_year", String(options.taxYear));
   form.append("run_categorize", String(options.runCategorize ?? true));
 
-  const res = await fetch(`${BASE}/import/upload`, { method: "POST", body: form });
+  const authHeaders = await getAuthHeaders();
+  const res = await fetch(`${getBase()}/import/upload`, { method: "POST", headers: authHeaders, body: form });
   if (!res.ok) {
     const body = await res.text();
     throw new Error(`Import failed (${res.status}): ${body}`);

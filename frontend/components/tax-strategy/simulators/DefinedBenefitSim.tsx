@@ -8,7 +8,7 @@ import LabeledInput from "../shared/LabeledInput";
 import CalcButton from "../shared/CalcButton";
 import ResultBox from "../shared/ResultBox";
 
-const INPUT_CLS = "w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20 focus:border-[#16A34A]";
+const INPUT_CLS = "w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent";
 
 export default function DefinedBenefitSim() {
   const [income, setIncome] = useState("");
@@ -42,7 +42,7 @@ export default function DefinedBenefitSim() {
         <LabeledInput label="Current Age" value={age} onChange={setAge} />
         <LabeledInput label="Target Retirement Age" value={retireAge} onChange={setRetireAge} />
         <div>
-          <label className="block text-xs text-stone-500 mb-1">Filing Status</label>
+          <label className="block text-xs text-text-secondary mb-1">Filing Status</label>
           <select value={filingStatus} onChange={(e) => setFilingStatus(e.target.value)} className={INPUT_CLS}>
             <option value="single">Single</option>
             <option value="mfj">Married Filing Jointly</option>
@@ -59,24 +59,24 @@ export default function DefinedBenefitSim() {
             <ResultBox label="Projected at Retirement" value={formatCurrency(result.projected_accumulation)} />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div className="bg-stone-50 rounded-lg p-3">
-              <p className="text-xs text-stone-500 mb-1">Defined Benefit vs SEP IRA (per year)</p>
+            <div className="bg-surface rounded-lg p-3">
+              <p className="text-xs text-text-secondary mb-1">Defined Benefit vs SEP IRA (per year)</p>
               <div className="flex items-center gap-2">
                 <span className="font-mono tabular-nums text-sm font-semibold text-green-700">{formatCurrency(result.annual_tax_savings)}</span>
-                <span className="text-xs text-stone-400">vs</span>
-                <span className="font-mono tabular-nums text-sm text-stone-600">{formatCurrency(result.sep_annual_tax_savings)}</span>
+                <span className="text-xs text-text-muted">vs</span>
+                <span className="font-mono tabular-nums text-sm text-text-secondary">{formatCurrency(result.sep_annual_tax_savings)}</span>
               </div>
             </div>
-            <div className="bg-stone-50 rounded-lg p-3">
-              <p className="text-xs text-stone-500 mb-1">Accumulation at Retirement</p>
+            <div className="bg-surface rounded-lg p-3">
+              <p className="text-xs text-text-secondary mb-1">Accumulation at Retirement</p>
               <div className="flex items-center gap-2">
                 <span className="font-mono tabular-nums text-sm font-semibold text-green-700">{formatCurrency(result.projected_accumulation)}</span>
-                <span className="text-xs text-stone-400">vs</span>
-                <span className="font-mono tabular-nums text-sm text-stone-600">{formatCurrency(result.sep_projected_accumulation)}</span>
+                <span className="text-xs text-text-muted">vs</span>
+                <span className="font-mono tabular-nums text-sm text-text-secondary">{formatCurrency(result.sep_projected_accumulation)}</span>
               </div>
             </div>
           </div>
-          <p className="text-sm text-stone-700 bg-blue-50 rounded-lg p-3">{result.explanation}</p>
+          <p className="text-sm text-text-secondary bg-blue-50 rounded-lg p-3">{result.explanation}</p>
         </div>
       )}
     </SimulatorCard>

@@ -31,7 +31,7 @@ const POLICY_TYPES = [
   { value: "dental", label: "Dental", icon: "🦷", color: "bg-teal-50 text-teal-700 border-teal-100" },
   { value: "ltc", label: "Long-Term Care", icon: "🏨", color: "bg-purple-50 text-purple-700 border-purple-100" },
   { value: "pet", label: "Pet", icon: "🐾", color: "bg-amber-50 text-amber-700 border-amber-100" },
-  { value: "other", label: "Other", icon: "📋", color: "bg-stone-50 text-stone-600 border-stone-200" },
+  { value: "other", label: "Other", icon: "📋", color: "bg-surface text-text-secondary border-border" },
 ];
 
 function getPolicyConfig(type: string) {
@@ -249,7 +249,7 @@ export default function InsurancePage() {
         actions={
           <button
             onClick={() => { if (showForm) resetPolicyForm(); else setShowForm(true); }}
-            className="flex items-center gap-2 bg-[#16A34A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#15803D] shadow-sm"
+            className="flex items-center gap-2 bg-accent text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-hover shadow-sm"
           >
             {showForm ? <X size={14} /> : <Plus size={14} />}
             {showForm ? "Cancel" : "Add Policy"}
@@ -307,13 +307,13 @@ export default function InsurancePage() {
       <Card padding="lg">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-sm font-semibold text-stone-900">Coverage Gap Analysis</h3>
-            <p className="text-xs text-stone-500 mt-0.5">Compare your coverage against recommended levels</p>
+            <h3 className="text-sm font-semibold text-text-primary">Coverage Gap Analysis</h3>
+            <p className="text-xs text-text-secondary mt-0.5">Compare your coverage against recommended levels</p>
           </div>
           <button
             onClick={runGapAnalysis}
             disabled={gapLoading}
-            className="flex items-center gap-2 bg-stone-800 text-white px-3 py-2 rounded-lg text-xs font-medium hover:bg-stone-700 disabled:opacity-60"
+            className="flex items-center gap-2 bg-text-primary text-white px-3 py-2 rounded-lg text-xs font-medium hover:bg-text-secondary disabled:opacity-60"
           >
             {gapLoading ? <Loader2 size={13} className="animate-spin" /> : <ShieldCheck size={13} />}
             Run Analysis
@@ -323,13 +323,13 @@ export default function InsurancePage() {
         {gapAnalysis ? (
           <div className="space-y-3">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-              <div className="text-center p-3 bg-stone-50 rounded-xl">
-                <p className="text-xl font-bold text-stone-900">{gapAnalysis.total_policies}</p>
-                <p className="text-xs text-stone-500">Active Policies</p>
+              <div className="text-center p-3 bg-surface rounded-xl">
+                <p className="text-xl font-bold text-text-primary">{gapAnalysis.total_policies}</p>
+                <p className="text-xs text-text-secondary">Active Policies</p>
               </div>
-              <div className="text-center p-3 bg-stone-50 rounded-xl">
-                <p className="text-xl font-bold text-stone-900">{formatCurrency(gapAnalysis.total_monthly_premium)}</p>
-                <p className="text-xs text-stone-500">Monthly Cost</p>
+              <div className="text-center p-3 bg-surface rounded-xl">
+                <p className="text-xl font-bold text-text-primary">{formatCurrency(gapAnalysis.total_monthly_premium)}</p>
+                <p className="text-xs text-text-secondary">Monthly Cost</p>
               </div>
               <div className="text-center p-3 bg-red-50 rounded-xl">
                 <p className="text-xl font-bold text-red-600">{gapAnalysis.high_severity_gaps}</p>
@@ -350,15 +350,15 @@ export default function InsurancePage() {
                     <Icon size={16} className={`mt-0.5 shrink-0 ${cfg.color}`} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
-                        <p className="text-sm font-semibold text-stone-900">{gap.label}</p>
+                        <p className="text-sm font-semibold text-text-primary">{gap.label}</p>
                         <span className={`text-xs font-medium ${cfg.color}`}>{cfg.label}</span>
                       </div>
-                      <p className="text-xs text-stone-600 mt-1">{gap.note}</p>
+                      <p className="text-xs text-text-secondary mt-1">{gap.note}</p>
                       {gap.gap > 0 && (
                         <div className="mt-2 flex items-center gap-4 text-xs">
-                          <span className="text-stone-500">Current: <span className="font-medium text-stone-700">{formatCurrency(gap.current_coverage)}</span></span>
-                          <span className="text-stone-500">Recommended: <span className="font-medium text-stone-700">{formatCurrency(gap.recommended_coverage)}</span></span>
-                          <span className="text-stone-500">Gap: <span className="font-medium text-red-600">{formatCurrency(gap.gap)}</span></span>
+                          <span className="text-text-secondary">Current: <span className="font-medium text-text-secondary">{formatCurrency(gap.current_coverage)}</span></span>
+                          <span className="text-text-secondary">Recommended: <span className="font-medium text-text-secondary">{formatCurrency(gap.recommended_coverage)}</span></span>
+                          <span className="text-text-secondary">Gap: <span className="font-medium text-red-600">{formatCurrency(gap.gap)}</span></span>
                         </div>
                       )}
                     </div>
@@ -368,23 +368,23 @@ export default function InsurancePage() {
             })}
           </div>
         ) : (
-          <p className="text-sm text-stone-400 text-center py-4">Run the analysis to see coverage gaps and recommendations.</p>
+          <p className="text-sm text-text-muted text-center py-4">Run the analysis to see coverage gaps and recommendations.</p>
         )}
       </Card>
 
       {/* Add / Edit policy form */}
       {showForm && (
         <Card padding="lg">
-          <h3 className="text-sm font-semibold text-stone-900 mb-4">
+          <h3 className="text-sm font-semibold text-text-primary mb-4">
             {editingPolicy ? "Edit Insurance Policy" : "Add Insurance Policy"}
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs text-stone-500">Policy Type</label>
+              <label className="text-xs text-text-secondary">Policy Type</label>
               <select
                 value={fType}
                 onChange={(e) => setFType(e.target.value as InsurancePolicyIn["policy_type"])}
-                className="w-full mt-1 text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20"
+                className="w-full mt-1 text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20"
               >
                 {POLICY_TYPES.map((t) => (
                   <option key={t.value} value={t.value}>{t.icon} {t.label}</option>
@@ -392,31 +392,31 @@ export default function InsurancePage() {
               </select>
             </div>
             <div>
-              <label className="text-xs text-stone-500">Provider / Insurer</label>
+              <label className="text-xs text-text-secondary">Provider / Insurer</label>
               <input
                 type="text"
                 value={fProvider}
                 onChange={(e) => setFProvider(e.target.value)}
                 placeholder="e.g. Aetna, State Farm"
-                className="w-full mt-1 text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20"
+                className="w-full mt-1 text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20"
               />
             </div>
             <div>
-              <label className="text-xs text-stone-500">Policy Number</label>
+              <label className="text-xs text-text-secondary">Policy Number</label>
               <input
                 type="text"
                 value={fPolicyNumber}
                 onChange={(e) => setFPolicyNumber(e.target.value)}
                 placeholder="Optional"
-                className="w-full mt-1 text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20"
+                className="w-full mt-1 text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20"
               />
             </div>
             <div>
-              <label className="text-xs text-stone-500">Policy Owner</label>
+              <label className="text-xs text-text-secondary">Policy Owner</label>
               <select
                 value={fOwner}
                 onChange={(e) => setFOwner(e.target.value as "a" | "b" | "")}
-                className="w-full mt-1 text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20"
+                className="w-full mt-1 text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20"
               >
                 <option value="">Household / Joint</option>
                 <option value="a">Spouse A</option>
@@ -424,73 +424,73 @@ export default function InsurancePage() {
               </select>
             </div>
             <div>
-              <label className="text-xs text-stone-500">Coverage Amount</label>
+              <label className="text-xs text-text-secondary">Coverage Amount</label>
               <input
                 type="number"
                 value={fCoverage}
                 onChange={(e) => setFCoverage(e.target.value)}
                 placeholder="e.g. 500000"
-                className="w-full mt-1 text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20"
+                className="w-full mt-1 text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20"
               />
             </div>
             <div>
-              <label className="text-xs text-stone-500">Annual Premium</label>
+              <label className="text-xs text-text-secondary">Annual Premium</label>
               <input
                 type="number"
                 value={fAnnualPremium}
                 onChange={(e) => setFAnnualPremium(e.target.value)}
                 placeholder="e.g. 1200"
-                className="w-full mt-1 text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20"
+                className="w-full mt-1 text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20"
               />
             </div>
             <div>
-              <label className="text-xs text-stone-500">Deductible</label>
+              <label className="text-xs text-text-secondary">Deductible</label>
               <input
                 type="number"
                 value={fDeductible}
                 onChange={(e) => setFDeductible(e.target.value)}
                 placeholder="Optional"
-                className="w-full mt-1 text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20"
+                className="w-full mt-1 text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20"
               />
             </div>
             <div>
-              <label className="text-xs text-stone-500">OOP Max</label>
+              <label className="text-xs text-text-secondary">OOP Max</label>
               <input
                 type="number"
                 value={fOopMax}
                 onChange={(e) => setFOopMax(e.target.value)}
                 placeholder="Optional"
-                className="w-full mt-1 text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20"
+                className="w-full mt-1 text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20"
               />
             </div>
             <div>
-              <label className="text-xs text-stone-500">Renewal Date</label>
+              <label className="text-xs text-text-secondary">Renewal Date</label>
               <input
                 type="date"
                 value={fRenewalDate}
                 onChange={(e) => setFRenewalDate(e.target.value)}
-                className="w-full mt-1 text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20"
+                className="w-full mt-1 text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20"
               />
             </div>
             <div className="flex items-center gap-3 mt-1">
-              <label className="flex items-center gap-2 text-sm text-stone-700 cursor-pointer">
+              <label className="flex items-center gap-2 text-sm text-text-secondary cursor-pointer">
                 <input
                   type="checkbox"
                   checked={fEmployerProvided}
                   onChange={(e) => setFEmployerProvided(e.target.checked)}
-                  className="rounded border-stone-300"
+                  className="rounded border-border"
                 />
                 Employer-provided
               </label>
             </div>
           </div>
           <div className="mt-4">
-            <label className="text-xs text-stone-500">Notes</label>
+            <label className="text-xs text-text-secondary">Notes</label>
             <textarea
               value={fNotes}
               onChange={(e) => setFNotes(e.target.value)}
               rows={2}
-              className="w-full mt-1 text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20"
+              className="w-full mt-1 text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20"
             />
           </div>
 
@@ -498,17 +498,17 @@ export default function InsurancePage() {
           {(fType === "life" || fType === "disability" || fType === "ltc") && (
             <div className="mt-5">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-semibold text-stone-600">Beneficiaries</p>
+                <p className="text-xs font-semibold text-text-secondary">Beneficiaries</p>
                 <button
                   type="button"
                   onClick={() => setFBeneficiaries((prev) => [...prev, { name: "", relationship: "", percentage: "" }])}
-                  className="flex items-center gap-1 text-xs text-[#16A34A] hover:text-[#15803D]"
+                  className="flex items-center gap-1 text-xs text-accent hover:text-accent-hover"
                 >
                   <UserPlus size={12} /> Add Beneficiary
                 </button>
               </div>
               {fBeneficiaries.length === 0 && (
-                <p className="text-xs text-stone-400 italic">No beneficiaries added yet.</p>
+                <p className="text-xs text-text-muted italic">No beneficiaries added yet.</p>
               )}
               <div className="space-y-2">
                 {fBeneficiaries.map((b, i) => (
@@ -518,14 +518,14 @@ export default function InsurancePage() {
                       value={b.name}
                       onChange={(e) => setFBeneficiaries((prev) => prev.map((x, j) => j === i ? { ...x, name: e.target.value } : x))}
                       placeholder="Full name"
-                      className="text-sm border border-stone-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20"
+                      className="text-sm border border-border rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-accent/20"
                     />
                     <input
                       type="text"
                       value={b.relationship}
                       onChange={(e) => setFBeneficiaries((prev) => prev.map((x, j) => j === i ? { ...x, relationship: e.target.value } : x))}
                       placeholder="Relationship"
-                      className="text-sm border border-stone-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20"
+                      className="text-sm border border-border rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-accent/20"
                     />
                     <div className="flex items-center gap-2">
                       <input
@@ -533,12 +533,12 @@ export default function InsurancePage() {
                         value={b.percentage}
                         onChange={(e) => setFBeneficiaries((prev) => prev.map((x, j) => j === i ? { ...x, percentage: e.target.value } : x))}
                         placeholder="% share"
-                        className="flex-1 text-sm border border-stone-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20"
+                        className="flex-1 text-sm border border-border rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-accent/20"
                       />
                       <button
                         type="button"
                         onClick={() => setFBeneficiaries((prev) => prev.filter((_, j) => j !== i))}
-                        className="text-stone-400 hover:text-red-500"
+                        className="text-text-muted hover:text-red-500"
                       >
                         <X size={13} />
                       </button>
@@ -553,12 +553,12 @@ export default function InsurancePage() {
             <button
               onClick={editingPolicy ? handleUpdate : handleCreate}
               disabled={saving || !fType}
-              className="flex items-center gap-2 bg-[#16A34A] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#15803D] disabled:opacity-60"
+              className="flex items-center gap-2 bg-accent text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent-hover disabled:opacity-60"
             >
               {saving && <Loader2 size={14} className="animate-spin" />}
               {editingPolicy ? "Update Policy" : "Save Policy"}
             </button>
-            <button onClick={resetPolicyForm} className="text-sm text-stone-500 hover:text-stone-700">
+            <button onClick={resetPolicyForm} className="text-sm text-text-secondary hover:text-text-secondary">
               Cancel
             </button>
           </div>
@@ -570,37 +570,37 @@ export default function InsurancePage() {
         <select
           value={filterType}
           onChange={(e) => setFilterType(e.target.value)}
-          className="text-sm border border-stone-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-[#16A34A]/20"
+          className="text-sm border border-border rounded-lg px-3 py-2 bg-card focus:outline-none focus:ring-2 focus:ring-accent/20"
         >
           <option value="">All Types</option>
           {POLICY_TYPES.map((t) => (
             <option key={t.value} value={t.value}>{t.icon} {t.label}</option>
           ))}
         </select>
-        <label className="flex items-center gap-2 text-sm text-stone-600 cursor-pointer">
+        <label className="flex items-center gap-2 text-sm text-text-secondary cursor-pointer">
           <input
             type="checkbox"
             checked={showInactive}
             onChange={(e) => setShowInactive(e.target.checked)}
-            className="rounded border-stone-300"
+            className="rounded border-border"
           />
           Show inactive
         </label>
-        <span className="ml-auto text-xs text-stone-400">{filtered.length} policies</span>
+        <span className="ml-auto text-xs text-text-muted">{filtered.length} policies</span>
       </div>
 
       {/* Policy list */}
       {loading ? (
-        <div className="flex items-center gap-2 text-stone-500 text-sm py-8">
+        <div className="flex items-center gap-2 text-text-secondary text-sm py-8">
           <Loader2 size={16} className="animate-spin" />
           Loading policies...
         </div>
       ) : filtered.length === 0 ? (
         <Card padding="lg">
           <div className="text-center py-8">
-            <ShieldCheck size={32} className="mx-auto text-stone-300 mb-3" />
-            <p className="text-sm text-stone-500">No insurance policies added yet.</p>
-            <p className="text-xs text-stone-400 mt-1">
+            <ShieldCheck size={32} className="mx-auto text-text-muted mb-3" />
+            <p className="text-sm text-text-secondary">No insurance policies added yet.</p>
+            <p className="text-xs text-text-muted mt-1">
               Track health, life, disability, auto, home, and umbrella policies in one place.
             </p>
           </div>
@@ -620,29 +620,29 @@ export default function InsurancePage() {
                     <span className="text-2xl">{cfg.icon}</span>
                     <div>
                       <div className="flex items-center gap-2">
-                        <h4 className="text-sm font-semibold text-stone-900">
+                        <h4 className="text-sm font-semibold text-text-primary">
                           {policy.provider || cfg.label}
                         </h4>
                         {policy.employer_provided && (
                           <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full border border-blue-100">Employer</span>
                         )}
                         {!policy.is_active && (
-                          <span className="text-xs bg-stone-100 text-stone-400 px-2 py-0.5 rounded-full">Inactive</span>
+                          <span className="text-xs bg-surface text-text-muted px-2 py-0.5 rounded-full">Inactive</span>
                         )}
                       </div>
-                      <p className="text-xs text-stone-500 mt-0.5">{cfg.label}{policy.owner_spouse ? ` — Spouse ${policy.owner_spouse.toUpperCase()}` : ""}</p>
+                      <p className="text-xs text-text-secondary mt-0.5">{cfg.label}{policy.owner_spouse ? ` — Spouse ${policy.owner_spouse.toUpperCase()}` : ""}</p>
                     </div>
                   </div>
                   <button
                     onClick={() => openEditPolicy(policy)}
-                    className="p-1.5 text-stone-400 hover:text-[#16A34A] rounded"
+                    className="p-1.5 text-text-muted hover:text-accent rounded"
                     title="Edit policy"
                   >
                     <Pencil size={13} />
                   </button>
                   <button
                     onClick={() => handleDelete(policy.id)}
-                    className="p-1.5 text-stone-400 hover:text-red-500 rounded"
+                    className="p-1.5 text-text-muted hover:text-red-500 rounded"
                   >
                     <Trash2 size={13} />
                   </button>
@@ -651,32 +651,32 @@ export default function InsurancePage() {
                 <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
                   {policy.coverage_amount != null && (
                     <div>
-                      <span className="text-stone-400">Coverage: </span>
-                      <span className="font-medium text-stone-700">{formatCurrency(policy.coverage_amount)}</span>
+                      <span className="text-text-muted">Coverage: </span>
+                      <span className="font-medium text-text-secondary">{formatCurrency(policy.coverage_amount)}</span>
                     </div>
                   )}
                   {policy.annual_premium != null && (
                     <div>
-                      <span className="text-stone-400">Premium: </span>
-                      <span className="font-medium text-stone-700">{formatCurrency(policy.annual_premium)}/yr</span>
+                      <span className="text-text-muted">Premium: </span>
+                      <span className="font-medium text-text-secondary">{formatCurrency(policy.annual_premium)}/yr</span>
                     </div>
                   )}
                   {policy.deductible != null && (
                     <div>
-                      <span className="text-stone-400">Deductible: </span>
-                      <span className="font-medium text-stone-700">{formatCurrency(policy.deductible)}</span>
+                      <span className="text-text-muted">Deductible: </span>
+                      <span className="font-medium text-text-secondary">{formatCurrency(policy.deductible)}</span>
                     </div>
                   )}
                   {policy.oop_max != null && (
                     <div>
-                      <span className="text-stone-400">OOP Max: </span>
-                      <span className="font-medium text-stone-700">{formatCurrency(policy.oop_max)}</span>
+                      <span className="text-text-muted">OOP Max: </span>
+                      <span className="font-medium text-text-secondary">{formatCurrency(policy.oop_max)}</span>
                     </div>
                   )}
                   {rd && (
                     <div className={renewingUrgent ? "text-amber-600 font-medium" : ""}>
-                      <span className="text-stone-400">Renews: </span>
-                      <span className={renewingUrgent ? "font-medium" : "font-medium text-stone-700"}>
+                      <span className="text-text-muted">Renews: </span>
+                      <span className={renewingUrgent ? "font-medium" : "font-medium text-text-secondary"}>
                         {rd.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                         {daysUntil !== null && daysUntil >= 0 && daysUntil <= 60 && (
                           <span className="ml-1 text-amber-500">({daysUntil}d)</span>
@@ -687,16 +687,16 @@ export default function InsurancePage() {
                 </div>
 
                 {policy.notes && (
-                  <p className="text-xs text-stone-400 mt-2 italic">{policy.notes}</p>
+                  <p className="text-xs text-text-muted mt-2 italic">{policy.notes}</p>
                 )}
                 {policy.beneficiaries_json && (() => {
                   try {
                     const bens: { name: string; relationship: string; percentage: string }[] = JSON.parse(policy.beneficiaries_json);
                     return bens.length > 0 ? (
-                      <div className="mt-2 pt-2 border-t border-stone-100">
-                        <p className="text-xs text-stone-400 mb-1">Beneficiaries</p>
+                      <div className="mt-2 pt-2 border-t border-card-border">
+                        <p className="text-xs text-text-muted mb-1">Beneficiaries</p>
                         {bens.map((b, i) => (
-                          <p key={i} className="text-xs text-stone-600">
+                          <p key={i} className="text-xs text-text-secondary">
                             {b.name}{b.relationship ? ` (${b.relationship})` : ""}{b.percentage ? ` — ${b.percentage}%` : ""}
                           </p>
                         ))}

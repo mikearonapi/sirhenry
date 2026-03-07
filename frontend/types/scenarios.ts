@@ -9,6 +9,34 @@ export interface ScenarioTemplate {
   }>;
 }
 
+/** Scenario-specific parameters (varies per scenario_type). */
+export type ScenarioParameters = Record<string, number | string>;
+
+/** Input for creating a new life scenario. */
+export interface ScenarioCreateInput {
+  name: string;
+  scenario_type: string;
+  parameters: ScenarioParameters;
+  annual_income: number;
+  monthly_take_home: number;
+  current_monthly_expenses: number;
+  current_monthly_debt_payments?: number;
+  current_savings?: number;
+  current_investments?: number;
+}
+
+/** Input for stateless scenario calculation (no save). */
+export interface ScenarioCalcInput {
+  scenario_type: string;
+  parameters: ScenarioParameters;
+  annual_income: number;
+  monthly_take_home: number;
+  current_monthly_expenses: number;
+  current_monthly_debt_payments?: number;
+  current_savings?: number;
+  current_investments?: number;
+}
+
 export interface LifeScenarioType {
   id: number;
   name: string;

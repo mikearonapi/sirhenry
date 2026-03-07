@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 html {
   scroll-behavior: smooth;
   scroll-padding-top: 4.5rem;
@@ -11,6 +13,8 @@ html {
   --foreground: #1a1a1a;
   --card: #ffffff;
   --card-border: #f0eeeb;
+  --surface: #f4f3f0;
+  --surface-hover: #eeece8;
   --sidebar-bg: #0a0a0b;
   --sidebar-hover: #141416;
   --sidebar-active: #16A34A;
@@ -42,13 +46,46 @@ html {
   --border-light: #f5f5f4;
 }
 
+html.dark {
+  --background: #141416;
+  --foreground: #f0f0ef;
+  --card: #1e1e20;
+  --card-border: #2a2a2d;
+  --surface: #252528;
+  --surface-hover: #2e2e32;
+
+  --accent-light: #052e16;
+  --accent-muted: #166534;
+
+  --brand-gold-subtle: #451a03;
+
+  --green-light: #052e16;
+  --red-light: #450a0a;
+  --warning-light: #451a03;
+
+  --text-primary: #f0f0ef;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+  --border: #3f3f46;
+  --border-light: #2a2a2d;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
+  --color-card-border: var(--card-border);
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
   --color-accent-light: var(--accent-light);
+  --color-accent-muted: var(--accent-muted);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-border: var(--border);
+  --color-border-light: var(--border-light);
   --font-sans: var(--font-inter);
   --font-display: var(--font-display);
   --font-mono: var(--font-mono);
@@ -77,6 +114,12 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #a3a3a3;
 }
+html.dark ::-webkit-scrollbar-thumb {
+  background: #3f3f46;
+}
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: #52525b;
+}
 
 /* Card base */
 .card {
@@ -87,6 +130,9 @@ body {
 }
 .card:hover {
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.06);
+}
+html.dark .card {
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
 }
 
 /* Table styling */
@@ -110,6 +156,9 @@ select {
   padding-right: 2.5rem;
   appearance: none;
 }
+html.dark select {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23a1a1aa' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+}
 
 /* Smooth transitions */
 *, *::before, *::after {
@@ -130,19 +179,30 @@ select {
 
 /* Status badges */
 .status-on-track {
-  background: #DCFCE7;
+  background: var(--green-light);
   color: #15803D;
-  border: 1px solid #BBF7D0;
+  border: 1px solid var(--accent-muted);
+}
+html.dark .status-on-track {
+  color: #86efac;
 }
 .status-at-risk {
-  background: #FEF3C7;
+  background: var(--warning-light);
   color: #B45309;
   border: 1px solid #FDE68A;
 }
+html.dark .status-at-risk {
+  color: #fcd34d;
+  border-color: #92400e;
+}
 .status-behind {
-  background: #FEE2E2;
+  background: var(--red-light);
   color: #B91C1C;
   border: 1px solid #FECACA;
+}
+html.dark .status-behind {
+  color: #fca5a5;
+  border-color: #991b1b;
 }
 
 /* Henry heading style */

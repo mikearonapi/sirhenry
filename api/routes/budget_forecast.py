@@ -1,6 +1,6 @@
 """Budget forecasting, velocity, and unbudgeted category endpoints."""
+import calendar
 from datetime import datetime, timezone
-from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
@@ -13,18 +13,9 @@ from api.models.schemas import (
 from pipeline.db.schema import Transaction
 from pipeline.db import Budget
 from pipeline.planning.budget_forecast import BudgetForecastEngine
+from pipeline.planning.budget_actuals import fetch_actuals as _fetch_actuals, INTERNAL_TRANSFER_CATEGORIES
 
 router = APIRouter(tags=["budget"])
-
-# Re-used constants and helpers from the main budget module
-INTERNAL_TRANSFER_CATEGORIES = {"Transfer", "Credit Card Payment", "Savings"}
-
-
-async def _fetch_actuals(session: AsyncSession, year: int, month: int) -> dict[str, float]:
-    """Fetch both expense and income actuals, merged into one dict.
-    Delegates to the main budget module's implementation."""
-    from api.routes.budget import _fetch_actuals as _budget_fetch_actuals
-    return await _budget_fetch_actuals(session, year, month)
 
 
 @router.get("/unbudgeted", response_model=list[UnbudgetedCategoryOut])
@@ -104,7 +95,6 @@ async def spend_velocity(
     session: AsyncSession = Depends(get_session),
 ):
     """Current month spend velocity and projected month-end by category."""
-    import calendar
     now = datetime.now(timezone.utc)
     y = year or now.year
     m = month or now.month

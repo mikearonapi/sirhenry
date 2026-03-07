@@ -32,7 +32,7 @@ export default function HeroSection() {
           </div>
           <a
             href="#waitlist"
-            className="text-sm font-semibold bg-[#16A34A] hover:bg-[#15803D] text-white px-5 py-2 rounded-lg transition-colors"
+            className="text-sm font-semibold bg-accent hover:bg-accent-hover text-white px-5 py-2 rounded-lg transition-colors"
           >
             Join the waitlist
           </a>
