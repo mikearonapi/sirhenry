@@ -18,8 +18,6 @@ from pipeline.db import (
     update_transaction_entity,
 )
 from pipeline.db.schema import Transaction
-from pipeline.ai.category_rules import learn_from_override
-
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/transactions", tags=["transactions"])
 

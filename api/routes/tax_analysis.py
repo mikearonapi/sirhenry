@@ -1,4 +1,9 @@
-"""Tax analysis endpoints — estimate, checklist, deduction opportunities, summary."""
+"""Tax analysis endpoints — estimate, checklist, deduction opportunities, summary.
+
+NOTE: Some endpoints here are not yet wired to the frontend but are pre-built
+for planned features (tax filing checklist, deduction finder, quarterly
+estimates). Do not remove — they will be connected as the tax workflow matures.
+"""
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query

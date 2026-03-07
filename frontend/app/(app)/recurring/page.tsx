@@ -12,6 +12,7 @@ import { getErrorMessage } from "@/lib/errors";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import EmptyState from "@/components/ui/EmptyState";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 const FREQ_BADGE: Record<string, { variant: "info" | "accent" | "warning" | "success"; label: string }> = {
   monthly: { variant: "info", label: "Every month" },
@@ -44,14 +45,18 @@ export default function RecurringPage() {
   const [detecting, setDetecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const [viewMonth] = useState({ year: now.getFullYear(), month: now.getMonth() + 1 });
+  const viewMonth = { year: now.getFullYear(), month: now.getMonth() + 1 };
   const [filterMode, setFilterMode] = useState<"all" | "monthly">("all");
+
+  const [confirmCancel, setConfirmCancel] = useState<{ open: boolean; itemId: number | null }>({ open: false, itemId: null });
 
   // Edit modal state
   const [editItem, setEditItem] = useState<RecurringItem | null>(null);
   const [editCategory, setEditCategory] = useState("");
+  const [editCustomCategory, setEditCustomCategory] = useState("");
   const [editNotes, setEditNotes] = useState("");
   const [editSaving, setEditSaving] = useState(false);
+  const categoryKeys = Object.keys(CATEGORY_COLORS);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -88,8 +93,11 @@ export default function RecurringPage() {
   }
 
   async function handleStatusChange(id: number, newStatus: "cancelled" | "paused" | "active") {
+    if (newStatus === "cancelled") {
+      setConfirmCancel({ open: true, itemId: id });
+      return;
+    }
     const labels: Record<string, string> = { cancelled: "cancel", paused: "pause", active: "reactivate" };
-    if (newStatus === "cancelled" && !window.confirm("Are you sure you want to cancel this subscription?")) return;
     try {
       await updateRecurring(id, { status: newStatus });
       await load();
@@ -97,18 +105,36 @@ export default function RecurringPage() {
     } catch (e: unknown) { setError(getErrorMessage(e)); }
   }
 
+  async function confirmCancelSubscription() {
+    if (confirmCancel.itemId == null) return;
+    try {
+      await updateRecurring(confirmCancel.itemId, { status: "cancelled" });
+      setConfirmCancel({ open: false, itemId: null });
+      await load();
+      setToast("Subscription cancelled");
+    } catch (e: unknown) { setError(getErrorMessage(e)); }
+  }
+
   function openEdit(item: RecurringItem) {
     setEditItem(item);
-    setEditCategory(item.category ?? "");
+    const cat = item.category ?? "";
+    if (cat && !categoryKeys.includes(cat)) {
+      setEditCategory("__other__");
+      setEditCustomCategory(cat);
+    } else {
+      setEditCategory(cat);
+      setEditCustomCategory("");
+    }
     setEditNotes(item.notes ?? "");
   }
 
   async function handleEditSave() {
     if (!editItem) return;
     setEditSaving(true);
+    const resolvedCategory = editCategory === "__other__" ? editCustomCategory : editCategory;
     try {
       await updateRecurring(editItem.id, {
-        category: editCategory || undefined,
+        category: resolvedCategory || undefined,
         notes: editNotes || undefined,
       });
       await load();
@@ -408,13 +434,29 @@ export default function RecurringPage() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-text-secondary mb-1">Category</label>
-                <input
-                  type="text"
+                <select
                   value={editCategory}
-                  onChange={(e) => setEditCategory(e.target.value)}
-                  className="w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
-                  placeholder="e.g. TV, Streaming & Entertainment"
-                />
+                  onChange={(e) => {
+                    setEditCategory(e.target.value);
+                    if (e.target.value !== "__other__") setEditCustomCategory("");
+                  }}
+                  className="w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent bg-card"
+                >
+                  <option value="">Select a category</option>
+                  {categoryKeys.map((cat) => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                  <option value="__other__">Other</option>
+                </select>
+                {editCategory === "__other__" && (
+                  <input
+                    type="text"
+                    value={editCustomCategory}
+                    onChange={(e) => setEditCustomCategory(e.target.value)}
+                    className="w-full text-sm border border-border rounded-lg px-3 py-2 mt-2 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
+                    placeholder="Enter custom category"
+                  />
+                )}
               </div>
               <div>
                 <label className="block text-xs font-medium text-text-secondary mb-1">Notes</label>
@@ -438,6 +480,16 @@ export default function RecurringPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmCancel.open}
+        title="Cancel Subscription"
+        message="Are you sure you want to cancel this subscription? You can reactivate it later."
+        confirmLabel="Cancel Subscription"
+        variant="danger"
+        onConfirm={confirmCancelSubscription}
+        onCancel={() => setConfirmCancel({ open: false, itemId: null })}
+      />
     </div>
   );
 }

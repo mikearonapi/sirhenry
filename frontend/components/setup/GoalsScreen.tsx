@@ -7,6 +7,9 @@ import {
 import { OB_CTA, OB_HEADING, OB_SUBTITLE } from "./styles";
 import { ONBOARDING_GOALS_KEY } from "@/lib/storage-keys";
 
+// TODO: Persist selected goals to backend when user accounts are implemented.
+// Currently stored in localStorage only, which won't survive browser clears.
+
 const GOALS = [
   {
     key: "tax",

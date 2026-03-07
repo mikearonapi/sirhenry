@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { Plus, Target, Loader2, Check, AlertCircle, MessageCircle, ArrowRight, Landmark, PieChart, Compass, Briefcase, TrendingUp, CheckCircle2 } from "lucide-react";
+import Link from "next/link";
 import { formatCurrency } from "@/lib/utils";
 import { getGoals, createGoal } from "@/lib/api";
 import type { Goal } from "@/types/api";
@@ -324,23 +325,23 @@ export default function GoalsPage() {
       {active.length > 0 && (
         <div className="flex flex-wrap gap-3">
           {active.some((g) => g.goal_type === "investment" || g.goal_type === "savings") && (
-            <a href="/portfolio" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface border border-border hover:border-accent/30 hover:bg-green-50/30 transition-colors text-xs text-text-secondary hover:text-text-primary">
+            <Link href="/portfolio" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface border border-border hover:border-accent/30 hover:bg-green-50/30 transition-colors text-xs text-text-secondary hover:text-text-primary">
               <PieChart size={14} className="text-accent" /> Track investments in Portfolio <ArrowRight size={12} />
-            </a>
+            </Link>
           )}
           {active.some((g) => g.goal_type === "tax") && (
-            <a href="/equity-comp" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface border border-border hover:border-accent/30 hover:bg-green-50/30 transition-colors text-xs text-text-secondary hover:text-text-primary">
+            <Link href="/equity-comp" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface border border-border hover:border-accent/30 hover:bg-green-50/30 transition-colors text-xs text-text-secondary hover:text-text-primary">
               <Briefcase size={14} className="text-accent" /> Manage equity comp taxes <ArrowRight size={12} />
-            </a>
+            </Link>
           )}
           {active.some((g) => g.goal_type === "purchase") && (
-            <a href="/life-planner" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface border border-border hover:border-accent/30 hover:bg-green-50/30 transition-colors text-xs text-text-secondary hover:text-text-primary">
+            <Link href="/life-planner" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface border border-border hover:border-accent/30 hover:bg-green-50/30 transition-colors text-xs text-text-secondary hover:text-text-primary">
               <Compass size={14} className="text-accent" /> Model purchase in Life Planner <ArrowRight size={12} />
-            </a>
+            </Link>
           )}
-          <a href="/retirement" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface border border-border hover:border-accent/30 hover:bg-green-50/30 transition-colors text-xs text-text-secondary hover:text-text-primary">
+          <Link href="/retirement" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface border border-border hover:border-accent/30 hover:bg-green-50/30 transition-colors text-xs text-text-secondary hover:text-text-primary">
             <Landmark size={14} className="text-accent" /> Retirement planner <ArrowRight size={12} />
-          </a>
+          </Link>
         </div>
       )}
 

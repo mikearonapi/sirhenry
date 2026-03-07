@@ -13,6 +13,7 @@ export const ONBOARDING_GOALS_KEY = "henry.onboarding-goals";
 // ─── Sidebar ─────────────────────────────────────────────────────────
 export const SIDEBAR_COLLAPSED_KEY = "sidebar.main-collapsed";
 export const SIDEBAR_SECTIONS_KEY = "sidebar.collapsed-sections";
+export const SIDEBAR_SECTION_COLLAPSE_KEY = "sidebar.collapsed";
 
 // ─── Dashboard ───────────────────────────────────────────────────────
 export const DISMISSED_INSIGHTS_KEY = "dismissed-insights";

@@ -9,6 +9,9 @@ import {
   Loader2,
   ChevronRight, Calendar, Lightbulb, LayoutDashboard, Sparkles,
 } from "lucide-react";
+import TabBar from "@/components/ui/TabBar";
+import { useTabState } from "@/hooks/useTabState";
+import { DASHBOARD_TABS } from "@/components/dashboard/constants";
 import { getDashboard, getBudgetSummary, getRecurringSummary, getGoals, getBenchmarkSnapshot, getOrderOfOperations, getProactiveInsights } from "@/lib/api";
 import { getFamilyMembers } from "@/lib/api-household";
 import { getLifeEvents } from "@/lib/api-life-events";
@@ -44,7 +47,7 @@ export default function DashboardPage() {
   const [upcomingEvents, setUpcomingEvents] = useState<LifeEvent[]>([]);
   const [insights, setInsights] = useState<ProactiveInsight[]>([]);
   const [dismissedInsights, setDismissedInsights] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState<"overview" | "insights">("overview");
+  const [activeTab, setTab] = useTabState(DASHBOARD_TABS, "overview");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -214,20 +217,7 @@ export default function DashboardPage() {
       </div>
 
       {/* TABS */}
-      <div className="flex items-center gap-1 bg-surface rounded-lg p-1 w-fit">
-        <button
-          onClick={() => setActiveTab("overview")}
-          className={`text-sm font-medium px-4 py-1.5 rounded-md transition-all ${activeTab === "overview" ? "bg-card text-text-primary shadow-sm" : "text-text-secondary hover:text-text-secondary"}`}
-        >
-          Overview
-        </button>
-        <button
-          onClick={() => setActiveTab("insights")}
-          className={`text-sm font-medium px-4 py-1.5 rounded-md transition-all ${activeTab === "insights" ? "bg-card text-text-primary shadow-sm" : "text-text-secondary hover:text-text-secondary"}`}
-        >
-          Insights
-        </button>
-      </div>
+      <TabBar tabs={DASHBOARD_TABS} activeTab={activeTab} onChange={setTab} variant="pill" />
 
       {activeTab === "insights" ? (
         <InsightsSection selectedYear={selectedYear} />

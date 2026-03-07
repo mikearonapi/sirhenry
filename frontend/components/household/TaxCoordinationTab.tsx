@@ -1,8 +1,10 @@
 "use client";
-import { useState } from "react";
-import { AlertCircle, Calculator, MapPin, Info } from "lucide-react";
+import { useState, useMemo } from "react";
+import { AlertCircle, Calculator, MapPin, Info, FileText, ClipboardList, BarChart3 } from "lucide-react";
 import type { HouseholdProfile } from "@/types/api";
 import Card from "@/components/ui/Card";
+import TabBar from "@/components/ui/TabBar";
+import type { TabDef } from "@/components/ui/TabBar";
 import { hasReciprocity } from "./constants";
 import FilingComparisonPanel from "./FilingComparisonPanel";
 import W4OptimizationPanel from "./W4OptimizationPanel";
@@ -17,7 +19,7 @@ export interface TaxCoordinationTabProps {
 }
 
 export default function TaxCoordinationTab({ profile }: TaxCoordinationTabProps) {
-  const [activeSection, setActiveSection] = useState<"filing" | "w4" | "thresholds" | "multistate">("filing");
+  const [activeSection, setActiveSection] = useState<string>("filing");
   const [error, setError] = useState<string | null>(null);
 
   const multiStateSpouses = profile ? [
@@ -28,6 +30,18 @@ export default function TaxCoordinationTab({ profile }: TaxCoordinationTabProps)
       ? { name: profile.spouse_b_name || "Spouse B", home: profile.state, work: profile.spouse_b_work_state, reciprocity: hasReciprocity(profile.state, profile.spouse_b_work_state) }
       : null,
   ].filter(Boolean) as { name: string; home: string; work: string; reciprocity: boolean }[] : [];
+
+  const sectionTabs: TabDef[] = useMemo(() => {
+    const base: TabDef[] = [
+      { id: "filing", label: "Filing Status", icon: FileText },
+      { id: "w4", label: "W-4 Optimization", icon: ClipboardList },
+      { id: "thresholds", label: "Tax Thresholds", icon: BarChart3 },
+    ];
+    if (multiStateSpouses.length > 0) {
+      base.push({ id: "multistate", label: "Multi-State", icon: MapPin });
+    }
+    return base;
+  }, [multiStateSpouses.length]);
 
   if (!profile) {
     return (
@@ -66,23 +80,7 @@ export default function TaxCoordinationTab({ profile }: TaxCoordinationTabProps)
         </div>
       )}
 
-      <div className="flex gap-2 flex-wrap">
-        {[
-          { id: "filing", label: "Filing Status" },
-          { id: "w4", label: "W-4 Optimization" },
-          { id: "thresholds", label: "Tax Thresholds" },
-          ...(multiStateSpouses.length > 0 ? [{ id: "multistate", label: "Multi-State" }] : []),
-        ].map((s) => (
-          <button key={s.id} onClick={() => setActiveSection(s.id as typeof activeSection)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              activeSection === s.id
-                ? "bg-stone-900 dark:bg-stone-700 text-white"
-                : "bg-surface text-text-secondary hover:bg-surface-hover"
-            }`}>
-            {s.label}
-          </button>
-        ))}
-      </div>
+      <TabBar tabs={sectionTabs} activeTab={activeSection} onChange={setActiveSection} variant="pill" />
 
       {activeSection === "filing" && (
         <FilingComparisonPanel profile={profile} onError={setError} />

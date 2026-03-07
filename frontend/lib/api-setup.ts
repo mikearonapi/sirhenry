@@ -11,3 +11,7 @@ export interface SetupStatus {
 export function getSetupStatus(): Promise<SetupStatus> {
   return request("/setup/status");
 }
+
+export function postSetupComplete(): Promise<void> {
+  return request("/setup/complete", { method: "POST" });
+}

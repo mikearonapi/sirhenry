@@ -175,7 +175,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     setPhase("goals");
   }, []);
 
-  const onGoalsComplete = useCallback(() => {
+  const onGoalsComplete = useCallback((_goals: string[]) => {
     setPhase("setup");
   }, []);
 
@@ -196,7 +196,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   if (phase === "splash") {
-    return <SplashScreen onComplete={onSplashComplete} ready={true} />;
+    return <SplashScreen onComplete={onSplashComplete} />;
   }
 
   if (phase === "auth") {

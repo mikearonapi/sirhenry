@@ -5,6 +5,7 @@ import {
 } from "recharts";
 import { ArrowUpRight, ArrowDownRight, BarChart3 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { useThemeColors } from "@/hooks/useThemeColors";
 import type { Insights } from "@/types/api";
 import Card from "@/components/ui/Card";
 import { SkeletonCard, SkeletonChart } from "./constants";
@@ -18,6 +19,7 @@ interface Props {
 }
 
 export default function YearOverYearTab({ insights, year }: Props) {
+  const colors = useThemeColors();
   const iData = insights.data;
 
   if (insights.loading) {
@@ -135,14 +137,14 @@ export default function YearOverYearTab({ insights, year }: Props) {
                 })}
                 margin={{ top: 5, right: 5, left: 5, bottom: 0 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f4" />
-                <XAxis dataKey="name" tick={{ fontSize: 12, fill: "#78716c" }} axisLine={false} tickLine={false} />
-                <YAxis tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 12, fill: "#78716c" }} axisLine={false} tickLine={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke={colors.gridLine} />
+                <XAxis dataKey="name" tick={{ fontSize: 12, fill: colors.axisText }} axisLine={false} tickLine={false} />
+                <YAxis tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 12, fill: colors.axisText }} axisLine={false} tickLine={false} />
                 <Tooltip
-                  contentStyle={{ borderRadius: 8, border: "1px solid #e7e5e4", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}
+                  contentStyle={{ borderRadius: 8, border: `1px solid ${colors.tooltipBorder}`, backgroundColor: colors.tooltipBg, color: colors.tooltipText, boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}
                   formatter={(v) => typeof v === "number" ? formatCurrency(v) : String(v ?? "")}
                 />
-                <Legend wrapperStyle={{ fontSize: 12, color: "#78716c" }} />
+                <Legend wrapperStyle={{ fontSize: 12, color: colors.axisText }} />
                 <Bar dataKey={String(year)} fill="#16A34A" radius={[4, 4, 0, 0]} />
                 <Bar dataKey={String(year - 1)} fill="#d6d3d1" radius={[4, 4, 0, 0]} />
                 {hasPrior2 && prior2Year != null && (

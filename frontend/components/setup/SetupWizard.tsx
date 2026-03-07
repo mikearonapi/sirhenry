@@ -7,7 +7,7 @@ import StepBenefitsCoverage from "./StepBenefitsCoverage";
 import StepLifeBusiness from "./StepLifeBusiness";
 import StepFinish from "./StepFinish";
 import { markSetupComplete } from "@/components/AppShell";
-import { request } from "@/lib/api-client";
+import { postSetupComplete } from "@/lib/api-setup";
 import type { HouseholdProfile, OtherIncomeSource } from "@/types/household";
 import { getHouseholdProfiles } from "@/lib/api-household";
 import { getAccounts } from "@/lib/api-accounts";
@@ -156,7 +156,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps = {}) {
   async function handleFinish() {
     markSetupComplete();
     try {
-      await request("/setup/complete", { method: "POST" });
+      await postSetupComplete();
     } catch {
       // Non-critical — localStorage flag is the primary gate
     }

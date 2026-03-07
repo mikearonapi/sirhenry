@@ -84,19 +84,20 @@ const SETTINGS_MENU_ITEMS = [
 // localStorage helpers for collapsed sections
 // ---------------------------------------------------------------------------
 
-const STORAGE_KEY = "sidebar.collapsed";
+import { SIDEBAR_SECTION_COLLAPSE_KEY } from "@/lib/storage-keys";
+
 const ALL_SECTION_LABELS = NAV_SECTIONS.map((s) => s.label);
 
 function getStoredCollapsed(): Set<string> {
   try {
-    const raw = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
+    const raw = typeof window !== "undefined" ? localStorage.getItem(SIDEBAR_SECTION_COLLAPSE_KEY) : null;
     // Default: all sections collapsed until the user expands them
     return raw ? new Set(JSON.parse(raw) as string[]) : new Set(ALL_SECTION_LABELS);
   } catch { return new Set(ALL_SECTION_LABELS); }
 }
 
 function persistCollapsed(sections: Set<string>) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify([...sections]));
+  localStorage.setItem(SIDEBAR_SECTION_COLLAPSE_KEY, JSON.stringify([...sections]));
 }
 
 // ---------------------------------------------------------------------------

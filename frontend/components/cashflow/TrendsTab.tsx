@@ -6,6 +6,7 @@ import {
 } from "recharts";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { useThemeColors } from "@/hooks/useThemeColors";
 import type { Insights, MonthlyAnalysis, CategoryTrend, OutlierTransaction } from "@/types/api";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
@@ -26,6 +27,7 @@ interface Props {
 }
 
 export default function TrendsTab({ insights }: Props) {
+  const colors = useThemeColors();
   const [expandedCategories, setExpandedCategories] = useState(false);
   const iData = insights.data;
 
@@ -72,14 +74,14 @@ export default function TrendsTab({ insights }: Props) {
           </div>
           <ResponsiveContainer width="100%" height={320}>
             <ComposedChart data={monthlyChartData} margin={{ top: 5, right: 5, left: 5, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f4" />
-              <XAxis dataKey="name" tick={{ fontSize: 12, fill: "#78716c" }} axisLine={false} tickLine={false} />
-              <YAxis tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 12, fill: "#78716c" }} axisLine={false} tickLine={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke={colors.gridLine} />
+              <XAxis dataKey="name" tick={{ fontSize: 12, fill: colors.axisText }} axisLine={false} tickLine={false} />
+              <YAxis tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 12, fill: colors.axisText }} axisLine={false} tickLine={false} />
               <Tooltip
-                contentStyle={{ borderRadius: 8, border: "1px solid #e7e5e4", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}
+                contentStyle={{ borderRadius: 8, border: `1px solid ${colors.tooltipBorder}`, backgroundColor: colors.tooltipBg, color: colors.tooltipText, boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}
                 formatter={(v, name) => [typeof v === "number" ? formatCurrency(v) : String(v ?? ""), String(name)]}
               />
-              <Legend wrapperStyle={{ fontSize: 12, color: "#78716c" }} />
+              <Legend wrapperStyle={{ fontSize: 12, color: colors.axisText }} />
               <Bar dataKey="Normalized Expenses" stackId="expenses" fill="#86efac" radius={[0, 0, 0, 0]} />
               <Bar dataKey="Outlier Amount" stackId="expenses" fill="#fdba74" radius={[4, 4, 0, 0]} />
               <Line type="monotone" dataKey="Income" stroke="#16a34a" strokeWidth={2} dot={false} strokeDasharray="5 5" />

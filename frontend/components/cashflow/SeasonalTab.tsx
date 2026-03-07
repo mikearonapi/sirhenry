@@ -4,6 +4,7 @@ import {
   CartesianGrid, Cell,
 } from "recharts";
 import { formatCurrency } from "@/lib/utils";
+import { useThemeColors } from "@/hooks/useThemeColors";
 import type { Insights } from "@/types/api";
 import Card from "@/components/ui/Card";
 import { SEASONAL_COLORS } from "@/components/insights/constants";
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export default function SeasonalTab({ insights }: Props) {
+  const colors = useThemeColors();
   const iData = insights.data;
 
   const seasonalChartData = iData?.seasonal_patterns.map((s) => ({
@@ -50,11 +52,11 @@ export default function SeasonalTab({ insights }: Props) {
           </div>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={seasonalChartData} margin={{ top: 5, right: 5, left: 5, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f4" />
-              <XAxis dataKey="name" tick={{ fontSize: 12, fill: "#78716c" }} axisLine={false} tickLine={false} />
-              <YAxis tickFormatter={(v: number) => `${v}`} tick={{ fontSize: 12, fill: "#78716c" }} axisLine={false} tickLine={false} domain={[0, "auto"]} />
+              <CartesianGrid strokeDasharray="3 3" stroke={colors.gridLine} />
+              <XAxis dataKey="name" tick={{ fontSize: 12, fill: colors.axisText }} axisLine={false} tickLine={false} />
+              <YAxis tickFormatter={(v: number) => `${v}`} tick={{ fontSize: 12, fill: colors.axisText }} axisLine={false} tickLine={false} domain={[0, "auto"]} />
               <Tooltip
-                contentStyle={{ borderRadius: 8, border: "1px solid #e7e5e4", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}
+                contentStyle={{ borderRadius: 8, border: `1px solid ${colors.tooltipBorder}`, backgroundColor: colors.tooltipBg, color: colors.tooltipText, boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}
                 formatter={(v, name) => {
                   const val = typeof v === "number" ? v : 0;
                   if (name === "index") return [`${val.toFixed(1)}`, "Seasonal Index"];

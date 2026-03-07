@@ -2,7 +2,8 @@ import {
   Home, Car, TrendingUp, DollarSign, PiggyBank, Package,
   Landmark, CreditCard, Briefcase,
 } from "lucide-react";
-import type { ManualAsset, ManualAssetType, InvestmentSubtype } from "@/types/api";
+import { formatCurrency } from "@/lib/utils";
+import type { ManualAsset, ManualAssetType, InvestmentSubtype, Account, EquityDashboard, BusinessEntity } from "@/types/api";
 
 // ---------------------------------------------------------------------------
 // Unified group model — every group (Plaid, CSV, manual, portfolio, equity)
@@ -223,4 +224,146 @@ export function manualAssetTypeToGroupKey(type: ManualAssetType): string {
     case "loan": return "loans";
     case "other_liability": return "other_liabilities";
   }
+}
+
+// ---------------------------------------------------------------------------
+// Build unified groups from accounts, manual assets, and equity data.
+// Pure data transformation — no side effects.
+// ---------------------------------------------------------------------------
+interface BuildGroupsInput {
+  accounts: Account[];
+  manualAssets: ManualAsset[];
+  equityDashboard: EquityDashboard | null;
+  bizEntities: BusinessEntity[];
+  onEditAsset: (asset: ManualAsset) => void;
+  onDeleteAsset: (asset: ManualAsset) => void;
+}
+
+export function buildUnifiedGroups({
+  accounts, manualAssets, equityDashboard, bizEntities,
+  onEditAsset, onDeleteAsset,
+}: BuildGroupsInput): UnifiedGroup[] {
+  const entityNameMap = new Map<number, string>();
+  bizEntities.forEach((e) => entityNameMap.set(e.id, e.name));
+
+  const groupMap = new Map<string, UnifiedGroup>();
+  function ensureGroup(key: string): UnifiedGroup {
+    let g = groupMap.get(key);
+    if (!g) {
+      const meta = GROUP_META[key] ?? GROUP_META.other_assets;
+      g = { key, label: meta.label, icon: meta.icon, isLiability: meta.isLiability, total: 0, sortOrder: SORT_ORDER[key] ?? 99, items: [] };
+      groupMap.set(key, g);
+    }
+    return g;
+  }
+
+  accounts.forEach((acct) => {
+    let gk: string;
+    if (acct.data_source === "plaid" && acct.plaid_type) {
+      gk = plaidTypeToGroupKey(acct.plaid_type, acct.plaid_subtype ?? null);
+    } else if (acct.subtype === "credit_card" || acct.subtype === "credit card") {
+      gk = "credit_cards";
+    } else if (acct.subtype === "savings" || acct.subtype === "money market" || acct.subtype === "cd") {
+      gk = "savings";
+    } else if (acct.subtype === "brokerage" || acct.account_type === "investment") {
+      gk = "investments";
+    } else if (acct.subtype === "mortgage" || acct.subtype === "loan" || acct.subtype === "auto" || acct.subtype === "student") {
+      gk = "loans";
+    } else {
+      gk = "checking";
+    }
+    const g = ensureGroup(gk);
+    const val = Math.abs(acct.balance ?? 0);
+    g.total += val;
+
+    const sourceBadge = acct.data_source === "plaid" ? "Plaid" : acct.data_source === "csv" ? "CSV" : acct.data_source === "monarch" ? "Monarch" : "";
+    const mask = acct.plaid_mask ?? acct.last_four;
+    const displayName = `${acct.name}${mask ? ` (...${mask})` : ""}`;
+    const subtitleParts: string[] = [];
+    if (acct.plaid_subtype ?? acct.subtype) subtitleParts.push(acct.plaid_subtype ?? acct.subtype ?? "");
+    if (acct.institution) subtitleParts.push(acct.institution);
+    if (sourceBadge) subtitleParts.push(sourceBadge);
+
+    let detail: string | undefined;
+    if (acct.data_source === "plaid" && acct.plaid_last_synced) {
+      detail = `Synced ${new Date(acct.plaid_last_synced).toLocaleDateString()}`;
+    }
+    if (acct.transaction_count && acct.transaction_count > 0) {
+      const txnLabel = `${acct.transaction_count} txns`;
+      detail = detail ? `${detail} · ${txnLabel}` : txnLabel;
+    }
+
+    const entityBadge = acct.default_business_entity_id
+      ? entityNameMap.get(acct.default_business_entity_id)
+      : undefined;
+
+    g.items.push({
+      id: `account-${acct.id}`,
+      name: displayName,
+      subtitle: subtitleParts.join(" · ") || acct.account_type,
+      value: val,
+      detail,
+      badge: entityBadge,
+    });
+  });
+
+  manualAssets.forEach((asset) => {
+    const gk = manualAssetTypeToGroupKey(asset.asset_type);
+    const g = ensureGroup(gk);
+    g.total += asset.current_value;
+
+    let subtitle = "";
+    let detail: string | undefined;
+    if (asset.asset_type === "investment") {
+      const parts: string[] = [];
+      if (asset.account_subtype) {
+        const found = INVESTMENT_SUBTYPES.find((s) => s.value === asset.account_subtype);
+        parts.push(found?.label ?? asset.account_subtype);
+      }
+      if (asset.custodian) parts.push(asset.custodian);
+      else if (asset.institution) parts.push(asset.institution);
+      if (asset.owner) parts.push(asset.owner);
+      subtitle = parts.join(" · ") || "Investment";
+      const details: string[] = [];
+      if (asset.annual_return_pct != null) details.push(`${asset.annual_return_pct >= 0 ? "+" : ""}${asset.annual_return_pct.toFixed(1)}% return`);
+      if (asset.as_of_date) details.push(`as of ${new Date(asset.as_of_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`);
+      detail = details.length > 0 ? details.join(" · ") : undefined;
+    } else {
+      subtitle = `${asset.institution ? `${asset.institution} · ` : ""}${asset.address ?? asset.description ?? MANUAL_ASSET_CONFIG[asset.asset_type]?.label ?? ""}`;
+      detail = asset.purchase_price != null ? `Purchased ${formatCurrency(asset.purchase_price)}` : undefined;
+    }
+
+    g.items.push({
+      id: `manual-${asset.id}`,
+      name: asset.name,
+      subtitle,
+      value: asset.current_value,
+      detail,
+      canEdit: true,
+      onEdit: () => onEditAsset(asset),
+      onDelete: () => onDeleteAsset(asset),
+    });
+  });
+
+  const equityTotal = equityDashboard?.total_equity_value ?? 0;
+  if (equityTotal > 0 && equityDashboard && equityDashboard.grants.length > 0) {
+    const g = ensureGroup("equity_comp");
+    g.total += equityTotal;
+    for (const grant of equityDashboard.grants) {
+      const vestedLabel = `${grant.vested_shares.toLocaleString()} vested`;
+      const unvestedLabel = grant.unvested_shares > 0 ? ` · ${grant.unvested_shares.toLocaleString()} unvested` : "";
+      const fmvLabel = grant.current_fmv > 0 ? ` · $${grant.current_fmv.toFixed(2)} FMV` : "";
+      g.items.push({
+        id: `equity-${grant.id}`,
+        name: `${grant.employer} — ${grant.grant_type.toUpperCase()}`,
+        subtitle: `${vestedLabel}${unvestedLabel}${fmvLabel}`,
+        value: grant.total_value,
+        detail: grant.unvested_shares > 0 ? `${grant.total_shares.toLocaleString()} total shares` : undefined,
+      });
+    }
+  }
+
+  return Array.from(groupMap.values())
+    .filter((g) => g.items.length > 0)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
 }

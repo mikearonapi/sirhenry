@@ -53,16 +53,28 @@ async def _seed_all_reminders() -> None:
 
 async def _periodic_plaid_sync(interval_seconds: float) -> None:
     """Background loop: syncs Plaid items on a fixed interval.
-    Runs AI categorization + Amazon order matching after each sync."""
+    Runs AI categorization + Amazon order matching after each sync.
+    Always syncs production items against the local database, regardless
+    of the user's current interactive mode (demo vs local)."""
     await asyncio.sleep(60)  # initial delay to let startup finish
     while True:
         try:
             from api.database import AsyncSessionLocal
-            async with AsyncSessionLocal() as session:
-                async with session.begin():
-                    from pipeline.plaid.sync import sync_all_items
-                    result = await sync_all_items(session, run_categorize=True)
-                    logger.info(f"Periodic Plaid sync: {result}")
+            from pipeline.plaid.client import get_plaid_mode, switch_plaid_mode
+
+            # Ensure production creds for periodic sync
+            previous_mode = get_plaid_mode()
+            if previous_mode != "local":
+                switch_plaid_mode("local")
+            try:
+                async with AsyncSessionLocal() as session:
+                    async with session.begin():
+                        from pipeline.plaid.sync import sync_all_items
+                        result = await sync_all_items(session, run_categorize=True)
+                        logger.info(f"Periodic Plaid sync: {result}")
+            finally:
+                if previous_mode != "local":
+                    switch_plaid_mode(previous_mode)
         except Exception as e:
             logger.warning(f"Periodic Plaid sync failed: {e}")
         await asyncio.sleep(interval_seconds)
@@ -145,28 +157,35 @@ async def lifespan(app: FastAPI):
         logger.error(f"Schema migration failed: {e}")
         raise
 
-    # Validate Plaid environment and encryption key
-    plaid_env = os.environ.get("PLAID_ENV", "sandbox")
+    # Validate Plaid credentials for both modes (local=production, demo=sandbox)
+    from pipeline.plaid.client import _PLAID_CONFIGS
     encryption_key = os.environ.get("PLAID_ENCRYPTION_KEY", "")
-    if plaid_env == "sandbox":
-        logger.warning(
-            "PLAID_ENV=sandbox — using test data only. "
-            "Set PLAID_ENV=development in .env and update PLAID_SECRET "
-            "for real bank connections (free, 100 items)."
-        )
-    else:
-        logger.info(f"Plaid environment: {plaid_env}")
 
-    if plaid_env == "production" and not encryption_key.strip():
+    prod_config = _PLAID_CONFIGS["local"]
+    if prod_config["client_id"] and prod_config["secret"]:
+        logger.info(f"Plaid local/production config: valid (env={prod_config['env']})")
+    else:
+        logger.warning("Plaid production credentials not configured — local mode bank sync disabled")
+
+    if prod_config["env"] == "production" and not encryption_key.strip():
         logger.error(
             "CRITICAL: PLAID_ENCRYPTION_KEY is not set but PLAID_ENV=production. "
-            "Access tokens will be stored in PLAINTEXT. "
             "Generate a key: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
         )
         raise RuntimeError(
             "Refusing to start: PLAID_ENCRYPTION_KEY must be set when PLAID_ENV=production"
         )
-    elif encryption_key.strip():
+
+    demo_config = _PLAID_CONFIGS["demo"]
+    if demo_config["secret"]:
+        logger.info("Plaid sandbox config: valid (demo mode Plaid enabled)")
+    else:
+        logger.warning(
+            "PLAID_SANDBOX_SECRET not set — demo mode will not support Plaid Link. "
+            "Get a sandbox secret from https://dashboard.plaid.com/ → Keys"
+        )
+
+    if encryption_key.strip():
         try:
             from cryptography.fernet import Fernet
             Fernet(encryption_key.encode())
@@ -266,6 +285,8 @@ if not _SUPABASE_CONFIGURED:
 
     app.add_middleware(LocalhostGuardMiddleware)
 
+# NOTE: account_links must be registered BEFORE accounts so that
+# /accounts/links/{id} is matched before the /accounts/{id} catch-all.
 app.include_router(account_links.router)
 app.include_router(accounts.router)
 app.include_router(assets.router)

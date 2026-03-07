@@ -5,6 +5,10 @@ import {
   Check, X, Eye, EyeOff, ChevronLeft,
   DollarSign, Bot, Sparkles,
 } from "lucide-react";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import TabBar from "@/components/ui/TabBar";
+import { useTabState } from "@/hooks/useTabState";
+import { BUDGET_TABS } from "@/components/budget/constants";
 import { formatCurrency, monthName } from "@/lib/utils";
 import {
   getBudgets, getBudgetSummary, createBudget, updateBudget,
@@ -125,7 +129,8 @@ function varianceColor(variance: number, section: BudgetSection): string {
 export default function BudgetPage() {
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
-  const [activeView, setActiveView] = useState<"budget" | "forecast">("budget");
+  const [activeView, setActiveView] = useTabState(BUDGET_TABS, "budget");
+  const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; budgetId: number | null }>({ open: false, budgetId: null });
   const [budgets, setBudgets] = useState<BudgetItem[]>([]);
   const [summary, setSummary] = useState<BudgetSummary | null>(null);
   const [unbudgeted, setUnbudgeted] = useState<UnbudgetedCategory[]>([]);
@@ -221,8 +226,14 @@ export default function BudgetPage() {
   }
 
   async function handleDelete(id: number) {
-    if (!window.confirm("Are you sure you want to delete this budget?")) return;
-    await deleteBudget(id); await load();
+    setConfirmDelete({ open: true, budgetId: id });
+  }
+
+  async function confirmDeleteBudget() {
+    if (confirmDelete.budgetId == null) return;
+    await deleteBudget(confirmDelete.budgetId);
+    setConfirmDelete({ open: false, budgetId: null });
+    await load();
   }
 
   async function handleInlineEdit(id: number, newAmount: number) {
@@ -321,10 +332,7 @@ export default function BudgetPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <h1 className="text-2xl font-bold text-text-primary tracking-tight">{monthName(month)} {year}</h1>
-          <div className="flex bg-surface rounded-lg p-0.5">
-            <button onClick={() => setActiveView("budget")} className={`px-3 py-1.5 rounded-md text-xs font-medium ${activeView === "budget" ? "bg-card text-text-primary shadow-sm" : "text-text-secondary hover:text-text-secondary"}`}>Budget</button>
-            <button onClick={() => setActiveView("forecast")} className={`px-3 py-1.5 rounded-md text-xs font-medium ${activeView === "forecast" ? "bg-card text-text-primary shadow-sm" : "text-text-secondary hover:text-text-secondary"}`}>Forecast</button>
-          </div>
+          <TabBar tabs={BUDGET_TABS} activeTab={activeView} onChange={setActiveView} variant="pill" />
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => { if (month === 1) { setYear(year - 1); setMonth(12); } else setMonth(month - 1); }} aria-label="Previous month" className="p-2 hover:bg-surface rounded-lg border border-border"><ChevronLeft size={14} className="text-text-secondary" /></button>
@@ -661,6 +669,16 @@ export default function BudgetPage() {
           month={month}
         />
       )}
+
+      <ConfirmDialog
+        open={confirmDelete.open}
+        title="Delete Budget Line"
+        message="Are you sure you want to delete this budget? This action cannot be undone."
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={confirmDeleteBudget}
+        onCancel={() => setConfirmDelete({ open: false, budgetId: null })}
+      />
     </div>
   );
 }

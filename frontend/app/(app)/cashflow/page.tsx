@@ -1,6 +1,6 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Loader2, AlertCircle } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import { getPeriods } from "@/lib/api";
 import { monthName, safeJsonParse } from "@/lib/utils";
 import type { FinancialPeriod } from "@/types/api";
@@ -29,13 +29,16 @@ export default function CashFlowPage() {
 
   const insights = useInsights(year, activeTab !== "overview");
 
-  useEffect(() => {
+  const loadPeriods = useCallback(() => {
     setLoading(true);
+    setError(null);
     getPeriods(year)
       .then(setPeriods)
       .catch((e: unknown) => setError(getErrorMessage(e)))
       .finally(() => setLoading(false));
   }, [year]);
+
+  useEffect(() => { loadPeriods(); }, [loadPeriods]);
 
   /* ── Derived data ─────────────────────────────────────── */
 
@@ -156,7 +159,14 @@ export default function CashFlowPage() {
           {error && (
             <div className="bg-red-50 text-red-700 rounded-xl p-4 flex items-center gap-3 border border-red-100">
               <AlertCircle size={18} />
-              <p className="text-sm">{error}</p>
+              <p className="text-sm flex-1">{error}</p>
+              <button
+                onClick={loadPeriods}
+                className="flex items-center gap-1.5 text-sm font-medium text-red-600 hover:text-red-800 bg-red-100 hover:bg-red-200 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                <RefreshCw size={14} />
+                Retry
+              </button>
             </div>
           )}
 

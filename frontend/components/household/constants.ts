@@ -107,6 +107,9 @@ export const UTILIZATION_SCENARIOS = [
   { label: "High", value: 8_000, desc: "Significant care or surgery" },
 ];
 
+// TODO: These contribution limits should be fetched from the backend
+// `/tax/constants` endpoint to stay in sync with pipeline/tax/constants.py
+// and automatically update for future tax years.
 export const LIMITS_2025 = {
   k401: 23_500,
   k401_catchup: 31_000,

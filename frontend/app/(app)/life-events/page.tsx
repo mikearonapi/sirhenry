@@ -10,6 +10,7 @@ import type { LifeEvent, LifeEventIn } from "@/types/api";
 import { EVENT_TYPES } from "@/components/life-events/constants";
 import LifeEventForm from "@/components/life-events/LifeEventForm";
 import LifeEventTimeline from "@/components/life-events/LifeEventTimeline";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 const CURRENT_YEAR = new Date().getFullYear();
 
@@ -22,6 +23,7 @@ export default function LifeEventsPage() {
   const [filterType, setFilterType] = useState<string>("");
   const [filterYear, setFilterYear] = useState<string>("");
   const [editingEvent, setEditingEvent] = useState<LifeEvent | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; eventId: number | null }>({ open: false, eventId: null });
 
   const loadEvents = useCallback(async () => {
     try {
@@ -62,9 +64,14 @@ export default function LifeEventsPage() {
   }
 
   async function handleDelete(id: number) {
-    if (!confirm("Delete this life event?")) return;
+    setConfirmDelete({ open: true, eventId: id });
+  }
+
+  async function confirmDeleteEvent() {
+    if (confirmDelete.eventId == null) return;
     try {
-      await deleteLifeEvent(id);
+      await deleteLifeEvent(confirmDelete.eventId);
+      setConfirmDelete({ open: false, eventId: null });
       await loadEvents();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
@@ -170,6 +177,16 @@ export default function LifeEventsPage() {
           onToggleAction={handleToggleAction}
         />
       )}
+
+      <ConfirmDialog
+        open={confirmDelete.open}
+        title="Delete Life Event"
+        message="Delete this life event? This action cannot be undone."
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={confirmDeleteEvent}
+        onCancel={() => setConfirmDelete({ open: false, eventId: null })}
+      />
     </div>
   );
 }

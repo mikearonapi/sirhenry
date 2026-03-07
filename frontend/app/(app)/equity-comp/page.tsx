@@ -2,8 +2,8 @@
 import { useEffect, useState } from "react";
 import {
   Briefcase, Plus, TrendingUp, AlertTriangle, PieChart, DollarSign,
-  Calendar, ChevronDown, ChevronUp, Trash2, Calculator, ArrowRightLeft,
-  LogOut, ShoppingCart, Loader2, X, RefreshCw, MessageCircle,
+  Calendar, ChevronDown, ChevronUp, Trash2, Calculator,
+  Loader2, X, RefreshCw, MessageCircle,
 } from "lucide-react";
 import { formatCurrency, formatPercent } from "@/lib/utils";
 import {
@@ -22,6 +22,10 @@ import EmptyState from "@/components/ui/EmptyState";
 import ESPPAnalysis from "@/components/equity-comp/ESPPAnalysis";
 import SirHenryName from "@/components/ui/SirHenryName";
 import VestingCalendar from "@/components/equity-comp/VestingCalendar";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import TabBar from "@/components/ui/TabBar";
+import { useTabState } from "@/hooks/useTabState";
+import { EQUITY_ANALYSIS_TABS } from "@/components/equity-comp/constants";
 
 const GRANT_TYPE_COLORS: Record<string, string> = {
   rsu: "bg-blue-100 text-blue-800",
@@ -38,15 +42,14 @@ const RISK_COLORS: Record<string, string> = {
   critical: "text-red-700",
 };
 
-type AnalysisTab = "withholding" | "sell" | "amt" | "leave" | "espp" | "vesting";
-
 export default function EquityCompPage() {
   const [dashboard, setDashboard] = useState<EquityDashboard | null>(null);
   const [grants, setGrants] = useState<EquityGrant[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [activeTab, setActiveTab] = useState<AnalysisTab>("withholding");
+  const [activeTab, setActiveTab] = useTabState(EQUITY_ANALYSIS_TABS, "withholding");
   const [expandedGrant, setExpandedGrant] = useState<number | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; grantId: number | null }>({ open: false, grantId: null });
 
   // Analysis results
   const [gapResult, setGapResult] = useState<WithholdingGapResult | null>(null);
@@ -112,9 +115,14 @@ export default function EquityCompPage() {
   }
 
   async function handleDelete(id: number) {
-    if (!confirm("Delete this grant?")) return;
+    setConfirmDelete({ open: true, grantId: id });
+  }
+
+  async function confirmDeleteGrant() {
+    if (confirmDelete.grantId == null) return;
     try {
-      await deleteEquityGrant(id);
+      await deleteEquityGrant(confirmDelete.grantId);
+      setConfirmDelete({ open: false, grantId: null });
       await loadData();
     } catch (e: unknown) { setError(getErrorMessage(e)); }
   }
@@ -354,20 +362,7 @@ export default function EquityCompPage() {
       <div className="bg-card rounded-xl border border-border">
         <div className="px-5 py-4 border-b border-card-border">
           <h2 className="font-semibold text-text-primary mb-3">Analysis Tools</h2>
-          <div className="flex gap-2 flex-wrap">
-            {([
-              ["vesting", "Vesting Calendar", Calendar],
-              ["withholding", "Underwithholding", AlertTriangle],
-              ["sell", "Sell Strategy", ArrowRightLeft],
-              ["amt", "AMT Calculator", Calculator],
-              ["leave", "What If I Leave?", LogOut],
-              ["espp", "ESPP Optimizer", ShoppingCart],
-            ] as const).map(([key, label, Icon]) => (
-              <button key={key} onClick={() => setActiveTab(key)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition ${activeTab === key ? "bg-accent text-white" : "bg-surface text-text-secondary hover:bg-surface"}`}>
-                <Icon size={14} />{label}
-              </button>
-            ))}
-          </div>
+          <TabBar tabs={EQUITY_ANALYSIS_TABS} activeTab={activeTab} onChange={setActiveTab} variant="pill" />
         </div>
 
         <div className="p-5">
@@ -546,6 +541,16 @@ export default function EquityCompPage() {
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmDelete.open}
+        title="Delete Grant"
+        message="Delete this grant? This action cannot be undone."
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={confirmDeleteGrant}
+        onCancel={() => setConfirmDelete({ open: false, grantId: null })}
+      />
     </div>
   );
 }

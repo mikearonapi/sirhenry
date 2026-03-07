@@ -10,10 +10,8 @@ import BrandLogo from "@/components/ui/BrandLogo";
  */
 export default function SplashScreen({
   onComplete,
-  ready = true,
 }: {
   onComplete: () => void;
-  ready?: boolean;
 }) {
   const [minTimeElapsed, setMinTimeElapsed] = useState(false);
 
@@ -26,10 +24,10 @@ export default function SplashScreen({
   // Proceed immediately when ready — no fade-out.
   // LoginScreen starts with brand in same position, so the cut is seamless.
   useEffect(() => {
-    if (minTimeElapsed && ready) {
+    if (minTimeElapsed) {
       onComplete();
     }
-  }, [minTimeElapsed, ready, onComplete]);
+  }, [minTimeElapsed, onComplete]);
 
   return (
     <div className="fixed inset-0 z-50 bg-black">
@@ -40,9 +38,7 @@ export default function SplashScreen({
 
       {/* Loading indicator — absolutely positioned below center, never shifts logo */}
       <div
-        className={`absolute left-1/2 top-[calc(50%+72px)] -translate-x-1/2 flex items-center gap-1.5 transition-opacity duration-500 ${
-          !ready && minTimeElapsed ? "opacity-100" : "opacity-0"
-        }`}
+        className="absolute left-1/2 top-[calc(50%+72px)] -translate-x-1/2 flex items-center gap-1.5 transition-opacity duration-500 opacity-0"
       >
         <div
           className="w-1 h-1 rounded-full bg-white/30 animate-pulse"
