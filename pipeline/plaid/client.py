@@ -37,6 +37,45 @@ PLAID_ENV_MAP = {
 MAX_RETRIES = 3
 RETRY_BACKOFF_BASE = 1.5  # seconds
 
+# ---------------------------------------------------------------------------
+# Dual-environment config: local (production) and demo (sandbox)
+# ---------------------------------------------------------------------------
+_local_env = os.getenv("PLAID_ENV", "production")
+
+_PLAID_CONFIGS: dict[str, dict[str, Any]] = {
+    "local": {
+        "env": _local_env,
+        "host": PLAID_ENV_MAP.get(_local_env, plaid.Environment.Production),
+        "client_id": os.getenv("PLAID_CLIENT_ID", ""),
+        "secret": os.getenv("PLAID_SECRET", ""),
+    },
+    "demo": {
+        "env": "sandbox",
+        "host": plaid.Environment.Sandbox,
+        "client_id": os.getenv("PLAID_CLIENT_ID", ""),
+        "secret": os.getenv("PLAID_SANDBOX_SECRET", "") or os.getenv("PLAID_SECRET", ""),
+    },
+}
+
+_active_plaid_mode: str = "local"
+
+
+def switch_plaid_mode(mode: str) -> str:
+    """Switch the active Plaid environment (local=production, demo=sandbox)."""
+    global _active_plaid_mode
+    if mode not in ("local", "demo"):
+        raise ValueError(f"Unknown Plaid mode: {mode}")
+    _active_plaid_mode = mode
+    from pipeline.db.encryption import set_plaid_env
+    set_plaid_env(_PLAID_CONFIGS[mode]["env"])
+    logger.info(f"Plaid mode switched to {mode} (env={_PLAID_CONFIGS[mode]['env']})")
+    return mode
+
+
+def get_plaid_mode() -> str:
+    """Return the current Plaid mode ('local' or 'demo')."""
+    return _active_plaid_mode
+
 
 def _retry_on_transient(func, *args, **kwargs):
     """Retry a Plaid API call on transient errors (network, rate-limit, internal)."""
@@ -67,12 +106,13 @@ def _retry_on_transient(func, *args, **kwargs):
 
 
 def get_plaid_client() -> plaid_api.PlaidApi:
-    env_str = os.getenv("PLAID_ENV", "sandbox")
+    """Create a Plaid API client using the active mode's credentials."""
+    config = _PLAID_CONFIGS[_active_plaid_mode]
     configuration = plaid.Configuration(
-        host=PLAID_ENV_MAP.get(env_str, plaid.Environment.Sandbox),
+        host=config["host"],
         api_key={
-            "clientId": os.getenv("PLAID_CLIENT_ID", ""),
-            "secret": os.getenv("PLAID_SECRET", ""),
+            "clientId": config["client_id"],
+            "secret": config["secret"],
         },
     )
     api_client = plaid.ApiClient(configuration)

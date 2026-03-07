@@ -34,7 +34,7 @@ export default function BudgetForecastPanel({ forecastData, velocity, loading, y
   }
 
   const daysInMonth = new Date(year, month, 0).getDate();
-  const isCurrentMonth = year === now.getFullYear() && month === now.getMonth();
+  const isCurrentMonth = year === now.getFullYear() && month === now.getMonth() + 1;
 
   return (
     <div className="space-y-6">

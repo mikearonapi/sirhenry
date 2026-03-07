@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { getInsights, submitOutlierFeedback, deleteOutlierFeedback } from "@/lib/api";
 import type { Insights, OutlierTransaction, OutlierClassification } from "@/types/api";
 
-export function useInsights(year: number) {
+export function useInsights(year: number, enabled = true) {
   const [data, setData] = useState<Insights | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -25,10 +25,11 @@ export function useInsights(year: number) {
   }, [year]);
 
   useEffect(() => {
+    if (!enabled) return;
     const controller = new AbortController();
     loadInsights(controller.signal);
     return () => controller.abort();
-  }, [loadInsights]);
+  }, [loadInsights, enabled]);
 
   const classify = async (
     tx: OutlierTransaction,

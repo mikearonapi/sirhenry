@@ -747,6 +747,16 @@ async def _036_investment_holding_plaid_columns(session: AsyncSession) -> None:
             pass  # Column already exists
 
 
+async def _037_plaid_item_env_column(session: AsyncSession) -> None:
+    """Add plaid_env column to plaid_items to track sandbox vs production."""
+    try:
+        await session.execute(text(
+            "ALTER TABLE plaid_items ADD COLUMN plaid_env VARCHAR(20) NOT NULL DEFAULT 'production'"
+        ))
+    except Exception:
+        pass  # Column already exists
+
+
 MIGRATIONS: list[tuple[str, callable]] = [
     ("001_family_members_table", _001_family_members_table),
     ("002_household_columns", _002_household_columns),
@@ -784,6 +794,7 @@ MIGRATIONS: list[tuple[str, callable]] = [
     ("034_preferred_name_column", _034_preferred_name_column),
     ("035_error_logs_table", _035_error_logs_table),
     ("036_investment_holding_plaid_columns", _036_investment_holding_plaid_columns),
+    ("037_plaid_item_env_column", _037_plaid_item_env_column),
 ]
 
 

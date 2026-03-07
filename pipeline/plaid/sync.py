@@ -23,9 +23,14 @@ logger = logging.getLogger(__name__)
 
 
 async def sync_all_items(session: AsyncSession, run_categorize: bool = True) -> dict[str, Any]:
-    """Sync all active PlaidItems. Returns a summary."""
+    """Sync all active PlaidItems matching the current Plaid environment."""
+    from pipeline.plaid.client import get_plaid_mode
+    current_env = "sandbox" if get_plaid_mode() == "demo" else "production"
     result = await session.execute(
-        select(PlaidItem).where(PlaidItem.status == "active")
+        select(PlaidItem).where(
+            PlaidItem.status == "active",
+            PlaidItem.plaid_env == current_env,
+        )
     )
     items = list(result.scalars().all())
 

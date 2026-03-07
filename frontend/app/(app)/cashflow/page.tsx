@@ -27,7 +27,7 @@ export default function CashFlowPage() {
   const [timeframe, setTimeframe] = useState<TimeFrame>("monthly");
   const [activeTab, setTab] = useTabState(TABS, "overview");
 
-  const insights = useInsights(year);
+  const insights = useInsights(year, activeTab !== "overview");
 
   useEffect(() => {
     setLoading(true);

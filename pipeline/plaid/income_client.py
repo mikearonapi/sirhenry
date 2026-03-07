@@ -57,14 +57,17 @@ def _plaid_headers() -> dict[str, str]:
 
 
 def _plaid_auth() -> dict[str, str]:
+    from pipeline.plaid.client import _PLAID_CONFIGS, _active_plaid_mode
+    config = _PLAID_CONFIGS[_active_plaid_mode]
     return {
-        "client_id": os.getenv("PLAID_CLIENT_ID", ""),
-        "secret": os.getenv("PLAID_SECRET", ""),
+        "client_id": config["client_id"],
+        "secret": config["secret"],
     }
 
 
 def _plaid_base_url() -> str:
-    env_str = os.getenv("PLAID_ENV", "sandbox")
+    from pipeline.plaid.client import _PLAID_CONFIGS, _active_plaid_mode
+    env_str = _PLAID_CONFIGS[_active_plaid_mode]["env"]
     return PLAID_HOST_MAP.get(env_str, PLAID_HOST_MAP["sandbox"])
 
 

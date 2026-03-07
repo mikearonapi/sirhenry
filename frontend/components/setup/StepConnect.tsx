@@ -30,9 +30,10 @@ interface QuickAsset { type: string; name: string; value: string; }
 interface Props {
   data: SetupData;
   onRefresh: () => void;
+  onSyncStateChange?: (syncing: boolean) => void;
 }
 
-export default function StepConnect({ data, onRefresh }: Props) {
+export default function StepConnect({ data, onRefresh, onSyncStateChange }: Props) {
   // ── Plaid Bank state ──
   const [linkToken, setLinkToken] = useState<string | null>(null);
   const [connectingPlaid, setConnectingPlaid] = useState(false);
@@ -78,6 +79,10 @@ export default function StepConnect({ data, onRefresh }: Props) {
   }
 
   // ── Plaid sync polling ──
+  useEffect(() => {
+    onSyncStateChange?.(!!pollingItemId);
+  }, [pollingItemId, onSyncStateChange]);
+
   useEffect(() => {
     if (!pollingItemId) return;
     const interval = setInterval(async () => {

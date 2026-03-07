@@ -362,7 +362,7 @@ export default function RecurringPage() {
                 <div className="space-y-2.5">
                   {categoryBreakdown.map(([cat, amount]) => {
                     const pct = maxCategoryAmount > 0 ? (amount / maxCategoryAmount) * 100 : 0;
-                    const color = CATEGORY_COLORS[cat] ?? "bg-text-muted";
+                    const color = CATEGORY_COLORS[cat] ?? "bg-stone-400 dark:bg-stone-500";
                     return (
                       <div key={cat}>
                         <div className="flex justify-between text-xs mb-1">

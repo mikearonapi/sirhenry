@@ -7,6 +7,7 @@ import StepBenefitsCoverage from "./StepBenefitsCoverage";
 import StepLifeBusiness from "./StepLifeBusiness";
 import StepFinish from "./StepFinish";
 import { markSetupComplete } from "@/components/AppShell";
+import { request } from "@/lib/api-client";
 import type { HouseholdProfile, OtherIncomeSource } from "@/types/household";
 import { getHouseholdProfiles } from "@/lib/api-household";
 import { getAccounts } from "@/lib/api-accounts";
@@ -60,6 +61,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps = {}) {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [plaidSyncing, setPlaidSyncing] = useState(false);
 
   // Steps register their save function here so the wizard can auto-save on Continue
   const stepSaveRef = useRef<(() => Promise<void>) | null>(null);
@@ -94,18 +96,13 @@ export default function SetupWizard({ onComplete }: SetupWizardProps = {}) {
       const activeAccounts = accts.filter((a) => a.is_active);
       if (household && income > 0) {
         if (activeAccounts.length > 0) {
-          // Household + accounts done
-          if (household.spouse_a_employer) {
-            // Employer done too — check insurance
-            const activePolicies = pols.filter((p) => p.is_active);
-            if (activePolicies.length > 0) {
-              // Household, accounts, employer, benefits, insurance done
-              setStep("life-business");
-            } else {
-              setStep("benefits-coverage");
-            }
+          // Household + accounts done — check insurance/benefits
+          const activePolicies = pols.filter((p) => p.is_active);
+          if (activePolicies.length > 0) {
+            // Household, accounts, benefits done
+            setStep("life-business");
           } else {
-            setStep("connect");
+            setStep("benefits-coverage");
           }
         } else {
           setStep("connect");
@@ -156,8 +153,13 @@ export default function SetupWizard({ onComplete }: SetupWizardProps = {}) {
     loadExistingData();
   }
 
-  function handleFinish() {
+  async function handleFinish() {
     markSetupComplete();
+    try {
+      await request("/setup/complete", { method: "POST" });
+    } catch {
+      // Non-critical — localStorage flag is the primary gate
+    }
     if (onComplete) {
       onComplete();
     }
@@ -231,7 +233,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps = {}) {
               <StepAboutYou data={data} onRefresh={refreshData} registerSave={registerSave} />
             )}
             {step === "connect" && (
-              <StepConnect data={data} onRefresh={refreshData} />
+              <StepConnect data={data} onRefresh={refreshData} onSyncStateChange={setPlaidSyncing} />
             )}
             {step === "benefits-coverage" && (
               <StepBenefitsCoverage data={data} onRefresh={refreshData} registerSave={registerSave} />
@@ -277,7 +279,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps = {}) {
                 Go to Dashboard
               </button>
             ) : (
-              <button onClick={goNext} disabled={saving} className={OB_CTA}>
+              <button onClick={goNext} disabled={saving || (step === "connect" && plaidSyncing)} className={OB_CTA}>
                 {saving ? (
                   <>
                     <Loader2 size={16} className="animate-spin" />

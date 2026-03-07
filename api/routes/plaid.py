@@ -204,12 +204,14 @@ async def exchange_token(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Token exchange failed: {e}")
 
+    from pipeline.plaid.client import get_plaid_mode
     item = PlaidItem(
         item_id=result["item_id"],
         access_token=encrypt_token(result["access_token"]),
         institution_name=body.institution_name,
         status="active",
         sync_phase="syncing",
+        plaid_env="sandbox" if get_plaid_mode() == "demo" else "production",
     )
     session.add(item)
     await session.flush()

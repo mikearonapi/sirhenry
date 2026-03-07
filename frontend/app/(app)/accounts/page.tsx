@@ -112,21 +112,21 @@ function AccountsPageContent() {
     async function checkAdminHealth() {
       setHealthLoading(true);
       try {
-        const [profiles, lifeEvts, policies, bizEntities] = await Promise.allSettled([
+        const [profiles, lifeEvts, policies] = await Promise.allSettled([
           getHouseholdProfiles(),
           getLifeEvents(),
           getInsurancePolicies(),
-          getBusinessEntities(false),
         ]);
         const healthOf = (label: string, href: string, action: string, r: PromiseSettledResult<unknown>) => {
           const arr = r.status === "fulfilled" ? (r.value as unknown[]) : [];
           return { label, href, count: arr.length, status: (arr.length > 0 ? "complete" : "empty") as "complete" | "empty", action };
         };
+        const bizResult: PromiseSettledResult<unknown> = { status: "fulfilled", value: bizEntities };
         setAdminHealth([
           healthOf("Household", "/household", "Add household profile", profiles),
           healthOf("Life Events", "/life-events", "Log a life event", lifeEvts),
           healthOf("Policies", "/insurance", "Add insurance policies", policies),
-          healthOf("Business", "/business", "Add business entity (if applicable)", bizEntities),
+          healthOf("Business", "/business", "Add business entity (if applicable)", bizResult),
         ]);
       } catch {
         // Health check is non-critical

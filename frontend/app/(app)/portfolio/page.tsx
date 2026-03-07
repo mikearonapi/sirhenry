@@ -94,14 +94,14 @@ export default function PortfolioPage() {
   }, [activeTab, performance]);
 
   useEffect(() => {
-    if (activeTab === "allocation") {
+    if (activeTab === "allocation" && rebalance.length === 0) {
       setRebalanceLoading(true);
       getRebalanceRecommendations()
         .then((r) => setRebalance(Array.isArray(r) ? r : []))
         .catch((e: unknown) => setError(getErrorMessage(e)))
         .finally(() => setRebalanceLoading(false));
     }
-  }, [activeTab]);
+  }, [activeTab, rebalance.length]);
 
   useEffect(() => {
     if (activeTab === "risk") {

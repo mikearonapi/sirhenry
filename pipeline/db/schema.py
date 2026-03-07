@@ -513,6 +513,7 @@ class PlaidItem(Base):
     plaid_cursor = Column(String(500), nullable=True)
     last_synced_at = Column(DateTime, nullable=True)
     consent_expiration = Column(DateTime, nullable=True)
+    plaid_env = Column(String(20), nullable=False, default="production")
     created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
     plaid_accounts = relationship("PlaidAccount", back_populates="plaid_item")

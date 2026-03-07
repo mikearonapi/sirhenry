@@ -440,11 +440,7 @@ export default function StepFinish({ data, hasTransactions, onGoTo }: Props) {
         Ask <SirHenryName /> what to focus on first
       </button>
 
-      {/* CTA */}
-      <Link href="/dashboard" className={`${OB_CTA} w-full`}>
-        Go to Dashboard
-        <ArrowRight size={18} />
-      </Link>
+      {/* CTA is handled by the wizard's bottom nav bar (handleFinish) */}
     </div>
   );
 }

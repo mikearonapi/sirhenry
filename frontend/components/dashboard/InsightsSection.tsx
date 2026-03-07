@@ -27,6 +27,7 @@ export default function InsightsSection({ selectedYear }: InsightsSectionProps) 
   const [data, setData] = useState<Insights | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const colors = useThemeColors();
 
   const loadInsights = useCallback((signal?: AbortSignal) => {
     setLoading(true);
@@ -94,8 +95,6 @@ export default function InsightsSection({ selectedYear }: InsightsSectionProps) 
 
   const { summary, monthly_analysis, normalized_budget, seasonal_patterns,
     category_trends, income_analysis, year_over_year } = data;
-
-  const colors = useThemeColors();
 
   const seasonalChartData = seasonal_patterns.map((s) => ({
     name: s.month_name.slice(0, 3),

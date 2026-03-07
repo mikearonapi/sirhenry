@@ -44,3 +44,7 @@ export function calcSellStrategy(body: { shares: number; cost_basis_per_share: n
 export function calcConcentrationRisk(body: { employer_stock_value: number; total_net_worth: number }): Promise<ConcentrationRiskResult> {
   return request("/equity-comp/concentration-risk", { method: "POST", body: JSON.stringify(body) });
 }
+
+export function refreshEquityPrices(): Promise<void> {
+  return request("/equity-comp/refresh-prices", { method: "POST" });
+}

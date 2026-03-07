@@ -23,6 +23,17 @@ logger = logging.getLogger(__name__)
 _PLAID_ENV = os.getenv("PLAID_ENV", "sandbox").lower()
 _IS_PRODUCTION = _PLAID_ENV == "production"
 
+
+def set_plaid_env(env_str: str) -> None:
+    """Update the active Plaid environment for encryption decisions.
+
+    Called by pipeline.plaid.client.switch_plaid_mode() when switching
+    between local (production) and demo (sandbox) modes.
+    """
+    global _PLAID_ENV, _IS_PRODUCTION
+    _PLAID_ENV = env_str.lower()
+    _IS_PRODUCTION = _PLAID_ENV == "production"
+
 # ---------------------------------------------------------------------------
 # Plaid token encryption (existing)
 # ---------------------------------------------------------------------------

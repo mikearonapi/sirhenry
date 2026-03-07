@@ -50,6 +50,10 @@ async def switch_to_mode(mode: str) -> str:
     if mode == _active_mode:
         return mode
 
+    # Switch Plaid environment alongside database
+    from pipeline.plaid.client import switch_plaid_mode
+    switch_plaid_mode(mode)
+
     if mode == "local":
         _active_session_factory = AsyncSessionLocal
         _active_mode = "local"

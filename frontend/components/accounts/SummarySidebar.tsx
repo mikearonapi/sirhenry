@@ -21,7 +21,10 @@ export default function SummarySidebar({ totalAssets, totalLiabilities, groups }
             <span className="font-semibold text-text-primary tabular-nums">{formatCurrency(totalAssets)}</span>
           </div>
           <div className="w-full bg-green-100 rounded-full h-2">
-            <div className="bg-green-500 h-2 rounded-full" style={{ width: "100%" }} />
+            <div
+              className="bg-green-500 h-2 rounded-full"
+              style={{ width: `${totalLiabilities > 0 ? Math.min(100, (totalAssets / Math.max(totalAssets, totalLiabilities)) * 100) : 100}%` }}
+            />
           </div>
         </div>
         <div>

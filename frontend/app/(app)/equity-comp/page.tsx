@@ -11,12 +11,13 @@ import {
   calcWithholdingGap, calcSellStrategy, calcAMTCrossover, calcConcentrationRisk,
 } from "@/lib/api";
 import { getHouseholdProfiles } from "@/lib/api-household";
+import { getAssetSummary } from "@/lib/api-assets";
 import type {
   EquityGrant, EquityDashboard, WithholdingGapResult,
   SellStrategyResult, AMTCrossoverResult, ConcentrationRiskResult,
 } from "@/types/api";
 import { getErrorMessage } from "@/lib/errors";
-import { request } from "@/lib/api-client";
+import { refreshEquityPrices } from "@/lib/api-equity";
 import EmptyState from "@/components/ui/EmptyState";
 import ESPPAnalysis from "@/components/equity-comp/ESPPAnalysis";
 import SirHenryName from "@/components/ui/SirHenryName";
@@ -152,7 +153,9 @@ export default function EquityCompPage() {
     if (!dashboard) return;
     setAnalyzing(true);
     try {
-      const r = await calcConcentrationRisk({ employer_stock_value: dashboard.total_equity_value, total_net_worth: dashboard.total_equity_value * 3 });
+      const assetSummary = await getAssetSummary();
+      const netWorth = assetSummary.net > 0 ? assetSummary.net : dashboard.total_equity_value * 3;
+      const r = await calcConcentrationRisk({ employer_stock_value: dashboard.total_equity_value, total_net_worth: netWorth });
       setConcentrationResult(r);
     } catch (e: unknown) { setError(getErrorMessage(e)); }
     setAnalyzing(false);
@@ -191,7 +194,7 @@ export default function EquityCompPage() {
             onClick={async () => {
               setRefreshing(true);
               try {
-                await request("/equity-comp/refresh-prices", { method: "POST" });
+                await refreshEquityPrices();
                 await loadData();
               } catch (e: unknown) { setError(getErrorMessage(e)); }
               setRefreshing(false);
